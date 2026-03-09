@@ -1387,7 +1387,7 @@ document.getElementById('btn-apply-template').addEventListener('click', () => {
     vars.forEach(v => {
       const vDiv = document.createElement('div');
       vDiv.className = 'compose-var-field';
-      vDiv.innerHTML = `<label>{{${v}}}</label><input type="text" id="var-${v}" placeholder="${v}" />`;
+      vDiv.innerHTML = '<label>{{' + v + '}}</label><input type="text" id="var-' + v + '" placeholder="' + v + '" />';
       varsDiv.appendChild(vDiv);
     });
     varsRow.style.display = '';
@@ -1404,7 +1404,7 @@ document.getElementById('btn-apply-template').addEventListener('click', () => {
 function interpolateTemplate(text) {
   return text.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     const el = document.getElementById(`var-${key}`);
-    return el ? el.value : `{{${key}}}`;
+    return el ? el.value : '{{' + key + '}}';
   });
 }
 
