@@ -1,13 +1,8 @@
 import json
-import os
 from copy import deepcopy
-from pathlib import Path
 
 from pricing import CATALOG as _DEFAULT_CATALOG
-
-_DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
-CATALOG_PATH = _DATA_DIR / "catalog_override.json"
-SITECONFIG_PATH = _DATA_DIR / "site_config.json"
+from database import get_setting, set_setting
 
 DEFAULT_SITE_CONFIG = {
     "eyebrow": "Professional DJ Hire",
@@ -18,18 +13,17 @@ DEFAULT_SITE_CONFIG = {
 
 
 def load_catalog() -> dict:
-    if CATALOG_PATH.exists():
+    raw = get_setting("catalog_override")
+    if raw:
         try:
-            return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+            return json.loads(raw)
         except Exception:
             pass
     return deepcopy(_DEFAULT_CATALOG)
 
 
 def save_catalog(catalog: dict) -> None:
-    CATALOG_PATH.write_text(
-        json.dumps(catalog, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    set_setting("catalog_override", json.dumps(catalog, ensure_ascii=False))
 
 
 def get_prices(catalog: dict | None = None) -> dict[str, float]:
@@ -43,9 +37,10 @@ def get_prices(catalog: dict | None = None) -> dict[str, float]:
 
 
 def load_site_config() -> dict:
-    if SITECONFIG_PATH.exists():
+    raw = get_setting("site_config")
+    if raw:
         try:
-            saved = json.loads(SITECONFIG_PATH.read_text(encoding="utf-8"))
+            saved = json.loads(raw)
             return {**DEFAULT_SITE_CONFIG, **saved}
         except Exception:
             pass
@@ -53,6 +48,4 @@ def load_site_config() -> dict:
 
 
 def save_site_config(config: dict) -> None:
-    SITECONFIG_PATH.write_text(
-        json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    set_setting("site_config", json.dumps(config, ensure_ascii=False))

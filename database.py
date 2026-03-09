@@ -1,18 +1,9 @@
-import sqlite3
 import json
 import os
-from pathlib import Path
+import psycopg2
+import psycopg2.extras
 
-_DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
-_DATA_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = _DATA_DIR / "nowdj.db"
-
-
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 DEFAULT_TEMPLATES = [
     {
@@ -52,109 +43,158 @@ Total: {{total}}</p>
 ]
 
 
-def init_db() -> None:
-    with get_connection() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS quotes (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                name          TEXT    NOT NULL,
-                email         TEXT    NOT NULL,
-                phone         TEXT    DEFAULT '',
-                event_date    TEXT    DEFAULT '',
-                location      TEXT    DEFAULT '',
-                event_type    TEXT    DEFAULT '',
-                selected_items TEXT   DEFAULT '[]',
-                total_price   REAL    DEFAULT 0,
-                message       TEXT    DEFAULT '',
-                status        TEXT    DEFAULT 'new',
-                created_at    TEXT    DEFAULT (datetime('now'))
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS email_templates (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                name       TEXT    NOT NULL,
-                subject    TEXT    NOT NULL DEFAULT '',
-                body       TEXT    NOT NULL DEFAULT '',
-                created_at TEXT    DEFAULT (datetime('now')),
-                updated_at TEXT    DEFAULT (datetime('now'))
-            )
-        """)
-        # Seed default templates if table is empty
-        count = conn.execute("SELECT COUNT(*) FROM email_templates").fetchone()[0]
-        if count == 0:
-            for t in DEFAULT_TEMPLATES:
-                conn.execute(
-                    "INSERT INTO email_templates (name, subject, body) VALUES (?, ?, ?)",
-                    (t["name"], t["subject"], t["body"]),
-                )
-        conn.commit()
+def _conn():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
 
+
+def init_db() -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS quotes (
+                        id            SERIAL PRIMARY KEY,
+                        name          TEXT    NOT NULL,
+                        email         TEXT    NOT NULL,
+                        phone         TEXT    DEFAULT '',
+                        event_date    TEXT    DEFAULT '',
+                        location      TEXT    DEFAULT '',
+                        event_type    TEXT    DEFAULT '',
+                        selected_items TEXT   DEFAULT '[]',
+                        total_price   REAL    DEFAULT 0,
+                        message       TEXT    DEFAULT '',
+                        status        TEXT    DEFAULT 'new',
+                        created_at    TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS email_templates (
+                        id         SERIAL PRIMARY KEY,
+                        name       TEXT    NOT NULL,
+                        subject    TEXT    NOT NULL DEFAULT '',
+                        body       TEXT    NOT NULL DEFAULT '',
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS settings (
+                        key   TEXT PRIMARY KEY,
+                        value TEXT NOT NULL DEFAULT ''
+                    )
+                """)
+                cur.execute("SELECT COUNT(*) AS c FROM email_templates")
+                if cur.fetchone()["c"] == 0:
+                    for t in DEFAULT_TEMPLATES:
+                        cur.execute(
+                            "INSERT INTO email_templates (name, subject, body) VALUES (%s, %s, %s)",
+                            (t["name"], t["subject"], t["body"]),
+                        )
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Settings (key-value store — replaces JSON config files)
+# ---------------------------------------------------------------------------
+
+def get_setting(key: str, default: str = "") -> str:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT value FROM settings WHERE key = %s", (key,))
+            row = cur.fetchone()
+            return row["value"] if row else default
+    finally:
+        conn.close()
+
+
+def set_setting(key: str, value: str) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO settings (key, value) VALUES (%s, %s)
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+                """, (key, value))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Quotes
+# ---------------------------------------------------------------------------
 
 def save_quote(data: dict) -> int:
-    with get_connection() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO quotes
-                (name, email, phone, event_date, location, event_type,
-                 selected_items, total_price, message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                data["name"],
-                data["email"],
-                data.get("phone", ""),
-                data.get("event_date", ""),
-                data.get("location", ""),
-                data.get("event_type", ""),
-                json.dumps(data.get("selected_items", [])),
-                data.get("total_price", 0),
-                data.get("message", ""),
-            ),
-        )
-        conn.commit()
-        return cursor.lastrowid  # type: ignore
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO quotes
+                        (name, email, phone, event_date, location, event_type,
+                         selected_items, total_price, message)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    data["name"],
+                    data["email"],
+                    data.get("phone", ""),
+                    data.get("event_date", ""),
+                    data.get("location", ""),
+                    data.get("event_type", ""),
+                    json.dumps(data.get("selected_items", [])),
+                    data.get("total_price", 0),
+                    data.get("message", ""),
+                ))
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def _parse_quote(row: dict) -> dict:
+    q = dict(row)
+    if isinstance(q.get("selected_items"), str):
+        try:
+            q["selected_items"] = json.loads(q["selected_items"])
+        except Exception:
+            q["selected_items"] = []
+    if q.get("created_at"):
+        q["created_at"] = q["created_at"].isoformat()
+    return q
 
 
 def get_all_quotes() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM quotes ORDER BY created_at DESC"
-        ).fetchall()
-        result = []
-        for row in rows:
-            q = dict(row)
-            if isinstance(q.get("selected_items"), str):
-                try:
-                    q["selected_items"] = json.loads(q["selected_items"])
-                except Exception:
-                    q["selected_items"] = []
-            result.append(q)
-        return result
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM quotes ORDER BY created_at DESC")
+            return [_parse_quote(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 def get_quote_by_id(quote_id: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM quotes WHERE id = ?", (quote_id,)
-        ).fetchone()
-        if not row:
-            return None
-        q = dict(row)
-        if isinstance(q.get("selected_items"), str):
-            try:
-                q["selected_items"] = json.loads(q["selected_items"])
-            except Exception:
-                q["selected_items"] = []
-        return q
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM quotes WHERE id = %s", (quote_id,))
+            row = cur.fetchone()
+            return _parse_quote(row) if row else None
+    finally:
+        conn.close()
 
 
 def update_quote_status(quote_id: int, status: str) -> None:
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE quotes SET status = ? WHERE id = ?", (status, quote_id)
-        )
-        conn.commit()
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE quotes SET status = %s WHERE id = %s", (status, quote_id))
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -162,43 +202,59 @@ def update_quote_status(quote_id: int, status: str) -> None:
 # ---------------------------------------------------------------------------
 
 def get_all_templates() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM email_templates ORDER BY id ASC"
-        ).fetchall()
-        return [dict(row) for row in rows]
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM email_templates ORDER BY id ASC")
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 def get_template_by_id(tid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM email_templates WHERE id = ?", (tid,)
-        ).fetchone()
-        return dict(row) if row else None
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM email_templates WHERE id = %s", (tid,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
 
 
 def create_template(name: str, subject: str, body: str) -> int:
-    with get_connection() as conn:
-        cursor = conn.execute(
-            "INSERT INTO email_templates (name, subject, body) VALUES (?, ?, ?)",
-            (name, subject, body),
-        )
-        conn.commit()
-        return cursor.lastrowid  # type: ignore
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO email_templates (name, subject, body) VALUES (%s, %s, %s) RETURNING id",
+                    (name, subject, body),
+                )
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
 
 
 def update_template(tid: int, name: str, subject: str, body: str) -> None:
-    with get_connection() as conn:
-        conn.execute(
-            """UPDATE email_templates
-               SET name=?, subject=?, body=?, updated_at=datetime('now')
-               WHERE id=?""",
-            (name, subject, body, tid),
-        )
-        conn.commit()
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE email_templates
+                    SET name=%s, subject=%s, body=%s, updated_at=NOW()
+                    WHERE id=%s
+                """, (name, subject, body, tid))
+    finally:
+        conn.close()
 
 
 def delete_template(tid: int) -> None:
-    with get_connection() as conn:
-        conn.execute("DELETE FROM email_templates WHERE id = ?", (tid,))
-        conn.commit()
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM email_templates WHERE id = %s", (tid,))
+    finally:
+        conn.close()

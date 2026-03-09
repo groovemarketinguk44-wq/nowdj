@@ -3,22 +3,18 @@ Microsoft Graph API / Outlook integration.
 OAuth2 flow:  admin → /api/email/auth/connect → Microsoft login → callback → done.
 Requires:     pip install httpx
 Azure setup:  portal.azure.com → Azure AD → App registrations → New registration
-              Redirect URI:  http://localhost:8000/api/email/auth/callback
+              Redirect URI:  <your-app-url>/api/email/auth/callback
               API permissions: Mail.Read  Mail.Send  Mail.ReadWrite  User.Read  offline_access
 """
 
 import json
-import os
 import time
 import urllib.parse
-from pathlib import Path
 from typing import Optional
 
-_DATA_DIR   = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
-CONFIG_PATH  = _DATA_DIR / "email_config.json"
-TOKENS_PATH  = _DATA_DIR / "email_tokens.json"
-GRAPH_BASE   = "https://graph.microsoft.com/v1.0"
-REDIRECT_URI = "http://localhost:8000/api/email/auth/callback"
+from database import get_setting, set_setting
+
+GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 SCOPES = [
     "https://graph.microsoft.com/Mail.Read",
@@ -32,31 +28,33 @@ DEFAULT_CONFIG: dict = {
     "client_id":     "",
     "client_secret": "",
     "tenant_id":     "common",
-    "redirect_uri":  REDIRECT_URI,
+    "redirect_uri":  "",
 }
 
 
 # ── Config ─────────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
-    if CONFIG_PATH.exists():
+    raw = get_setting("email_config")
+    if raw:
         try:
-            return {**DEFAULT_CONFIG, **json.loads(CONFIG_PATH.read_text())}
+            return {**DEFAULT_CONFIG, **json.loads(raw)}
         except Exception:
             pass
     return DEFAULT_CONFIG.copy()
 
 
 def save_config(data: dict) -> None:
-    CONFIG_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    set_setting("email_config", json.dumps(data, ensure_ascii=False))
 
 
 # ── Tokens ─────────────────────────────────────────────────────────────────
 
 def load_tokens() -> dict:
-    if TOKENS_PATH.exists():
+    raw = get_setting("email_tokens")
+    if raw:
         try:
-            return json.loads(TOKENS_PATH.read_text())
+            return json.loads(raw)
         except Exception:
             pass
     return {}
@@ -65,12 +63,11 @@ def load_tokens() -> dict:
 def save_tokens(tokens: dict) -> None:
     if "expires_in" in tokens:
         tokens = {**tokens, "expires_at": time.time() + int(tokens["expires_in"]) - 60}
-    TOKENS_PATH.write_text(json.dumps(tokens, indent=2))
+    set_setting("email_tokens", json.dumps(tokens))
 
 
 def clear_tokens() -> None:
-    if TOKENS_PATH.exists():
-        TOKENS_PATH.unlink()
+    set_setting("email_tokens", "")
 
 
 def is_configured(config: Optional[dict] = None) -> bool:
@@ -90,7 +87,7 @@ def get_auth_url() -> str:
     params = {
         "client_id":     cfg["client_id"],
         "response_type": "code",
-        "redirect_uri":  cfg.get("redirect_uri", REDIRECT_URI),
+        "redirect_uri":  cfg.get("redirect_uri", ""),
         "scope":         " ".join(SCOPES),
         "response_mode": "query",
         "prompt":        "select_account",
@@ -124,7 +121,7 @@ async def exchange_code(code: str) -> dict:
         "client_id":     cfg["client_id"],
         "client_secret": cfg["client_secret"],
         "code":          code,
-        "redirect_uri":  cfg.get("redirect_uri", REDIRECT_URI),
+        "redirect_uri":  cfg.get("redirect_uri", ""),
         "grant_type":    "authorization_code",
     })
     save_tokens(tokens)
@@ -136,12 +133,10 @@ async def get_valid_token() -> str:
     if not tokens:
         raise ValueError("Not connected. Please link your Outlook account.")
 
-    # Still valid?
     if tokens.get("access_token") and tokens.get("expires_at"):
         if time.time() < float(tokens["expires_at"]):
             return tokens["access_token"]
 
-    # Refresh
     if tokens.get("refresh_token"):
         cfg = load_config()
         try:
