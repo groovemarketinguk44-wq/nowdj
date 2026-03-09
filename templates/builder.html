@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NowDJ — Build Your Package</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="logo">
+    <div class="logo-icon">🎧</div>
+    <span class="logo-text">Now<span>DJ</span></span>
+  </a>
+  <nav class="nav-links">
+    <a href="/">Builder</a>
+    <a href="/admin" class="nav-badge">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="builder-layout">
+
+    <!-- ── Services ── -->
+    <div class="services-column">
+
+      <div class="page-hero">
+        <div class="eyebrow">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {{ config.eyebrow }}
+        </div>
+        <h1>{{ config.hero_title }} <span class="gradient-text">{{ config.hero_gradient }}</span></h1>
+        <p>{{ config.hero_subtitle }}</p>
+      </div>
+
+      {% for cat_id, category in catalog.items() %}
+      <section class="service-section" id="section-{{ cat_id }}">
+        <div class="section-header">
+          <div class="section-icon">
+            {% set icon = category['icon'] %}
+            {% if icon == 'headphones' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            {% elif icon == 'volume-2' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            {% elif icon == 'sliders' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            {% elif icon == 'camera' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            {% elif icon == 'music' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            {% elif icon == 'mic' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            {% elif icon == 'star' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            {% elif icon == 'gift' %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            {% endif %}
+          </div>
+          <div>
+            <div class="section-title">{{ category['title'] }}</div>
+            <div class="section-subtitle">{{ category['items'] | length }} option{% if category['items'] | length != 1 %}s{% endif %} available</div>
+          </div>
+          <span class="section-count" id="count-{{ cat_id }}">0</span>
+        </div>
+
+        <div class="items-grid">
+          {% for item_id, item in category['items'].items() %}
+          <div
+            class="item-card"
+            data-id="{{ item_id }}"
+            data-name="{{ item['name'] }}"
+            data-price="{{ item['price'] }}"
+            data-pricing-type="{{ item.get('pricing_type') or ('hourly' if item.get('hourly') else 'fixed') }}"
+          >
+            <div class="card-header">
+              <div class="card-check">
+                <svg class="card-check-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <div class="card-price">£{{ item['price'] }}</div>
+            </div>
+            <div class="card-name">{{ item['name'] }}</div>
+            <div class="card-desc">{{ item['description'] }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+
+    </div><!-- /services-column -->
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar-column">
+
+      <div class="package-panel">
+        <div class="panel-header">
+          <h2>Your Package</h2>
+          <span class="panel-item-count" id="panel-count">0</span>
+        </div>
+        <div class="panel-body">
+
+          <div id="package-empty" class="package-empty">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            </div>
+            <strong>Nothing selected yet</strong>
+            <p>Pick services on the left to build your package</p>
+          </div>
+
+          <div id="package-items" class="package-items" style="display:none;"></div>
+
+          <div id="pkg-summary" style="display:none;">
+            <hr class="pkg-divider" />
+            <div class="pkg-total-row">
+              <span class="pkg-total-label">Estimated Total</span>
+              <span class="pkg-total-price" id="pkg-total">£0</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Quote form -->
+      <div class="quote-form-panel">
+        <div class="form-header">Request a Quote</div>
+
+        <div class="success-overlay" id="success-overlay">
+          <div class="success-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h3>Quote Sent!</h3>
+          <p>We'll review your package and be in touch shortly.</p>
+          <div class="success-quote-num" id="success-quote-num"></div>
+          <p style="font-size:0.8rem;color:var(--text-muted)">Package total: <strong id="success-total" style="color:var(--accent)"></strong></p>
+          <button class="btn-new-quote" id="btn-new-quote">Start New Quote</button>
+        </div>
+
+        <div id="form-content">
+          <div class="form-body">
+            <form id="quote-form" novalidate>
+
+              <div id="form-error" class="form-error"></div>
+
+              <div class="form-group">
+                <label for="f-name">Name <span class="field-required">*</span></label>
+                <input type="text" id="f-name" name="name" placeholder="Your full name" autocomplete="name" />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-email">Email <span class="field-required">*</span></label>
+                  <input type="email" id="f-email" name="email" placeholder="you@email.com" autocomplete="email" />
+                </div>
+                <div class="form-group">
+                  <label for="f-phone">Phone</label>
+                  <input type="tel" id="f-phone" name="phone" placeholder="07700 000000" autocomplete="tel" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-date">Event Date</label>
+                  <input type="date" id="f-date" name="event_date" />
+                </div>
+                <div class="form-group">
+                  <label for="f-event-type">Event Type</label>
+                  <select id="f-event-type" name="event_type">
+                    <option value="">Select type…</option>
+                    <option value="Wedding">Wedding</option>
+                    <option value="Birthday Party">Birthday Party</option>
+                    <option value="Corporate">Corporate</option>
+                    <option value="Prom / School">Prom / School</option>
+                    <option value="Festival">Festival</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="f-location">Event Location</label>
+                <input type="text" id="f-location" name="location" placeholder="Venue name or town" />
+              </div>
+
+              <div class="form-group">
+                <label for="f-message">Additional Info</label>
+                <textarea id="f-message" name="message" placeholder="Guest count, theme, special requests…"></textarea>
+              </div>
+
+              <button type="submit" class="btn-submit" id="btn-submit">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Request Quote
+              </button>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+</main>
+
+<script src="/static/builder.js"></script>
+</body>
+</html>

@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NowDJ — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- ======================================================================
+     LOGIN SCREEN
+     ====================================================================== -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">🎧</div>
+      <span class="logo-text">Now<span style="color:var(--accent)">DJ</span></span>
+    </div>
+    <h2>Admin Access</h2>
+    <p>Enter your password to continue</p>
+
+    <div class="login-input-wrap">
+      <input type="password" id="pw-input" autocomplete="off" />
+      <button class="toggle-pw" id="toggle-pw" type="button" title="Show/hide password">
+        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <button class="btn-login" id="btn-login">Enter Dashboard</button>
+    <div class="login-error" id="login-error">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     DASHBOARD
+     ====================================================================== -->
+<div id="dashboard" style="display:none">
+  <div class="admin-shell">
+
+    <!-- ── Sidebar ── -->
+    <aside class="admin-sidebar">
+      <a href="/" class="sidebar-brand">
+        <div class="logo-icon">🎧</div>
+        <span class="logo-text">Now<span style="color:var(--accent)">DJ</span></span>
+      </a>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Management</div>
+
+        <button class="nav-item active" data-section="catalog">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Product Catalog
+        </button>
+
+        <button class="nav-item" data-section="enquiries" id="nav-enquiries">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.28h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.62-.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+          Enquiry Tracker
+          <span class="nav-item-badge" id="sidebar-new-count" style="display:none">0</span>
+        </button>
+
+        <button class="nav-item" data-section="email">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+          <span class="nav-item-badge" id="sidebar-unread-count" style="display:none">0</span>
+        </button>
+
+        <div class="sidebar-section-label" style="margin-top:0.5rem">Builder</div>
+        <button class="nav-item" id="nav-site-config">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit Builder Page
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-logout" id="btn-logout">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main content ── -->
+    <main class="admin-main">
+
+      <!-- ================================================================
+           CATALOG SECTION
+           ================================================================ -->
+      <div class="admin-section active" id="section-catalog">
+        <div class="section-page-header">
+          <div>
+            <h1>Product <span class="gradient-text">Catalog</span></h1>
+            <p>Edit categories, items, descriptions and prices. Changes go live on the builder immediately.</p>
+          </div>
+          <div class="header-actions">
+            <span class="save-status" id="catalog-save-status"></span>
+            <button class="btn-secondary" id="btn-reset-catalog">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+              Reset to Defaults
+            </button>
+            <button class="btn-primary" id="btn-save-catalog">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+        <div class="categories-list" id="catalog-categories">
+          <div style="text-align:center;padding:3rem;color:var(--text-muted)">
+            <span class="spinner"></span> Loading catalog…
+          </div>
+        </div>
+
+        <button class="btn-add-category" id="btn-add-category">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Category
+        </button>
+      </div>
+
+      <!-- ================================================================
+           ENQUIRIES SECTION
+           ================================================================ -->
+      <div class="admin-section" id="section-enquiries">
+        <div class="section-page-header">
+          <div>
+            <h1>Enquiry <span class="gradient-text">Tracker</span></h1>
+            <p>All incoming quote requests from your package builder.</p>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Quotes</div>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-sub">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">This Week</div>
+            <div class="stat-value" id="stat-week">—</div>
+            <div class="stat-sub">New enquiries</div>
+          </div>
+          <div class="stat-card highlight">
+            <div class="stat-label">Pipeline Value</div>
+            <div class="stat-value" id="stat-value">—</div>
+            <div class="stat-sub">New + contacted</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Booked</div>
+            <div class="stat-value" id="stat-booked">—</div>
+            <div class="stat-sub">Confirmed</div>
+          </div>
+        </div>
+
+        <div class="admin-toolbar">
+          <div class="toolbar-title">All Quotes</div>
+          <div class="search-box">
+            <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <input type="text" id="search-input" placeholder="Search by name, location…" />
+          </div>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all">All</button>
+            <button class="filter-pill" data-filter="new">New</button>
+            <button class="filter-pill" data-filter="contacted">Contacted</button>
+            <button class="filter-pill" data-filter="booked">Booked</button>
+            <button class="filter-pill" data-filter="declined">Declined</button>
+          </div>
+          <button class="btn-export" id="btn-export">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
+
+        <div class="quotes-table-wrap">
+          <table class="quotes-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Name</th><th>Event Date</th><th>Location</th>
+                <th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Received</th>
+              </tr>
+            </thead>
+            <tbody id="quotes-tbody">
+              <tr class="loading-row"><td colspan="9"><span class="spinner"></span> Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           EMAIL SECTION
+           ================================================================ -->
+      <div class="admin-section" id="section-email">
+
+        <!-- Not configured / not connected panel -->
+        <div id="email-setup-panel" style="display:none">
+          <div class="section-page-header">
+            <div>
+              <h1>Email <span class="gradient-text">Management</span></h1>
+              <p>Connect your Outlook account to send emails and manage your inbox.</p>
+            </div>
+          </div>
+
+          <div class="email-setup-card" id="email-connect-card">
+            <div class="setup-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <h3>Connect your Outlook account</h3>
+            <p>Integrate your Microsoft 365 / Outlook account to access your inbox and send emails directly from NowDJ.</p>
+
+            <div id="setup-step1" class="setup-step">
+              <div class="setup-step-num">1</div>
+              <div class="setup-step-content">
+                <strong>Azure App Credentials</strong>
+                <p>Enter your Azure AD app registration details below.</p>
+                <div class="setup-fields">
+                  <div class="setup-field">
+                    <label>Client ID</label>
+                    <input type="text" id="cfg-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+                  </div>
+                  <div class="setup-field">
+                    <label>Client Secret</label>
+                    <input type="password" id="cfg-client-secret" placeholder="Enter client secret" autocomplete="off" />
+                  </div>
+                  <div class="setup-field">
+                    <label>Tenant ID</label>
+                    <input type="text" id="cfg-tenant-id" placeholder="common" />
+                    <span class="field-hint">Use "common" for personal/multi-tenant or paste your Directory (tenant) ID</span>
+                  </div>
+                </div>
+                <button class="btn-primary" id="btn-save-email-config">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Save Credentials
+                </button>
+              </div>
+            </div>
+
+            <div id="setup-step2" class="setup-step" style="display:none">
+              <div class="setup-step-num">2</div>
+              <div class="setup-step-content">
+                <strong>Sign in to Microsoft</strong>
+                <p>Click below to authorise NowDJ to access your Outlook mailbox. A popup will open for Microsoft sign-in.</p>
+                <button class="btn-primary" id="btn-connect-outlook">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Connect Outlook Account
+                </button>
+              </div>
+            </div>
+
+            <div class="setup-help">
+              <strong>Setup guide:</strong> Go to <em>portal.azure.com → Azure Active Directory → App registrations → New registration</em>.
+              Set the Redirect URI to <code>http://localhost:8000/api/email/auth/callback</code> and add permissions:
+              Mail.Read, Mail.Send, Mail.ReadWrite, User.Read, offline_access.
+            </div>
+          </div>
+        </div>
+
+        <!-- Connected inbox shell -->
+        <div id="email-main-panel" style="display:none">
+          <div class="section-page-header">
+            <div>
+              <h1>Email <span class="gradient-text">Management</span></h1>
+              <p id="email-account-label">Connected</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" id="btn-compose-new">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Email
+              </button>
+              <button class="btn-secondary" id="btn-refresh-inbox">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+                Refresh
+              </button>
+              <button class="btn-secondary" id="btn-disconnect-outlook">
+                Disconnect
+              </button>
+            </div>
+          </div>
+
+          <!-- Email tabs -->
+          <div class="email-tabs">
+            <button class="email-tab active" data-etab="inbox">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+              Inbox
+              <span class="tab-badge" id="tab-unread-badge" style="display:none">0</span>
+            </button>
+            <button class="email-tab" data-etab="sent">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Sent
+            </button>
+            <button class="email-tab" data-etab="templates">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Templates
+            </button>
+          </div>
+
+          <!-- Inbox / Sent pane -->
+          <div class="email-pane active" id="etab-inbox">
+            <div class="email-shell">
+              <div class="email-list-col" id="email-list">
+                <div class="email-list-loading"><span class="spinner"></span> Loading…</div>
+              </div>
+              <div class="email-viewer-col" id="email-viewer">
+                <div class="email-viewer-empty">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <p>Select an email to read it</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sent pane -->
+          <div class="email-pane" id="etab-sent">
+            <div class="email-shell">
+              <div class="email-list-col" id="sent-list">
+                <div class="email-list-loading"><span class="spinner"></span> Loading…</div>
+              </div>
+              <div class="email-viewer-col" id="sent-viewer">
+                <div class="email-viewer-empty">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <p>Select a sent email to view it</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Templates pane -->
+          <div class="email-pane" id="etab-templates">
+            <div class="templates-toolbar">
+              <h3>Email Templates</h3>
+              <p>Create reusable email templates with variables like <code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>.</p>
+              <button class="btn-primary" id="btn-new-template">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Template
+              </button>
+            </div>
+            <div class="templates-grid" id="templates-grid">
+              <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /section-email -->
+
+    </main>
+  </div>
+</div>
+
+<!-- ======================================================================
+     SITE CONFIG MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="site-config-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Edit Builder Page</h3>
+      <button class="btn-close-modal" id="close-config-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Eyebrow Label</label>
+        <input type="text" id="cfg-eyebrow" placeholder="e.g. Professional DJ Hire" />
+        <div class="field-hint">Small label shown above the main heading</div>
+      </div>
+      <div class="modal-field">
+        <label>Headline — First Part</label>
+        <input type="text" id="cfg-title" placeholder="e.g. Build Your" />
+      </div>
+      <div class="modal-field">
+        <label>Headline — Gradient Part</label>
+        <input type="text" id="cfg-gradient" placeholder="e.g. DJ Package" />
+        <div class="field-hint">This part of the headline uses the brand gradient</div>
+      </div>
+      <div class="modal-field">
+        <label>Subtitle / Description</label>
+        <textarea id="cfg-subtitle" placeholder="Describe the builder experience…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-config-modal">Cancel</button>
+      <button class="btn-primary" id="save-config-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save & Publish
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     COMPOSE MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="compose-modal">
+  <div class="modal-card compose-modal-card">
+    <div class="modal-header">
+      <h3 id="compose-modal-title">New Email</h3>
+      <button class="btn-close-modal" id="close-compose-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>To</label>
+        <input type="email" id="compose-to" placeholder="recipient@example.com" />
+      </div>
+      <div class="modal-field">
+        <label>Name (optional)</label>
+        <input type="text" id="compose-to-name" placeholder="Recipient name" />
+      </div>
+      <div class="modal-field compose-template-row">
+        <label>Use Template</label>
+        <div class="compose-template-bar">
+          <select id="compose-template-select">
+            <option value="">— Choose a template —</option>
+          </select>
+          <button class="btn-secondary" id="btn-apply-template" type="button">Apply</button>
+        </div>
+        <div class="field-hint">Applying a template will fill in the subject and body below. Edit as needed before sending.</div>
+      </div>
+      <div class="modal-field" id="compose-vars-row" style="display:none">
+        <label>Fill Variables</label>
+        <div class="compose-vars" id="compose-vars"></div>
+      </div>
+      <div class="modal-field">
+        <label>Subject</label>
+        <input type="text" id="compose-subject" placeholder="Email subject…" />
+      </div>
+      <div class="modal-field">
+        <label>Body (HTML)</label>
+        <textarea id="compose-body" style="min-height:180px" placeholder="<p>Your message here…</p>"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-compose-modal">Cancel</button>
+      <button class="btn-primary" id="btn-send-compose">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     TEMPLATE EDITOR MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="template-editor-modal">
+  <div class="modal-card compose-modal-card">
+    <div class="modal-header">
+      <h3 id="template-editor-title">New Template</h3>
+      <button class="btn-close-modal" id="close-template-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="template-edit-id" value="" />
+      <div class="modal-field">
+        <label>Template Name</label>
+        <input type="text" id="template-edit-name" placeholder="e.g. Quote Received" />
+      </div>
+      <div class="modal-field">
+        <label>Subject</label>
+        <input type="text" id="template-edit-subject" placeholder="Email subject with {{variables}}" />
+      </div>
+      <div class="modal-field">
+        <label>Body (HTML)</label>
+        <textarea id="template-edit-body" style="min-height:220px" placeholder="<p>Hi {{name}},</p>&#10;<p>Your message…</p>"></textarea>
+        <div class="field-hint">Available variables: {{name}} {{email}} {{phone}} {{event_date}} {{event_type}} {{location}} {{total}} {{quote_id}}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-template-modal">Cancel</button>
+      <button class="btn-primary" id="btn-save-template">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Template
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-dot"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<!-- ======================================================================
+     SCRIPTS
+     ====================================================================== -->
+<script>
+/* ── Helpers ── */
+const fmt    = (n) => '£' + Number(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const fmtK   = (n) => n >= 1000 ? '£' + (n / 1000).toFixed(1) + 'k' : fmt(n);
+const escHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtDate = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}); };
+const fmtDT   = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+const slug    = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'') + '_' + Math.random().toString(36).slice(2,6);
+
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.className = `toast show ${type}`;
+  document.getElementById('toast-msg').textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ======================================================================
+   LOGIN
+   ====================================================================== */
+const CORRECT_PW = '     '; // 5 spaces
+
+function checkLogin() {
+  return sessionStorage.getItem('ndj_auth') === '1';
+}
+
+document.getElementById('btn-login').addEventListener('click', tryLogin);
+document.getElementById('pw-input').addEventListener('input', () => {
+  const pw = document.getElementById('pw-input');
+  pw.classList.remove('invalid');
+  document.getElementById('login-error').classList.remove('visible');
+  if (pw.value.length === 5) tryLogin();
+});
+
+function tryLogin() {
+  const val = document.getElementById('pw-input').value;
+  const errEl = document.getElementById('login-error');
+  const input = document.getElementById('pw-input');
+  if (val === CORRECT_PW) {
+    sessionStorage.setItem('ndj_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = '';
+    initDashboard();
+  } else {
+    input.classList.add('invalid');
+    errEl.classList.add('visible');
+    setTimeout(() => input.classList.remove('invalid'), 400);
+  }
+}
+
+document.getElementById('toggle-pw').addEventListener('click', () => {
+  const input = document.getElementById('pw-input');
+  input.type = input.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  sessionStorage.removeItem('ndj_auth');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('login-error').classList.remove('visible');
+});
+
+// Check on load
+if (checkLogin()) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+  initDashboard();
+} else {
+  setTimeout(() => document.getElementById('pw-input').focus(), 80);
+}
+
+/* ======================================================================
+   DASHBOARD INIT
+   ====================================================================== */
+function initDashboard() {
+  initNav();
+  loadCatalog();
+  loadQuotes();
+}
+
+/* ======================================================================
+   NAVIGATION
+   ====================================================================== */
+function initNav() {
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => switchSection(btn.dataset.section));
+  });
+
+  document.getElementById('nav-site-config').addEventListener('click', openSiteConfigModal);
+}
+
+function switchSection(id) {
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${id}`)?.classList.add('active');
+  document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
+}
+
+/* ======================================================================
+   CATALOG EDITOR
+   ====================================================================== */
+let catalogData = {};
+
+const ICON_OPTIONS = [
+  { value: 'headphones', label: '🎧 DJ / Headphones' },
+  { value: 'volume-2',   label: '🔊 Speaker / Audio' },
+  { value: 'sliders',    label: '🎛️ Equipment / Mixer' },
+  { value: 'camera',     label: '📸 Photo Booth' },
+  { value: 'music',      label: '🎵 Music / General' },
+  { value: 'mic',        label: '🎤 Microphone' },
+  { value: 'star',       label: '⭐ Featured' },
+  { value: 'gift',       label: '🎁 Package / Gift' },
+];
+
+async function loadCatalog() {
+  try {
+    const res = await fetch('/api/catalog');
+    catalogData = await res.json();
+    renderCatalog();
+  } catch {
+    document.getElementById('catalog-categories').innerHTML =
+      '<div style="color:var(--danger);padding:2rem">Failed to load catalog.</div>';
+  }
+}
+
+function renderCatalog() {
+  const container = document.getElementById('catalog-categories');
+  container.innerHTML = '';
+  Object.entries(catalogData).forEach(([catId, cat]) => {
+    container.appendChild(buildCategoryCard(catId, cat));
+  });
+}
+
+function buildCategoryCard(catId, cat) {
+  const card = document.createElement('div');
+  card.className = 'category-card';
+  card.dataset.catId = catId;
+
+  // Icon select options
+  const iconOpts = ICON_OPTIONS.map(o =>
+    `<option value="${o.value}" ${cat.icon === o.value ? 'selected' : ''}>${o.label}</option>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="category-head">
+      <select class="cat-icon-select" data-field="icon">
+        ${iconOpts}
+      </select>
+      <input class="cat-name-input" type="text" value="${escHtml(cat.title)}" placeholder="Category name" data-field="title" />
+      <button class="btn-icon danger btn-delete-cat" title="Delete category">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>
+    <div class="items-table-wrap">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width:22px"></th>
+            <th style="width:20%">Name</th>
+            <th style="width:38%">Description</th>
+            <th style="width:10%">Price</th>
+            <th style="width:17%;text-align:center">Pricing Type</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody class="items-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn-add-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Item
+    </button>
+  `;
+
+  // Wire category-level field changes
+  card.querySelector('[data-field="icon"]').addEventListener('change', (e) => {
+    catalogData[catId].icon = e.target.value;
+  });
+  card.querySelector('[data-field="title"]').addEventListener('input', (e) => {
+    catalogData[catId].title = e.target.value;
+  });
+
+  // Delete category
+  card.querySelector('.btn-delete-cat').addEventListener('click', () => {
+    if (!confirm(`Delete category "${cat.title}" and all its items?`)) return;
+    delete catalogData[catId];
+    card.remove();
+  });
+
+  // Render items
+  const tbody = card.querySelector('.items-tbody');
+  Object.entries(cat.items || {}).forEach(([itemId, item]) => {
+    tbody.appendChild(buildItemRow(catId, itemId, item));
+  });
+
+  // Add item
+  card.querySelector('.btn-add-item').addEventListener('click', () => {
+    const newId = slug('new_item');
+    const newItem = { name: '', description: '', price: 0 };
+    catalogData[catId].items[newId] = newItem;
+    const row = buildItemRow(catId, newId, newItem);
+    tbody.appendChild(row);
+    row.querySelector('.item-input').focus();
+  });
+
+  return card;
+}
+
+/* ── drag state ── */
+let _dragSrc    = null;
+let _dragCatId  = null;
+
+function syncItemOrder(catId, tbody) {
+  const newItems = {};
+  tbody.querySelectorAll('tr[data-item-id]').forEach(row => {
+    const id = row.dataset.itemId;
+    if (id && catalogData[catId].items[id]) newItems[id] = catalogData[catId].items[id];
+  });
+  catalogData[catId].items = newItems;
+}
+
+function buildItemRow(catId, itemId, item) {
+  const tr = document.createElement('tr');
+  tr.dataset.itemId = itemId;
+  tr.draggable = true;
+
+  // Resolve current pricing type (backward-compat with old hourly flag)
+  const pt = item.pricing_type || (item.hourly ? 'hourly' : 'fixed');
+  if (!item.pricing_type) catalogData[catId].items[itemId].pricing_type = pt;
+
+  const gripSvg = `<svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="3.5" cy="2"  r="1.5"/><circle cx="8.5" cy="2"  r="1.5"/>
+    <circle cx="3.5" cy="7"  r="1.5"/><circle cx="8.5" cy="7"  r="1.5"/>
+    <circle cx="3.5" cy="12" r="1.5"/><circle cx="8.5" cy="12" r="1.5"/>
+  </svg>`;
+
+  tr.innerHTML = `
+    <td style="padding:0 4px 0 8px"><span class="drag-handle" title="Drag to reorder">${gripSvg}</span></td>
+    <td><input class="item-input" type="text" value="${escHtml(item.name)}" placeholder="Item name" data-field="name" /></td>
+    <td><input class="item-input" type="text" value="${escHtml(item.description)}" placeholder="Short description" data-field="description" /></td>
+    <td><input class="item-input price-input" type="number" value="${item.price}" min="0" step="1" data-field="price" /></td>
+    <td style="text-align:center">
+      <div class="pt-group">
+        <button class="pt-btn ${pt==='fixed'  ?'active':''}" data-pt="fixed">Fixed</button>
+        <button class="pt-btn ${pt==='hourly' ?'active':''}" data-pt="hourly">/hr</button>
+        <button class="pt-btn ${pt==='daily'  ?'active':''}" data-pt="daily">/day</button>
+        <button class="pt-btn ${pt==='tbc'    ?'active':''}" data-pt="tbc">TBC</button>
+      </div>
+    </td>
+    <td>
+      <button class="btn-icon danger btn-del-item" title="Remove item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </td>`;
+
+  /* ── field sync ── */
+  tr.querySelectorAll('.item-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field = e.target.dataset.field;
+      catalogData[catId].items[itemId][field] = field === 'price' ? parseFloat(e.target.value) || 0 : e.target.value;
+    });
+  });
+
+  tr.querySelectorAll('.pt-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const chosen = btn.dataset.pt;
+      catalogData[catId].items[itemId].pricing_type = chosen;
+      tr.querySelectorAll('.pt-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  tr.querySelector('.btn-del-item').addEventListener('click', () => {
+    delete catalogData[catId].items[itemId];
+    tr.remove();
+  });
+
+  /* ── drag-and-drop ── */
+  tr.addEventListener('dragstart', (e) => {
+    _dragSrc   = tr;
+    _dragCatId = catId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+    requestAnimationFrame(() => tr.classList.add('dragging'));
+  });
+
+  tr.addEventListener('dragend', () => {
+    tr.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  });
+
+  tr.addEventListener('dragover', (e) => {
+    if (_dragCatId !== catId || _dragSrc === tr) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    tr.classList.add('drag-over');
+  });
+
+  tr.addEventListener('dragleave', (e) => {
+    if (!tr.contains(e.relatedTarget)) tr.classList.remove('drag-over');
+  });
+
+  tr.addEventListener('drop', (e) => {
+    e.preventDefault();
+    tr.classList.remove('drag-over');
+    if (!_dragSrc || _dragSrc === tr || _dragCatId !== catId) return;
+    const tbody = tr.parentElement;
+    const rows  = [...tbody.querySelectorAll('tr')];
+    const srcIdx = rows.indexOf(_dragSrc);
+    const dstIdx = rows.indexOf(tr);
+    if (srcIdx < dstIdx) tbody.insertBefore(_dragSrc, tr.nextSibling);
+    else                 tbody.insertBefore(_dragSrc, tr);
+    syncItemOrder(catId, tbody);
+    _dragSrc = null;
+  });
+
+  return tr;
+}
+
+// Save catalog
+document.getElementById('btn-save-catalog').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-catalog');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+  try {
+    await fetch('/api/catalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(catalogData),
+    });
+    showToast('Catalog saved! Changes are live on the builder.', 'success');
+  } catch {
+    showToast('Failed to save. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes`;
+  }
+});
+
+// Reset to defaults
+document.getElementById('btn-reset-catalog').addEventListener('click', async () => {
+  if (!confirm('Reset catalog to defaults? This will remove any custom categories and items.')) return;
+  try {
+    // Delete the override file by posting the default catalog
+    const res = await fetch('/api/catalog');
+    // Trigger a delete of the override by posting empty then re-fetching defaults
+    await fetch('/api/catalog/reset', { method: 'POST' });
+    await loadCatalog();
+    showToast('Catalog reset to defaults.', 'success');
+  } catch {
+    showToast('Reset not available — delete catalog_override.json manually.', 'error');
+  }
+});
+
+// Add category
+document.getElementById('btn-add-category').addEventListener('click', () => {
+  const newId = slug('category');
+  catalogData[newId] = { title: 'New Category', icon: 'star', items: {} };
+  const card = buildCategoryCard(newId, catalogData[newId]);
+  document.getElementById('catalog-categories').appendChild(card);
+  card.querySelector('.cat-name-input').focus();
+  card.querySelector('.cat-name-input').select();
+});
+
+/* ======================================================================
+   SITE CONFIG MODAL
+   ====================================================================== */
+async function openSiteConfigModal() {
+  const modal = document.getElementById('site-config-modal');
+  try {
+    const res = await fetch('/api/site-config');
+    const cfg = await res.json();
+    document.getElementById('cfg-eyebrow').value  = cfg.eyebrow  || '';
+    document.getElementById('cfg-title').value    = cfg.hero_title    || '';
+    document.getElementById('cfg-gradient').value = cfg.hero_gradient || '';
+    document.getElementById('cfg-subtitle').value = cfg.hero_subtitle || '';
+  } catch {}
+  modal.classList.add('open');
+}
+
+document.getElementById('close-config-modal').addEventListener('click',  closeModal);
+document.getElementById('cancel-config-modal').addEventListener('click', closeModal);
+document.getElementById('site-config-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+
+function closeModal() { document.getElementById('site-config-modal').classList.remove('open'); }
+
+document.getElementById('save-config-modal').addEventListener('click', async () => {
+  const config = {
+    eyebrow:       document.getElementById('cfg-eyebrow').value.trim(),
+    hero_title:    document.getElementById('cfg-title').value.trim(),
+    hero_gradient: document.getElementById('cfg-gradient').value.trim(),
+    hero_subtitle: document.getElementById('cfg-subtitle').value.trim(),
+  };
+  try {
+    await fetch('/api/site-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    closeModal();
+    showToast('Builder page updated! Refresh the builder to see changes.', 'success');
+  } catch {
+    showToast('Failed to save. Please try again.', 'error');
+  }
+});
+
+/* ======================================================================
+   ENQUIRY TRACKER
+   ====================================================================== */
+let allQuotes   = [];
+let expandedId  = null;
+let currentFilter = 'all';
+let currentSearch = '';
+
+function filteredQuotes() {
+  return allQuotes.filter(q => {
+    const mFilter = currentFilter === 'all' || q.status === currentFilter;
+    const sl = currentSearch.toLowerCase();
+    const mSearch = !sl
+      || (q.name||'').toLowerCase().includes(sl)
+      || (q.location||'').toLowerCase().includes(sl)
+      || (q.email||'').toLowerCase().includes(sl)
+      || (q.event_type||'').toLowerCase().includes(sl);
+    return mFilter && mSearch;
+  });
+}
+
+function updateStats(quotes) {
+  const now  = new Date();
+  const week = new Date(now - 7 * 86400e3);
+  document.getElementById('stat-total').textContent  = quotes.length;
+  document.getElementById('stat-week').textContent   = quotes.filter(q => new Date(q.created_at) > week).length;
+  const pipeline = quotes.filter(q => q.status==='new'||q.status==='contacted').reduce((s,q)=>s+(q.total_price||0),0);
+  document.getElementById('stat-value').textContent  = fmtK(pipeline);
+  document.getElementById('stat-booked').textContent = quotes.filter(q=>q.status==='booked').length;
+
+  const newCount = quotes.filter(q=>q.status==='new').length;
+  const badge = document.getElementById('sidebar-new-count');
+  if (newCount > 0) { badge.style.display=''; badge.textContent=newCount; }
+  else badge.style.display='none';
+}
+
+function statusBadge(s) {
+  const labels = { new:'New', contacted:'Contacted', booked:'Booked', declined:'Declined' };
+  return `<span class="status-badge status-${s}">${labels[s]||s}</span>`;
+}
+
+function renderQuotes() {
+  const tbody  = document.getElementById('quotes-tbody');
+  const quotes = filteredQuotes();
+
+  if (!quotes.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="table-empty"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No quotes found</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  quotes.forEach(q => {
+    const items = Array.isArray(q.selected_items) ? q.selected_items : [];
+    const tags  = items.length
+      ? items.slice(0,3).map(i=>`<span class="item-tag">${escHtml(i.name)}</span>`).join('')
+        + (items.length>3 ? `<span class="item-tag">+${items.length-3}</span>` : '')
+      : '<span style="color:var(--text-muted);font-size:.8rem">—</span>';
+
+    const row = document.createElement('tr');
+    row.dataset.id = q.id;
+    if (expandedId === q.id) row.classList.add('expanded');
+    row.innerHTML = `
+      <td class="col-id">#${q.id}</td>
+      <td class="col-name">${escHtml(q.name||'—')}</td>
+      <td>${fmtDate(q.event_date)}</td>
+      <td>${escHtml(q.location||'—')}</td>
+      <td style="font-size:.82rem">${escHtml(q.event_type||'—')}</td>
+      <td class="col-items"><div class="items-tags">${tags}</div></td>
+      <td class="col-price">${fmt(q.total_price||0)}</td>
+      <td>${statusBadge(q.status||'new')}</td>
+      <td style="font-size:.78rem;color:var(--text-muted);white-space:nowrap">${fmtDate(q.created_at)}</td>`;
+
+    row.addEventListener('click', () => {
+      expandedId = expandedId === q.id ? null : q.id;
+      renderQuotes();
+    });
+
+    tbody.appendChild(row);
+
+    if (expandedId === q.id) {
+      const dr = document.createElement('tr');
+      dr.className = 'expanded-row';
+      dr.innerHTML = `<td colspan="9">${buildDetail(q)}</td>`;
+      dr.querySelector('.status-select')?.addEventListener('change', async (e) => {
+        await patchStatus(q.id, e.target.value);
+      });
+      tbody.appendChild(dr);
+    }
+  });
+}
+
+function buildDetail(q) {
+  const items = Array.isArray(q.selected_items) ? q.selected_items : [];
+  const itemsHtml = items.length
+    ? items.map(i=>`<div class="detail-item"><span>${escHtml(i.name)}</span><span class="di-price">${fmt(i.price||0)}</span></div>`).join('')
+      + `<div class="detail-total"><span>Total</span><span class="dt-price">${fmt(q.total_price||0)}</span></div>`
+    : '<p style="color:var(--text-muted);font-size:.82rem">No items</p>';
+
+  return `
+    <div class="quote-detail">
+      <div class="detail-section">
+        <h4>Contact Details</h4>
+        <div class="detail-row"><span class="dl">Name</span><span class="dv">${escHtml(q.name||'—')}</span></div>
+        <div class="detail-row"><span class="dl">Email</span><span class="dv"><a href="mailto:${escHtml(q.email||'')}" style="color:var(--accent)">${escHtml(q.email||'—')}</a></span></div>
+        <div class="detail-row"><span class="dl">Phone</span><span class="dv">${q.phone?`<a href="tel:${escHtml(q.phone)}" style="color:var(--accent)">${escHtml(q.phone)}</a>`:'—'}</span></div>
+        <div class="detail-row"><span class="dl">Type</span><span class="dv">${escHtml(q.event_type||'—')}</span></div>
+        <div class="detail-row"><span class="dl">Date</span><span class="dv">${fmtDate(q.event_date)}</span></div>
+        <div class="detail-row"><span class="dl">Location</span><span class="dv">${escHtml(q.location||'—')}</span></div>
+        <div class="detail-row"><span class="dl">Received</span><span class="dv">${fmtDT(q.created_at)}</span></div>
+        ${q.message?`<h4 style="margin-top:1rem">Message</h4><div class="detail-message">${escHtml(q.message)}</div>`:''}
+        <div class="status-selector">
+          <label>Status</label>
+          <select class="status-select">
+            <option value="new"       ${q.status==='new'?'selected':''}>New</option>
+            <option value="contacted" ${q.status==='contacted'?'selected':''}>Contacted</option>
+            <option value="booked"    ${q.status==='booked'?'selected':''}>Booked</option>
+            <option value="declined"  ${q.status==='declined'?'selected':''}>Declined</option>
+          </select>
+        </div>
+      </div>
+      <div class="detail-section">
+        <h4>Package Items</h4>
+        <div class="detail-items">${itemsHtml}</div>
+      </div>
+    </div>`;
+}
+
+async function patchStatus(id, status) {
+  try {
+    await fetch(`/quotes/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const q = allQuotes.find(q => q.id === id);
+    if (q) q.status = status;
+    updateStats(allQuotes);
+    renderQuotes();
+    showToast(`Status updated to ${status}.`, 'success');
+  } catch {
+    showToast('Failed to update status.', 'error');
+  }
+}
+
+async function loadQuotes() {
+  try {
+    const res = await fetch('/quotes');
+    allQuotes = await res.json();
+    updateStats(allQuotes);
+    renderQuotes();
+  } catch {
+    document.getElementById('quotes-tbody').innerHTML = `<tr class="loading-row"><td colspan="9" style="color:var(--danger)">Failed to load quotes.</td></tr>`;
+  }
+}
+
+// Filter pills
+document.querySelectorAll('.filter-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    currentFilter = pill.dataset.filter;
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    expandedId = null;
+    renderQuotes();
+  });
+});
+
+// Search
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentSearch = e.target.value;
+    expandedId = null;
+    renderQuotes();
+  }, 200);
+});
+
+// Export
+document.getElementById('btn-export').addEventListener('click', () => {
+  const quotes = filteredQuotes();
+  const headers = ['ID','Name','Email','Phone','Event Date','Location','Event Type','Items','Total','Status','Created'];
+  const rows = quotes.map(q => {
+    const items = Array.isArray(q.selected_items) ? q.selected_items.map(i=>i.name).join(' | ') : '';
+    return [q.id,q.name,q.email,q.phone,q.event_date,q.location,q.event_type,items,q.total_price,q.status,q.created_at]
+      .map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv  = [headers.join(','),...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`nowdj-quotes-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+});
+
+setInterval(loadQuotes, 60_000);
+
+/* ======================================================================
+   EMAIL MANAGEMENT
+   ====================================================================== */
+
+/* ── State ── */
+let emailStatus   = { configured: false, authenticated: false, user: {} };
+let inboxMessages = [];
+let sentMessages  = [];
+let emailTemplates = [];
+let activeEmailId  = null;
+let composeMsgId   = null; // set when replying
+
+/* ── Tab switcher ── */
+function switchEmailTab(tab) {
+  document.querySelectorAll('.email-tab').forEach(t => t.classList.toggle('active', t.dataset.etab === tab));
+  document.querySelectorAll('.email-pane').forEach(p => p.classList.toggle('active', p.id === `etab-${tab}`));
+  if (tab === 'sent' && sentMessages.length === 0) loadSent();
+  if (tab === 'templates') loadEmailTemplates();
+}
+
+document.querySelectorAll('.email-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchEmailTab(tab.dataset.etab));
+});
+
+/* ── Status check ── */
+async function checkEmailStatus() {
+  try {
+    const res = await fetch('/api/email/status');
+    emailStatus = await res.json();
+  } catch { emailStatus = { configured: false, authenticated: false, user: {} }; }
+  renderEmailSetup();
+}
+
+function renderEmailSetup() {
+  const setup = document.getElementById('email-setup-panel');
+  const main  = document.getElementById('email-main-panel');
+  const step1 = document.getElementById('setup-step1');
+  const step2 = document.getElementById('setup-step2');
+
+  if (emailStatus.authenticated) {
+    setup.style.display = 'none';
+    main.style.display  = '';
+    const label = emailStatus.user?.mail || emailStatus.user?.userPrincipalName || 'Connected';
+    document.getElementById('email-account-label').textContent = `Connected: ${label}`;
+    if (inboxMessages.length === 0) loadInbox();
+  } else {
+    setup.style.display = '';
+    main.style.display  = 'none';
+    if (emailStatus.configured) {
+      step1.style.display = 'none';
+      step2.style.display = '';
+      // Load config into fields
+      loadEmailConfig();
+    } else {
+      step1.style.display = '';
+      step2.style.display = 'none';
+      loadEmailConfig();
+    }
+  }
+}
+
+async function loadEmailConfig() {
+  try {
+    const res = await fetch('/api/email/config');
+    const cfg = await res.json();
+    document.getElementById('cfg-client-id').value    = cfg.client_id    || '';
+    document.getElementById('cfg-client-secret').value = cfg.client_secret === '***' ? '' : (cfg.client_secret || '');
+    document.getElementById('cfg-tenant-id').value    = cfg.tenant_id    || '';
+  } catch {}
+}
+
+document.getElementById('btn-save-email-config').addEventListener('click', async () => {
+  const payload = {
+    client_id:     document.getElementById('cfg-client-id').value.trim(),
+    client_secret: document.getElementById('cfg-client-secret').value.trim() || '***',
+    tenant_id:     document.getElementById('cfg-tenant-id').value.trim() || 'common',
+  };
+  if (!payload.client_id) { showToast('Client ID is required.', 'error'); return; }
+  try {
+    await fetch('/api/email/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    showToast('Credentials saved!', 'success');
+    await checkEmailStatus();
+  } catch { showToast('Failed to save config.', 'error'); }
+});
+
+document.getElementById('btn-connect-outlook').addEventListener('click', () => {
+  const popup = window.open('/api/email/auth/connect', 'outlook_auth', 'width=520,height=640,left=400,top=100');
+  const handler = (e) => {
+    if (e.data === 'email_auth_ok') {
+      window.removeEventListener('message', handler);
+      popup?.close();
+      showToast('Outlook connected!', 'success');
+      checkEmailStatus();
+    }
+  };
+  window.addEventListener('message', handler);
+});
+
+document.getElementById('btn-disconnect-outlook').addEventListener('click', async () => {
+  if (!confirm('Disconnect your Outlook account?')) return;
+  await fetch('/api/email/auth/disconnect', { method: 'POST' });
+  inboxMessages = []; sentMessages = [];
+  showToast('Disconnected.', 'success');
+  emailStatus.authenticated = false;
+  renderEmailSetup();
+});
+
+document.getElementById('btn-refresh-inbox').addEventListener('click', () => {
+  inboxMessages = []; sentMessages = [];
+  loadInbox();
+  if (document.querySelector('.email-tab[data-etab="sent"]')?.classList.contains('active')) loadSent();
+});
+
+/* ── Load inbox / sent ── */
+async function loadInbox() {
+  document.getElementById('email-list').innerHTML = '<div class="email-list-loading"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res  = await fetch('/api/email/inbox?top=40');
+    if (!res.ok) throw new Error();
+    inboxMessages = await res.json();
+    renderMessageList('email-list', inboxMessages, 'inbox');
+    const unread = inboxMessages.filter(m => !m.isRead).length;
+    const badge = document.getElementById('sidebar-unread-count');
+    const tabBadge = document.getElementById('tab-unread-badge');
+    if (unread > 0) { badge.style.display=''; badge.textContent=unread; tabBadge.style.display=''; tabBadge.textContent=unread; }
+    else            { badge.style.display='none'; tabBadge.style.display='none'; }
+  } catch {
+    document.getElementById('email-list').innerHTML = '<div class="email-list-loading" style="color:var(--danger)">Failed to load inbox.</div>';
+  }
+}
+
+async function loadSent() {
+  document.getElementById('sent-list').innerHTML = '<div class="email-list-loading"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await fetch('/api/email/sent?top=20');
+    if (!res.ok) throw new Error();
+    sentMessages = await res.json();
+    renderMessageList('sent-list', sentMessages, 'sent');
+  } catch {
+    document.getElementById('sent-list').innerHTML = '<div class="email-list-loading" style="color:var(--danger)">Failed to load sent.</div>';
+  }
+}
+
+function renderMessageList(containerId, messages, mode) {
+  const col = document.getElementById(containerId);
+  if (!messages.length) {
+    col.innerHTML = '<div class="email-list-loading" style="color:var(--text-muted)">No messages found.</div>';
+    return;
+  }
+  col.innerHTML = '';
+  messages.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'email-list-item' + (m.isRead === false ? ' unread' : '');
+    div.dataset.id = m.id;
+    const from = mode === 'sent'
+      ? (m.toRecipients?.[0]?.emailAddress?.address || 'Unknown')
+      : (m.from?.emailAddress?.displayName || m.from?.emailAddress?.address || 'Unknown');
+    const date = new Date(m.receivedDateTime || m.sentDateTime || '');
+    const dateStr = isNaN(date) ? '' : date.toLocaleDateString('en-GB', {day:'numeric',month:'short'});
+    div.innerHTML = `
+      <div class="msg-from">${escHtml(from)}</div>
+      <div class="msg-subject">${escHtml(m.subject || '(no subject)')}</div>
+      <div class="msg-preview">${escHtml(m.bodyPreview || '')}</div>
+      <div class="msg-date">${dateStr}</div>`;
+    div.addEventListener('click', () => openMessage(m.id, containerId, mode));
+    col.appendChild(div);
+  });
+}
+
+async function openMessage(msgId, listContainerId, mode) {
+  activeEmailId = msgId;
+  document.querySelectorAll(`#${listContainerId} .email-list-item`).forEach(el => {
+    el.classList.toggle('active', el.dataset.id === msgId);
+  });
+  const viewerId = mode === 'sent' ? 'sent-viewer' : 'email-viewer';
+  const viewer = document.getElementById(viewerId);
+  viewer.innerHTML = '<div class="email-viewer-loading"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await fetch(`/api/email/messages/${encodeURIComponent(msgId)}`);
+    if (!res.ok) throw new Error();
+    const msg = await res.json();
+    // Mark as read
+    if (msg.isRead === false) {
+      fetch(`/api/email/messages/${encodeURIComponent(msgId)}/read`, { method: 'PATCH' }).catch(()=>{});
+      const item = document.querySelector(`#${listContainerId} .email-list-item[data-id="${msgId}"]`);
+      if (item) item.classList.remove('unread');
+    }
+    renderMessageViewer(viewer, msg, mode);
+  } catch {
+    viewer.innerHTML = '<div class="email-viewer-loading" style="color:var(--danger)">Failed to load message.</div>';
+  }
+}
+
+function renderMessageViewer(viewer, msg, mode) {
+  const from = msg.from?.emailAddress;
+  const fromStr = from ? `${escHtml(from.displayName || '')} &lt;${escHtml(from.address || '')}&gt;` : '—';
+  const toStr = (msg.toRecipients || []).map(r => escHtml(r.emailAddress?.address || '')).join(', ') || '—';
+  const dateStr = fmtDT(msg.receivedDateTime || msg.sentDateTime || '');
+  const bodyHtml = msg.body?.content || '';
+  const replyBtn = mode !== 'sent' ? `<button class="btn-primary" id="btn-reply-msg">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+    Reply</button>` : '';
+  const deleteBtn = `<button class="btn-secondary btn-icon-danger" id="btn-delete-msg">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    Delete</button>`;
+
+  viewer.innerHTML = `
+    <div class="msg-view-header">
+      <h4 class="msg-view-subject">${escHtml(msg.subject || '(no subject)')}</h4>
+      <div class="msg-view-meta">
+        <span><strong>From:</strong> ${fromStr}</span>
+        <span><strong>To:</strong> ${toStr}</span>
+        <span><strong>Date:</strong> ${dateStr}</span>
+      </div>
+      <div class="msg-view-actions">${replyBtn}${deleteBtn}</div>
+    </div>
+    <div class="msg-view-body">
+      <iframe class="msg-iframe" srcdoc="${bodyHtml.replace(/"/g, '&quot;')}" sandbox="allow-same-origin"></iframe>
+    </div>`;
+
+  viewer.querySelector('#btn-reply-msg')?.addEventListener('click', () => {
+    openComposeModal({ replyTo: msg });
+  });
+  viewer.querySelector('#btn-delete-msg')?.addEventListener('click', async () => {
+    if (!confirm('Delete this message?')) return;
+    await fetch(`/api/email/messages/${encodeURIComponent(msg.id)}`, { method: 'DELETE' });
+    showToast('Message deleted.', 'success');
+    if (mode === 'inbox') { inboxMessages = []; loadInbox(); document.getElementById('email-viewer').innerHTML = '<div class="email-viewer-empty"><p>Select an email to read it</p></div>'; }
+    else { sentMessages = []; loadSent(); document.getElementById('sent-viewer').innerHTML = '<div class="email-viewer-empty"><p>Select an email to view it</p></div>'; }
+  });
+}
+
+/* ── Compose ── */
+document.getElementById('btn-compose-new').addEventListener('click', () => openComposeModal({}));
+document.getElementById('close-compose-modal').addEventListener('click', closeComposeModal);
+document.getElementById('cancel-compose-modal').addEventListener('click', closeComposeModal);
+document.getElementById('compose-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeComposeModal(); });
+
+function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {} } = {}) {
+  composeMsgId = null;
+  document.getElementById('compose-to').value      = to_email;
+  document.getElementById('compose-to-name').value = to_name;
+  document.getElementById('compose-subject').value = prefill.subject || '';
+  document.getElementById('compose-body').value    = prefill.body    || '';
+  document.getElementById('compose-vars-row').style.display = 'none';
+
+  if (replyTo) {
+    composeMsgId = replyTo.id;
+    const from = replyTo.from?.emailAddress;
+    document.getElementById('compose-to').value      = from?.address || '';
+    document.getElementById('compose-to-name').value = from?.displayName || '';
+    document.getElementById('compose-subject').value = `Re: ${replyTo.subject || ''}`;
+    document.getElementById('compose-modal-title').textContent = 'Reply';
+  } else {
+    document.getElementById('compose-modal-title').textContent = 'New Email';
+  }
+
+  // Load templates into select
+  const sel = document.getElementById('compose-template-select');
+  sel.innerHTML = '<option value="">— Choose a template —</option>';
+  emailTemplates.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id; opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+
+  document.getElementById('compose-modal').classList.add('open');
+}
+
+function closeComposeModal() {
+  document.getElementById('compose-modal').classList.remove('open');
+  composeMsgId = null;
+}
+
+// Apply template
+document.getElementById('btn-apply-template').addEventListener('click', () => {
+  const sel = document.getElementById('compose-template-select');
+  const tid = parseInt(sel.value);
+  if (!tid) return;
+  const tmpl = emailTemplates.find(t => t.id === tid);
+  if (!tmpl) return;
+  // Detect variables in template
+  const vars = new Set();
+  const re = /\{\{(\w+)\}\}/g;
+  let m;
+  while ((m = re.exec(tmpl.subject + ' ' + tmpl.body)) !== null) vars.add(m[1]);
+  const varsRow = document.getElementById('compose-vars-row');
+  const varsDiv = document.getElementById('compose-vars');
+  varsDiv.innerHTML = '';
+  if (vars.size > 0) {
+    vars.forEach(v => {
+      const vDiv = document.createElement('div');
+      vDiv.className = 'compose-var-field';
+      vDiv.innerHTML = `<label>{{${v}}}</label><input type="text" id="var-${v}" placeholder="${v}" />`;
+      varsDiv.appendChild(vDiv);
+    });
+    varsRow.style.display = '';
+  } else {
+    varsRow.style.display = 'none';
+  }
+  // Pre-fill from subject — will be interpolated on send
+  document.getElementById('compose-subject').value = tmpl.subject;
+  document.getElementById('compose-body').value    = tmpl.body;
+  // Focus first var field
+  varsDiv.querySelector('input')?.focus();
+});
+
+function interpolateTemplate(text) {
+  return text.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const el = document.getElementById(`var-${key}`);
+    return el ? el.value : `{{${key}}}`;
+  });
+}
+
+document.getElementById('btn-send-compose').addEventListener('click', async () => {
+  const to_email = document.getElementById('compose-to').value.trim();
+  const subject  = interpolateTemplate(document.getElementById('compose-subject').value.trim());
+  const body     = interpolateTemplate(document.getElementById('compose-body').value.trim());
+  const to_name  = document.getElementById('compose-to-name').value.trim();
+
+  if (!to_email || !subject) { showToast('To and Subject are required.', 'error'); return; }
+
+  const btn = document.getElementById('btn-send-compose');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sending…';
+
+  try {
+    let res;
+    if (composeMsgId) {
+      res = await fetch(`/api/email/reply/${encodeURIComponent(composeMsgId)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }),
+      });
+    } else {
+      res = await fetch('/api/email/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to_email, to_name, subject, body }),
+      });
+    }
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || 'Send failed');
+    showToast('Email sent!', 'success');
+    closeComposeModal();
+    sentMessages = [];
+  } catch (err) {
+    showToast(err.message || 'Failed to send.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send`;
+  }
+});
+
+/* ── Templates CRUD ── */
+async function loadEmailTemplates() {
+  document.getElementById('templates-grid').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await fetch('/api/email/templates');
+    emailTemplates = await res.json();
+    renderTemplatesGrid();
+  } catch {
+    document.getElementById('templates-grid').innerHTML = '<div style="color:var(--danger);padding:2rem">Failed to load templates.</div>';
+  }
+}
+
+function renderTemplatesGrid() {
+  const grid = document.getElementById('templates-grid');
+  if (!emailTemplates.length) {
+    grid.innerHTML = '<div class="tmpl-empty">No templates yet. Create your first one!</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  emailTemplates.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `
+      <div class="tmpl-card-top">
+        <div class="tmpl-name">${escHtml(t.name)}</div>
+        <div class="tmpl-actions">
+          <button class="btn-icon" title="Edit" data-edit="${t.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon danger" title="Delete" data-delete="${t.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="tmpl-subject">${escHtml(t.subject || '')}</div>
+      <div class="tmpl-preview">${escHtml(t.body ? t.body.replace(/<[^>]+>/g,'').slice(0,100) + '…' : '')}</div>`;
+    card.querySelector('[data-edit]').addEventListener('click', () => openTemplateEditor(t));
+    card.querySelector('[data-delete]').addEventListener('click', async () => {
+      if (!confirm(`Delete template "${t.name}"?`)) return;
+      await fetch(`/api/email/templates/${t.id}`, { method: 'DELETE' });
+      showToast('Template deleted.', 'success');
+      loadEmailTemplates();
+    });
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById('btn-new-template').addEventListener('click', () => openTemplateEditor(null));
+document.getElementById('close-template-modal').addEventListener('click', closeTemplateModal);
+document.getElementById('cancel-template-modal').addEventListener('click', closeTemplateModal);
+document.getElementById('template-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTemplateModal(); });
+
+function openTemplateEditor(t) {
+  document.getElementById('template-edit-id').value      = t ? t.id : '';
+  document.getElementById('template-edit-name').value    = t ? t.name : '';
+  document.getElementById('template-edit-subject').value = t ? t.subject : '';
+  document.getElementById('template-edit-body').value    = t ? t.body : '';
+  document.getElementById('template-editor-title').textContent = t ? 'Edit Template' : 'New Template';
+  document.getElementById('template-editor-modal').classList.add('open');
+}
+
+function closeTemplateModal() {
+  document.getElementById('template-editor-modal').classList.remove('open');
+}
+
+document.getElementById('btn-save-template').addEventListener('click', async () => {
+  const id      = document.getElementById('template-edit-id').value;
+  const name    = document.getElementById('template-edit-name').value.trim();
+  const subject = document.getElementById('template-edit-subject').value.trim();
+  const body    = document.getElementById('template-edit-body').value.trim();
+  if (!name) { showToast('Template name is required.', 'error'); return; }
+  const btn = document.getElementById('btn-save-template');
+  btn.disabled = true;
+  try {
+    let res;
+    if (id) {
+      res = await fetch(`/api/email/templates/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, subject, body }),
+      });
+    } else {
+      res = await fetch('/api/email/templates', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, subject, body }),
+      });
+    }
+    if (!res.ok) throw new Error();
+    showToast('Template saved!', 'success');
+    closeTemplateModal();
+    loadEmailTemplates();
+  } catch { showToast('Failed to save template.', 'error'); }
+  finally { btn.disabled = false; }
+});
+
+/* ── Wire up section switch to init email ── */
+const _origSwitchSection = switchSection;
+function switchSection(id) {
+  _origSwitchSection(id);
+  if (id === 'email') {
+    checkEmailStatus();
+    if (emailTemplates.length === 0) loadEmailTemplates();
+  }
+}
+</script>
+</body>
+</html>

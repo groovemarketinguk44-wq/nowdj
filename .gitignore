@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+email_config.json
+email_tokens.json
+site_config.json
+catalog_override.json
+.env
