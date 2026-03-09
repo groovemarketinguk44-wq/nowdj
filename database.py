@@ -550,3 +550,31 @@ def delete_booking(bid: int) -> None:
                 cur.execute("DELETE FROM bookings WHERE id = %s", (bid,))
     finally:
         conn.close()
+
+
+def update_user(uid: int, name: str, email: str, password_hash: str | None = None) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                if password_hash:
+                    cur.execute("UPDATE users SET name=%s, email=%s, password_hash=%s WHERE id=%s",
+                                (name, email, password_hash, uid))
+                else:
+                    cur.execute("UPDATE users SET name=%s, email=%s WHERE id=%s", (name, email, uid))
+    finally:
+        conn.close()
+
+
+def update_staff_member_info(sid: int, name: str, email: str, password_hash: str | None = None) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                if password_hash:
+                    cur.execute("UPDATE staff_members SET name=%s, email=%s, password_hash=%s WHERE id=%s",
+                                (name, email, password_hash, sid))
+                else:
+                    cur.execute("UPDATE staff_members SET name=%s, email=%s WHERE id=%s", (name, email, sid))
+    finally:
+        conn.close()

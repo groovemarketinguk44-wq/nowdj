@@ -135,6 +135,19 @@
       <strong>No bookings assigned yet</strong>
       <p>Check back soon — your schedule will appear here once bookings are assigned.</p>
     </div>
+
+    <hr class="divider" style="margin-top:2rem" />
+    <div id="profile-section" style="display:none">
+      <div class="section-title" style="margin-bottom:0.75rem">Account Settings</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.4rem;max-width:420px">
+        <div class="form-group"><label>Full Name</label><input type="text" id="prof-name" /></div>
+        <div class="form-group"><label>Email</label><input type="email" id="prof-email" /></div>
+        <div class="form-group"><label>New Password <span style="color:var(--text-muted);font-size:0.8rem">(leave blank to keep current)</span></label><input type="password" id="prof-pw" placeholder="••••••••" /></div>
+        <div class="auth-error" id="prof-error"></div>
+        <div style="color:#22c55e;font-size:0.82rem;margin-top:0.5rem;display:none" id="prof-success">Details updated!</div>
+        <button class="btn-primary" id="btn-save-profile" style="margin-top:0.75rem">Save Changes</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -226,6 +239,10 @@ async function showDashboard() {
   document.getElementById('staff-label').textContent = user.name;
   document.getElementById('staff-name-heading').textContent = user.name + "'s Schedule";
 
+  document.getElementById('profile-section').style.display = '';
+  document.getElementById('prof-name').value  = user.name  || '';
+  document.getElementById('prof-email').value = user.email || '';
+
   const r = await fetch('/api/staff/bookings', { headers: authHeaders() });
   if (r.status === 401) { clearSession(); location.reload(); return; }
   const bookings = await r.json();
@@ -252,6 +269,33 @@ async function showDashboard() {
     document.getElementById('divider').style.display = '';
   }
 }
+
+document.getElementById('btn-save-profile').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-profile');
+  const errEl = document.getElementById('prof-error');
+  const okEl  = document.getElementById('prof-success');
+  errEl.classList.remove('visible'); okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/staff/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+      body: JSON.stringify({
+        name:     document.getElementById('prof-name').value.trim(),
+        email:    document.getElementById('prof-email').value.trim(),
+        password: document.getElementById('prof-pw').value,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Failed');
+    saveSession(d);
+    document.getElementById('staff-name-heading').textContent = d.name + "'s Schedule";
+    document.getElementById('staff-label').textContent = d.name;
+    okEl.style.display = 'block';
+    document.getElementById('prof-pw').value = '';
+  } catch(e) { errEl.textContent = e.message; errEl.classList.add('visible'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Changes'; }
+});
 
 if (getToken()) showDashboard();
 </script>

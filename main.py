@@ -26,10 +26,27 @@ from auth import hash_password, verify_password, create_token, require_customer,
 import email_manager as em
 
 
+DEFAULT_PW = "     "  # 5 spaces
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    _seed_defaults()
     yield
+
+
+def _seed_defaults():
+    from database import get_setting, set_setting
+    # Admin credentials
+    if not get_setting("admin_email"):
+        set_setting("admin_email", "ben@groovemarketing.co.uk")
+        set_setting("admin_pw_hash", hash_password(DEFAULT_PW))
+    # Default staff account
+    if not get_staff_by_email("staffmember@dj.co.uk"):
+        create_staff_member("Staff Member", "staffmember@dj.co.uk", hash_password(DEFAULT_PW))
+    # Default customer account
+    if not get_user_by_email("client@dj.co.uk"):
+        create_user("Test Client", "client@dj.co.uk", hash_password(DEFAULT_PW))
 
 
 app = FastAPI(title="NowDJ", version="1.0.0", lifespan=lifespan)
@@ -64,6 +81,11 @@ async def portal_page(request: Request):
 @app.get("/staff-portal", response_class=HTMLResponse)
 async def staff_portal_page(request: Request):
     return templates.TemplateResponse("staff.html", {"request": request})
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 # ---------------------------------------------------------------------------
@@ -521,4 +543,86 @@ async def admin_delete_booking(bid: int):
     if not get_booking_by_id(bid):
         raise HTTPException(status_code=404, detail="Booking not found")
     delete_booking(bid)
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Unified login
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/login")
+async def unified_login(payload: dict):
+    from database import get_setting
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+
+    # Admin check
+    admin_email   = get_setting("admin_email", "ben@groovemarketing.co.uk").lower()
+    admin_pw_hash = get_setting("admin_pw_hash", "")
+    if email == admin_email and admin_pw_hash and verify_password(password, admin_pw_hash):
+        return {"role": "admin"}
+
+    # Staff check
+    member = get_staff_by_email(email)
+    if member and verify_password(password, member["password_hash"]):
+        token = create_token("staff", member["id"], member["email"], member["name"])
+        return {"role": "staff", "token": token, "name": member["name"], "email": member["email"]}
+
+    # Customer check
+    user = get_user_by_email(email)
+    if user and verify_password(password, user["password_hash"]):
+        token = create_token("customer", user["id"], user["email"], user["name"])
+        return {"role": "customer", "token": token, "name": user["name"], "email": user["email"]}
+
+    raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+
+# ---------------------------------------------------------------------------
+# Profile updates
+# ---------------------------------------------------------------------------
+
+@app.patch("/api/customer/profile")
+async def update_customer_profile(
+    payload: dict,
+    user: Annotated[dict, Depends(require_customer)],
+):
+    from database import update_user
+    new_name  = payload.get("name", "").strip()
+    new_email = payload.get("email", "").strip().lower()
+    new_pw    = payload.get("password", "")
+    if not new_name or not new_email:
+        raise HTTPException(status_code=400, detail="name and email required")
+    pw_hash = hash_password(new_pw) if new_pw else None
+    update_user(user["uid"], new_name, new_email, pw_hash)
+    token = create_token("customer", user["uid"], new_email, new_name)
+    return {"success": True, "token": token, "name": new_name, "email": new_email}
+
+
+@app.patch("/api/staff/profile")
+async def update_staff_profile(
+    payload: dict,
+    member: Annotated[dict, Depends(require_staff)],
+):
+    from database import update_staff_member_info
+    new_name  = payload.get("name", "").strip()
+    new_email = payload.get("email", "").strip().lower()
+    new_pw    = payload.get("password", "")
+    if not new_name or not new_email:
+        raise HTTPException(status_code=400, detail="name and email required")
+    pw_hash = hash_password(new_pw) if new_pw else None
+    update_staff_member_info(member["uid"], new_name, new_email, pw_hash)
+    token = create_token("staff", member["uid"], new_email, new_name)
+    return {"success": True, "token": token, "name": new_name, "email": new_email}
+
+
+@app.patch("/api/admin/credentials")
+async def update_admin_credentials(payload: dict):
+    from database import get_setting, set_setting
+    new_email = payload.get("email", "").strip().lower()
+    new_pw    = payload.get("password", "")
+    if not new_email:
+        raise HTTPException(status_code=400, detail="email required")
+    set_setting("admin_email", new_email)
+    if new_pw:
+        set_setting("admin_pw_hash", hash_password(new_pw))
     return {"success": True}
