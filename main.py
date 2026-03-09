@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -15,8 +16,13 @@ from catalog_store import (
 from database import (
     get_all_quotes, get_quote_by_id, init_db, save_quote, update_quote_status,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
+    get_user_by_email, get_user_by_id, create_user, get_quotes_by_email,
+    get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member, delete_staff_member,
+    get_all_bookings, get_booking_by_id, get_bookings_for_user, get_bookings_for_staff,
+    create_booking, update_booking, delete_booking,
 )
 from models import QuoteRequest, StatusUpdate
+from auth import hash_password, verify_password, create_token, require_customer, require_staff
 import email_manager as em
 
 
@@ -48,6 +54,16 @@ async def builder_page(request: Request):
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
+
+
+@app.get("/portal", response_class=HTMLResponse)
+async def portal_page(request: Request):
+    return templates.TemplateResponse("portal.html", {"request": request})
+
+
+@app.get("/staff-portal", response_class=HTMLResponse)
+async def staff_portal_page(request: Request):
+    return templates.TemplateResponse("staff.html", {"request": request})
 
 
 # ---------------------------------------------------------------------------
@@ -363,4 +379,146 @@ async def delete_email_template(tid: int):
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
     delete_template(tid)
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Auth — customer
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/customer/register")
+async def customer_register(payload: dict):
+    name     = payload.get("name", "").strip()
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+    if not name or not email or not password:
+        raise HTTPException(status_code=400, detail="name, email and password are required")
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if get_user_by_email(email):
+        raise HTTPException(status_code=409, detail="An account with that email already exists")
+    uid   = create_user(name, email, hash_password(password))
+    token = create_token("customer", uid, email, name)
+    return {"token": token, "name": name, "email": email}
+
+
+@app.post("/api/auth/customer/login")
+async def customer_login(payload: dict):
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+    user     = get_user_by_email(email)
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    token = create_token("customer", user["id"], user["email"], user["name"])
+    return {"token": token, "name": user["name"], "email": user["email"]}
+
+
+# ---------------------------------------------------------------------------
+# Auth — staff
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/staff/login")
+async def staff_login(payload: dict):
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+    member   = get_staff_by_email(email)
+    if not member or not verify_password(password, member["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    token = create_token("staff", member["id"], member["email"], member["name"])
+    return {"token": token, "name": member["name"], "email": member["email"]}
+
+
+# ---------------------------------------------------------------------------
+# Customer portal API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/customer/me")
+async def customer_me(user: Annotated[dict, Depends(require_customer)]):
+    return {"id": user["uid"], "name": user["name"], "email": user["email"]}
+
+
+@app.get("/api/customer/quotes")
+async def customer_quotes(user: Annotated[dict, Depends(require_customer)]):
+    return get_quotes_by_email(user["email"])
+
+
+@app.get("/api/customer/bookings")
+async def customer_bookings(user: Annotated[dict, Depends(require_customer)]):
+    return get_bookings_for_user(user["uid"])
+
+
+# ---------------------------------------------------------------------------
+# Staff portal API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/staff/me")
+async def staff_me(member: Annotated[dict, Depends(require_staff)]):
+    return {"id": member["uid"], "name": member["name"], "email": member["email"]}
+
+
+@app.get("/api/staff/bookings")
+async def staff_bookings(member: Annotated[dict, Depends(require_staff)]):
+    return get_bookings_for_staff(member["uid"])
+
+
+# ---------------------------------------------------------------------------
+# Admin — staff management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/staff")
+async def admin_list_staff():
+    return get_all_staff()
+
+
+@app.post("/api/admin/staff")
+async def admin_create_staff(payload: dict):
+    name     = payload.get("name", "").strip()
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+    if not name or not email or not password:
+        raise HTTPException(status_code=400, detail="name, email and password required")
+    if get_staff_by_email(email):
+        raise HTTPException(status_code=409, detail="Staff member with that email already exists")
+    sid = create_staff_member(name, email, hash_password(password))
+    return {"success": True, "id": sid}
+
+
+@app.delete("/api/admin/staff/{sid}")
+async def admin_delete_staff(sid: int):
+    if not get_staff_by_id(sid):
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    delete_staff_member(sid)
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Admin — bookings
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/bookings")
+async def admin_list_bookings():
+    return get_all_bookings()
+
+
+@app.post("/api/admin/bookings")
+async def admin_create_booking(payload: dict):
+    bid = create_booking(payload)
+    return {"success": True, "id": bid}
+
+
+@app.patch("/api/admin/bookings/{bid}")
+async def admin_update_booking(bid: int, payload: dict):
+    if not get_booking_by_id(bid):
+        raise HTTPException(status_code=404, detail="Booking not found")
+    update_booking(bid, payload)
+    return {"success": True}
+
+
+@app.delete("/api/admin/bookings/{bid}")
+async def admin_delete_booking(bid: int):
+    if not get_booking_by_id(bid):
+        raise HTTPException(status_code=404, detail="Booking not found")
+    delete_booking(bid)
     return {"success": True}

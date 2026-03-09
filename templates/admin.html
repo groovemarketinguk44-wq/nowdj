@@ -68,6 +68,17 @@
           <span class="nav-item-badge" id="sidebar-unread-count" style="display:none">0</span>
         </button>
 
+        <button class="nav-item" data-section="bookings">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Bookings
+          <span class="nav-item-badge" id="sidebar-booking-count" style="display:none">0</span>
+        </button>
+
+        <button class="nav-item" data-section="staff">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Staff
+        </button>
+
         <div class="sidebar-section-label" style="margin-top:0.5rem">Builder</div>
         <button class="nav-item" id="nav-site-config">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -342,6 +353,52 @@
         </div>
 
       </div><!-- /section-email -->
+
+      <!-- ================================================================
+           BOOKINGS
+           ================================================================ -->
+      <div class="admin-section" id="section-bookings">
+        <div class="section-page-header">
+          <div>
+            <h2 class="section-page-title">Bookings</h2>
+            <p class="section-page-sub">Manage confirmed bookings and your calendar</p>
+          </div>
+          <button class="btn-primary" id="btn-new-booking">+ New Booking</button>
+        </div>
+
+        <!-- Calendar -->
+        <div class="content-card" style="margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+            <button class="btn-icon" id="cal-prev">&#8249;</button>
+            <strong id="cal-title" style="font-size:1rem"></strong>
+            <button class="btn-icon" id="cal-next">&#8250;</button>
+          </div>
+          <div id="cal-grid" class="booking-calendar"></div>
+        </div>
+
+        <!-- Booking list -->
+        <div class="content-card">
+          <div id="bookings-loading" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</div>
+          <div id="bookings-admin-list"></div>
+        </div>
+      </div><!-- /section-bookings -->
+
+      <!-- ================================================================
+           STAFF
+           ================================================================ -->
+      <div class="admin-section" id="section-staff">
+        <div class="section-page-header">
+          <div>
+            <h2 class="section-page-title">Staff</h2>
+            <p class="section-page-sub">Manage staff accounts and portal access</p>
+          </div>
+          <button class="btn-primary" id="btn-add-staff">+ Add Staff Member</button>
+        </div>
+        <div class="content-card">
+          <div id="staff-loading" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</div>
+          <div id="staff-admin-list"></div>
+        </div>
+      </div><!-- /section-staff -->
 
     </main>
   </div>
@@ -1544,7 +1601,403 @@ function switchSection(id) {
     checkEmailStatus();
     if (emailTemplates.length === 0) loadEmailTemplates();
   }
+  if (id === 'bookings') loadAdminBookings();
+  if (id === 'staff')    loadAdminStaff();
 }
+
+/* ======================================================================
+   BOOKINGS — ADMIN
+   ====================================================================== */
+
+let adminBookings = [];
+let adminStaffList = [];
+let calYear, calMonth;
+
+// ── Calendar ──────────────────────────────────────────────────────────────
+
+function renderCalendar() {
+  const title = document.getElementById('cal-title');
+  const grid  = document.getElementById('cal-grid');
+  const date  = new Date(calYear, calMonth, 1);
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  title.textContent = monthNames[calMonth] + ' ' + calYear;
+
+  const firstDay    = (date.getDay() + 6) % 7; // Mon=0
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const bookingsByDay = {};
+  adminBookings.forEach(b => {
+    if (!b.event_date) return;
+    const d = new Date(b.event_date + (b.event_date.includes('T') ? '' : 'T00:00:00'));
+    if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+      const day = d.getDate();
+      if (!bookingsByDay[day]) bookingsByDay[day] = [];
+      bookingsByDay[day].push(b);
+    }
+  });
+
+  const today = new Date();
+  let html = '<div class="cal-header-row">';
+  ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d => { html += '<div class="cal-dow">' + d + '</div>'; });
+  html += '</div><div class="cal-body">';
+
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+    const hasBookings = bookingsByDay[d];
+    html += '<div class="cal-cell' + (isToday ? ' today' : '') + (hasBookings ? ' has-booking' : '') + '">';
+    html += '<span class="cal-day-num">' + d + '</span>';
+    if (hasBookings) {
+      hasBookings.slice(0,3).forEach(b => {
+        html += '<div class="cal-event">' + escHtml(b.title || b.event_type || 'Booking') + '</div>';
+      });
+      if (hasBookings.length > 3) html += '<div class="cal-event-more">+' + (hasBookings.length-3) + ' more</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+document.getElementById('cal-prev').addEventListener('click', () => {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+});
+document.getElementById('cal-next').addEventListener('click', () => {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+});
+
+// ── Load & render bookings list ───────────────────────────────────────────
+
+async function loadAdminBookings() {
+  if (adminStaffList.length === 0) await loadAdminStaff(true);
+  document.getElementById('bookings-loading').style.display = '';
+  document.getElementById('bookings-admin-list').innerHTML = '';
+  try {
+    const r = await fetch('/api/admin/bookings');
+    adminBookings = await r.json();
+  } catch { adminBookings = []; }
+
+  const now = new Date();
+  calYear  = calYear  || now.getFullYear();
+  calMonth = calMonth || now.getMonth();
+  renderCalendar();
+
+  document.getElementById('bookings-loading').style.display = 'none';
+  renderAdminBookingList();
+
+  const badge = document.getElementById('sidebar-booking-count');
+  const upcoming = adminBookings.filter(b => b.event_date && new Date(b.event_date) >= now && b.status !== 'cancelled').length;
+  badge.textContent = upcoming;
+  badge.style.display = upcoming ? '' : 'none';
+}
+
+function renderAdminBookingList() {
+  const el = document.getElementById('bookings-admin-list');
+  if (!adminBookings.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">No bookings yet. Create one from an enquiry or use + New Booking.</div>';
+    return;
+  }
+  el.innerHTML = adminBookings.map(b => `
+    <div class="booking-admin-row">
+      <div class="bar-left">
+        <div class="bar-date">${b.event_date || '—'}</div>
+        <div>
+          <div class="bar-title">${escHtml(b.title || b.event_type || 'Booking')}</div>
+          <div class="bar-meta">
+            ${b.location ? escHtml(b.location) + ' · ' : ''}
+            ${b.customer_name ? 'Client: ' + escHtml(b.customer_name) + ' · ' : ''}
+            Staff: ${b.staff_name ? escHtml(b.staff_name) : '<em>Unassigned</em>'}
+            ${b.total_price ? ' · £' + parseFloat(b.total_price).toFixed(0) : ''}
+          </div>
+        </div>
+      </div>
+      <div class="bar-right">
+        <span class="quote-status-badge status-${escHtml(b.status)}">${escHtml(b.status)}</span>
+        <button class="btn-sm" onclick="openEditBooking(${b.id})">Edit</button>
+        <button class="btn-sm btn-danger" onclick="deleteAdminBooking(${b.id})">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── New / Edit booking modal ──────────────────────────────────────────────
+
+function buildStaffOptions(selectedId) {
+  let opts = '<option value="">— Unassigned —</option>';
+  adminStaffList.forEach(s => {
+    opts += '<option value="' + s.id + '"' + (s.id == selectedId ? ' selected' : '') + '>' + escHtml(s.name) + '</option>';
+  });
+  return opts;
+}
+
+function openNewBooking() {
+  // Pull quotes marked as booked to prefill from
+  openBookingModal({});
+}
+
+function openEditBooking(id) {
+  const b = adminBookings.find(x => x.id === id);
+  if (b) openBookingModal(b);
+}
+
+function openBookingModal(b) {
+  const existing = document.getElementById('booking-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'booking-modal';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:500px">
+      <div class="modal-header">
+        <h3 class="modal-title">${b.id ? 'Edit Booking' : 'New Booking'}</h3>
+        <button class="modal-close" id="close-booking-modal">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="field-group">
+          <label class="field-label">Title / Event Name</label>
+          <input class="field-input" id="bm-title" value="${escHtml(b.title||'')}" placeholder="e.g. Smith Wedding" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="field-group">
+            <label class="field-label">Event Date</label>
+            <input class="field-input" type="date" id="bm-date" value="${escHtml(b.event_date||'')}" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Event Type</label>
+            <input class="field-input" id="bm-type" value="${escHtml(b.event_type||'')}" placeholder="Wedding, Birthday…" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Location / Venue</label>
+          <input class="field-input" id="bm-location" value="${escHtml(b.location||'')}" placeholder="Venue name or town" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="field-group">
+            <label class="field-label">Assign Staff</label>
+            <select class="field-input" id="bm-staff">${buildStaffOptions(b.staff_id)}</select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Total (£)</label>
+            <input class="field-input" type="number" id="bm-price" value="${b.total_price||''}" placeholder="0" min="0" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Status</label>
+          <select class="field-input" id="bm-status">
+            ${['confirmed','completed','cancelled'].map(s => '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>').join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Notes</label>
+          <textarea class="field-input" id="bm-notes" rows="3" placeholder="Internal notes, special requirements…">${escHtml(b.notes||'')}</textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem">
+          <button class="btn-secondary" id="cancel-booking-modal">Cancel</button>
+          <button class="btn-primary" id="save-booking-modal">${b.id ? 'Save Changes' : 'Create Booking'}</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  document.getElementById('close-booking-modal').addEventListener('click', () => modal.remove());
+  document.getElementById('cancel-booking-modal').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById('save-booking-modal').addEventListener('click', async () => {
+    const btn = document.getElementById('save-booking-modal');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const payload = {
+      title:       document.getElementById('bm-title').value.trim(),
+      event_date:  document.getElementById('bm-date').value,
+      event_type:  document.getElementById('bm-type').value.trim(),
+      location:    document.getElementById('bm-location').value.trim(),
+      staff_id:    document.getElementById('bm-staff').value ? parseInt(document.getElementById('bm-staff').value) : null,
+      total_price: parseFloat(document.getElementById('bm-price').value) || 0,
+      status:      document.getElementById('bm-status').value,
+      notes:       document.getElementById('bm-notes').value.trim(),
+      quote_id:    b.quote_id || null,
+      user_id:     b.user_id  || null,
+    };
+    try {
+      const url    = b.id ? '/api/admin/bookings/' + b.id : '/api/admin/bookings';
+      const method = b.id ? 'PATCH' : 'POST';
+      const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!r.ok) throw new Error();
+      showToast(b.id ? 'Booking updated!' : 'Booking created!', 'success');
+      modal.remove();
+      loadAdminBookings();
+    } catch { showToast('Failed to save booking.', 'error'); btn.disabled = false; btn.textContent = b.id ? 'Save Changes' : 'Create Booking'; }
+  });
+}
+
+async function deleteAdminBooking(id) {
+  if (!confirm('Delete this booking? This cannot be undone.')) return;
+  await fetch('/api/admin/bookings/' + id, { method: 'DELETE' });
+  showToast('Booking deleted.', 'success');
+  loadAdminBookings();
+}
+
+document.getElementById('btn-new-booking').addEventListener('click', openNewBooking);
+
+// ── "Convert enquiry to booking" from enquiry detail ──────────────────────
+// Expose globally so enquiry detail panel can call it
+window.convertToBooking = function(quote) {
+  openBookingModal({
+    title:      quote.event_type || '',
+    event_date: quote.event_date || '',
+    event_type: quote.event_type || '',
+    location:   quote.location   || '',
+    total_price: quote.total_price || 0,
+    quote_id:   quote.id,
+    status:     'confirmed',
+  });
+};
+
+/* ======================================================================
+   STAFF — ADMIN
+   ====================================================================== */
+
+async function loadAdminStaff(silent = false) {
+  if (!silent) {
+    document.getElementById('staff-loading').style.display = '';
+    document.getElementById('staff-admin-list').innerHTML = '';
+  }
+  try {
+    const r = await fetch('/api/admin/staff');
+    adminStaffList = await r.json();
+  } catch { adminStaffList = []; }
+  if (!silent) {
+    document.getElementById('staff-loading').style.display = 'none';
+    renderAdminStaffList();
+  }
+}
+
+function renderAdminStaffList() {
+  const el = document.getElementById('staff-admin-list');
+  if (!adminStaffList.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">No staff members yet. Add one to get started.</div>';
+    return;
+  }
+  el.innerHTML = adminStaffList.map(s => `
+    <div class="booking-admin-row">
+      <div class="bar-left">
+        <div class="bar-title">${escHtml(s.name)}</div>
+        <div class="bar-meta">${escHtml(s.email)}</div>
+      </div>
+      <div class="bar-right">
+        <a href="/staff-portal" target="_blank" class="btn-sm" style="text-decoration:none">Portal ↗</a>
+        <button class="btn-sm btn-danger" onclick="deleteStaffMember(${s.id}, '${escHtml(s.name)}')">Remove</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAddStaffModal() {
+  const existing = document.getElementById('staff-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'staff-modal';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:420px">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Staff Member</h3>
+        <button class="modal-close" id="close-staff-modal">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="field-group">
+          <label class="field-label">Full Name</label>
+          <input class="field-input" id="sm-name" placeholder="e.g. Jake Williams" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <input class="field-input" type="email" id="sm-email" placeholder="jake@nowdj.com" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <input class="field-input" type="password" id="sm-pw" placeholder="They'll use this to log in" />
+        </div>
+        <p style="font-size:0.78rem;color:var(--text-muted)">Staff log in at <strong>/staff-portal</strong> to see their schedule.</p>
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem">
+          <button class="btn-secondary" id="cancel-staff-modal">Cancel</button>
+          <button class="btn-primary" id="save-staff-modal">Add Staff Member</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  document.getElementById('close-staff-modal').addEventListener('click', () => modal.remove());
+  document.getElementById('cancel-staff-modal').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById('save-staff-modal').addEventListener('click', async () => {
+    const btn = document.getElementById('save-staff-modal');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const r = await fetch('/api/admin/staff', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          name:     document.getElementById('sm-name').value.trim(),
+          email:    document.getElementById('sm-email').value.trim(),
+          password: document.getElementById('sm-pw').value,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Error');
+      showToast('Staff member added!', 'success');
+      modal.remove();
+      loadAdminStaff();
+    } catch(e) { showToast(e.message || 'Failed to add staff.', 'error'); btn.disabled = false; btn.textContent = 'Add Staff Member'; }
+  });
+}
+
+async function deleteStaffMember(id, name) {
+  if (!confirm('Remove ' + name + '? They will no longer be able to log in.')) return;
+  await fetch('/api/admin/staff/' + id, { method: 'DELETE' });
+  showToast('Staff member removed.', 'success');
+  loadAdminStaff();
+}
+
+document.getElementById('btn-add-staff').addEventListener('click', openAddStaffModal);
+
+/* ── Calendar CSS (injected) ── */
+const calStyle = document.createElement('style');
+calStyle.textContent = `
+  .booking-calendar { }
+  .cal-header-row { display: grid; grid-template-columns: repeat(7,1fr); gap:2px; margin-bottom:4px; }
+  .cal-dow { text-align:center; font-size:0.72rem; font-weight:600; color:var(--text-muted); padding:4px 0; }
+  .cal-body { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .cal-cell { min-height:64px; background:var(--bg); border:1px solid var(--border); border-radius:6px;
+    padding:4px 5px; font-size:0.75rem; cursor:default; }
+  .cal-cell.empty { background:transparent; border-color:transparent; }
+  .cal-cell.today { border-color:var(--accent); }
+  .cal-cell.has-booking { background:rgba(124,92,252,0.06); }
+  .cal-day-num { font-size:0.78rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:2px; }
+  .cal-cell.today .cal-day-num { color:var(--accent); }
+  .cal-event { background:var(--accent); color:#fff; border-radius:3px; padding:1px 4px;
+    font-size:0.65rem; font-weight:500; margin-bottom:2px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .cal-event-more { font-size:0.65rem; color:var(--text-muted); }
+  .booking-admin-row { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:0.85rem 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .booking-admin-row:last-child { border-bottom:none; }
+  .bar-left { display:flex; align-items:flex-start; gap:1rem; flex:1; min-width:0; }
+  .bar-date { font-size:0.8rem; font-weight:600; color:var(--accent); white-space:nowrap; min-width:80px; }
+  .bar-title { font-weight:600; font-size:0.9rem; }
+  .bar-meta { font-size:0.78rem; color:var(--text-muted); margin-top:0.15rem; }
+  .bar-right { display:flex; align-items:center; gap:0.4rem; flex-shrink:0; }
+  .btn-icon { background:none; border:1px solid var(--border); color:var(--text); border-radius:6px;
+    padding:0.3rem 0.7rem; cursor:pointer; font-size:1.1rem; line-height:1; }
+  .btn-icon:hover { border-color:var(--accent); }
+`;
+document.head.appendChild(calStyle);
 </script>
 </body>
 </html>

@@ -84,6 +84,40 @@ def init_db() -> None:
                         value TEXT NOT NULL DEFAULT ''
                     )
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id            SERIAL PRIMARY KEY,
+                        name          TEXT NOT NULL,
+                        email         TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at    TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS staff_members (
+                        id            SERIAL PRIMARY KEY,
+                        name          TEXT NOT NULL,
+                        email         TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at    TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS bookings (
+                        id          SERIAL PRIMARY KEY,
+                        quote_id    INTEGER REFERENCES quotes(id) ON DELETE SET NULL,
+                        user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                        staff_id    INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
+                        title       TEXT DEFAULT '',
+                        event_date  TEXT DEFAULT '',
+                        event_type  TEXT DEFAULT '',
+                        location    TEXT DEFAULT '',
+                        notes       TEXT DEFAULT '',
+                        total_price REAL DEFAULT 0,
+                        status      TEXT DEFAULT 'confirmed',
+                        created_at  TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
                 cur.execute("SELECT COUNT(*) AS c FROM email_templates")
                 if cur.fetchone()["c"] == 0:
                     for t in DEFAULT_TEMPLATES:
@@ -256,5 +290,263 @@ def delete_template(tid: int) -> None:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM email_templates WHERE id = %s", (tid,))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Users (customers)
+# ---------------------------------------------------------------------------
+
+def get_user_by_email(email: str) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_user_by_id(uid: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, created_at FROM users WHERE id = %s", (uid,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def create_user(name: str, email: str, password_hash: str) -> int:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
+                    (name, email, password_hash),
+                )
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def get_quotes_by_email(email: str) -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM quotes WHERE LOWER(email) = LOWER(%s) ORDER BY created_at DESC",
+                (email,),
+            )
+            return [_parse_quote(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Staff members
+# ---------------------------------------------------------------------------
+
+def get_all_staff() -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, created_at FROM staff_members ORDER BY name ASC")
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_staff_by_email(email: str) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM staff_members WHERE email = %s", (email,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_staff_by_id(sid: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, created_at FROM staff_members WHERE id = %s", (sid,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def create_staff_member(name: str, email: str, password_hash: str) -> int:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO staff_members (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
+                    (name, email, password_hash),
+                )
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def delete_staff_member(sid: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM staff_members WHERE id = %s", (sid,))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Bookings
+# ---------------------------------------------------------------------------
+
+def _parse_booking(row: dict) -> dict:
+    b = dict(row)
+    if b.get("created_at"):
+        b["created_at"] = b["created_at"].isoformat()
+    return b
+
+
+def get_all_bookings() -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.*, s.name AS staff_name, u.name AS customer_name, u.email AS customer_email
+                FROM bookings b
+                LEFT JOIN staff_members s ON b.staff_id = s.id
+                LEFT JOIN users u ON b.user_id = u.id
+                ORDER BY b.event_date ASC, b.created_at DESC
+            """)
+            return [_parse_booking(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_booking_by_id(bid: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.*, s.name AS staff_name, u.name AS customer_name, u.email AS customer_email
+                FROM bookings b
+                LEFT JOIN staff_members s ON b.staff_id = s.id
+                LEFT JOIN users u ON b.user_id = u.id
+                WHERE b.id = %s
+            """, (bid,))
+            row = cur.fetchone()
+            return _parse_booking(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_bookings_for_user(user_id: int) -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.*, s.name AS staff_name
+                FROM bookings b
+                LEFT JOIN staff_members s ON b.staff_id = s.id
+                WHERE b.user_id = %s
+                ORDER BY b.event_date ASC
+            """, (user_id,))
+            return [_parse_booking(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_bookings_for_staff(staff_id: int) -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.*, u.name AS customer_name, u.email AS customer_email
+                FROM bookings b
+                LEFT JOIN users u ON b.user_id = u.id
+                WHERE b.staff_id = %s
+                ORDER BY b.event_date ASC
+            """, (staff_id,))
+            return [_parse_booking(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def create_booking(data: dict) -> int:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO bookings
+                        (quote_id, user_id, staff_id, title, event_date, event_type,
+                         location, notes, total_price, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    data.get("quote_id"),
+                    data.get("user_id"),
+                    data.get("staff_id"),
+                    data.get("title", ""),
+                    data.get("event_date", ""),
+                    data.get("event_type", ""),
+                    data.get("location", ""),
+                    data.get("notes", ""),
+                    data.get("total_price", 0),
+                    data.get("status", "confirmed"),
+                ))
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def update_booking(bid: int, data: dict) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE bookings SET
+                        staff_id    = %s,
+                        title       = %s,
+                        event_date  = %s,
+                        event_type  = %s,
+                        location    = %s,
+                        notes       = %s,
+                        total_price = %s,
+                        status      = %s
+                    WHERE id = %s
+                """, (
+                    data.get("staff_id"),
+                    data.get("title", ""),
+                    data.get("event_date", ""),
+                    data.get("event_type", ""),
+                    data.get("location", ""),
+                    data.get("notes", ""),
+                    data.get("total_price", 0),
+                    data.get("status", "confirmed"),
+                    bid,
+                ))
+    finally:
+        conn.close()
+
+
+def delete_booking(bid: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM bookings WHERE id = %s", (bid,))
     finally:
         conn.close()
