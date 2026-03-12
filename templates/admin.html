@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NowDJ — Admin</title>
+  <title>{{ branding.company_name }} — Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
+  {{ branding_style | safe }}
 </head>
 <body>
 
@@ -17,8 +18,8 @@
 <div id="login-screen" class="login-screen">
   <div class="login-card">
     <div class="login-logo">
-      <div class="logo-icon">🎧</div>
-      <span class="logo-text">Now<span style="color:var(--accent)">DJ</span></span>
+      <div class="logo-icon login-logo-emoji">{{ branding.logo_emoji }}</div>
+      <span class="logo-text login-logo-text">{{ branding.company_name }}</span>
     </div>
     <h2>Admin Access</h2>
     <p>Enter your password to continue</p>
@@ -44,8 +45,8 @@
     <!-- ── Sidebar ── -->
     <aside class="admin-sidebar">
       <a href="/" class="sidebar-brand">
-        <div class="logo-icon">🎧</div>
-        <span class="logo-text">Now<span style="color:var(--accent)">DJ</span></span>
+        <div class="logo-icon sidebar-logo-emoji">{{ branding.logo_emoji }}</div>
+        <span class="logo-text sidebar-logo-text">{{ branding.company_name }}</span>
       </a>
 
       <nav class="sidebar-nav">
@@ -79,12 +80,21 @@
           Staff
         </button>
 
+        <button class="nav-item" data-section="clients">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Clients
+        </button>
+
         <button class="nav-item" data-section="account">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Account
         </button>
 
-        <div class="sidebar-section-label" style="margin-top:0.5rem">Builder</div>
+        <div class="sidebar-section-label" style="margin-top:0.5rem">Appearance</div>
+        <button class="nav-item" data-section="branding">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          Branding
+        </button>
         <button class="nav-item" id="nav-site-config">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit Builder Page
@@ -365,10 +375,13 @@
       <div class="admin-section" id="section-bookings">
         <div class="section-page-header">
           <div>
-            <h2 class="section-page-title">Bookings</h2>
-            <p class="section-page-sub">Manage confirmed bookings and your calendar</p>
+            <h1>Bookings</h1>
+            <p>Manage confirmed bookings and your calendar</p>
           </div>
-          <button class="btn-primary" id="btn-new-booking">+ New Booking</button>
+          <button class="btn-primary" id="btn-new-booking">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Booking
+          </button>
         </div>
 
         <!-- Calendar -->
@@ -394,10 +407,13 @@
       <div class="admin-section" id="section-staff">
         <div class="section-page-header">
           <div>
-            <h2 class="section-page-title">Staff</h2>
-            <p class="section-page-sub">Manage staff accounts and portal access</p>
+            <h1>Staff</h1>
+            <p>Manage staff accounts and portal access</p>
           </div>
-          <button class="btn-primary" id="btn-add-staff">+ Add Staff Member</button>
+          <button class="btn-primary" id="btn-add-staff">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Staff Member
+          </button>
         </div>
         <div class="content-card">
           <div id="staff-loading" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</div>
@@ -406,13 +422,29 @@
       </div><!-- /section-staff -->
 
       <!-- ================================================================
+           CLIENTS
+           ================================================================ -->
+      <div class="admin-section" id="section-clients">
+        <div class="section-page-header">
+          <div>
+            <h1>Clients</h1>
+            <p>Registered customer accounts and their portal access</p>
+          </div>
+        </div>
+        <div class="content-card">
+          <div id="clients-loading" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</div>
+          <div id="clients-admin-list"></div>
+        </div>
+      </div><!-- /section-clients -->
+
+      <!-- ================================================================
            ACCOUNT
            ================================================================ -->
       <div class="admin-section" id="section-account">
         <div class="section-page-header">
           <div>
-            <h2 class="section-page-title">Account</h2>
-            <p class="section-page-sub">Update your admin login details</p>
+            <h1>Account</h1>
+            <p>Update your admin login details</p>
           </div>
         </div>
         <div class="content-card" style="max-width:460px">
@@ -430,6 +462,72 @@
           </div>
         </div>
       </div><!-- /section-account -->
+
+      <!-- ================================================================
+           BRANDING SECTION
+           ================================================================ -->
+      <div class="admin-section" id="section-branding">
+        <div class="section-page-header">
+          <div>
+            <h1>Brand <span class="gradient-text">Settings</span></h1>
+            <p>Customise the company name, logo and accent colour across the entire app.</p>
+          </div>
+          <div class="header-actions">
+            <span class="save-status" id="branding-save-status" style="display:none"></span>
+            <button class="btn-primary" id="btn-save-branding">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:860px">
+
+          <!-- Settings -->
+          <div class="content-card">
+            <h3 style="margin-bottom:1.25rem;font-size:1rem;font-weight:700">Identity</h3>
+
+            <div class="field-group">
+              <label class="field-label">Company Name</label>
+              <input class="field-input" type="text" id="branding-name" placeholder="NowDJ" />
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem">Shown in the header, emails and browser tab</div>
+            </div>
+
+            <div class="field-group" style="margin-top:0.75rem">
+              <label class="field-label">Logo Emoji</label>
+              <input class="field-input" type="text" id="branding-emoji" placeholder="🎧" maxlength="4" style="font-size:1.4rem;text-align:center;width:80px" />
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem">Single emoji shown next to the company name</div>
+            </div>
+
+            <div class="field-group" style="margin-top:0.75rem">
+              <label class="field-label">Brand Colour</label>
+              <div style="display:flex;gap:0.6rem;align-items:center">
+                <input type="color" id="branding-color-picker" style="width:48px;height:44px;border:none;background:none;cursor:pointer;padding:0;border-radius:8px;flex-shrink:0" />
+                <input class="field-input" type="text" id="branding-color-hex" placeholder="#fa854f" style="font-family:monospace;flex:1" maxlength="7" />
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem">Used for buttons, highlights and accents throughout the app</div>
+            </div>
+          </div>
+
+          <!-- Live Preview -->
+          <div class="content-card">
+            <h3 style="margin-bottom:1.25rem;font-size:1rem;font-weight:700">Live Preview</h3>
+            <div style="background:var(--bg-surface);border-radius:12px;padding:1.5rem;border:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.25rem">
+                <div id="preview-emoji" style="font-size:1.4rem;background:var(--accent-dim);width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--border-active)">🎧</div>
+                <span id="preview-name" style="font-size:1.1rem;font-weight:800">NowDJ</span>
+              </div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+                <div style="background:var(--accent);color:#fff;border-radius:8px;padding:0.45rem 1rem;font-size:0.83rem;font-weight:600">Primary Button</div>
+                <div style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--border-active);border-radius:8px;padding:0.45rem 1rem;font-size:0.83rem;font-weight:600">Secondary</div>
+              </div>
+              <div style="height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent-light))"></div>
+            </div>
+            <p style="margin-top:0.85rem;font-size:0.78rem;color:var(--text-muted)">Preview updates live. Changes apply to all pages on save.</p>
+          </div>
+
+        </div>
+      </div><!-- /section-branding -->
 
     </main>
   </div>
@@ -676,6 +774,8 @@ function switchSection(id) {
   if (id === 'email')    { checkEmailStatus(); if (emailTemplates.length === 0) loadEmailTemplates(); }
   if (id === 'bookings') loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
+  if (id === 'clients')  loadAdminClients();
+  if (id === 'branding') loadBranding();
 }
 
 /* ======================================================================
@@ -2021,6 +2121,218 @@ calStyle.textContent = `
   .btn-icon:hover { border-color:var(--accent); }
 `;
 document.head.appendChild(calStyle);
+
+/* ======================================================================
+   CLIENTS — ADMIN
+   ====================================================================== */
+
+let adminClients = [];
+
+async function loadAdminClients() {
+  document.getElementById('clients-loading').style.display = '';
+  document.getElementById('clients-admin-list').innerHTML = '';
+  try {
+    const r = await fetch('/api/admin/users');
+    adminClients = await r.json();
+  } catch { adminClients = []; }
+  document.getElementById('clients-loading').style.display = 'none';
+  renderAdminClientList();
+}
+
+function renderAdminClientList() {
+  const el = document.getElementById('clients-admin-list');
+  if (!adminClients.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">No registered clients yet.</div>';
+    return;
+  }
+  el.innerHTML = adminClients.map(c => `
+    <div class="booking-admin-row">
+      <div class="bar-left">
+        <div>
+          <div class="bar-title">${escHtml(c.name)}</div>
+          <div class="bar-meta">${escHtml(c.email)} · Joined ${fmtDate(c.created_at)}</div>
+        </div>
+      </div>
+      <div class="bar-right">
+        <button class="btn-sm" onclick="openEditClientModal(${c.id})">Edit</button>
+        <button class="btn-sm btn-danger" onclick="deleteAdminClient(${c.id}, '${escHtml(c.name)}')">Remove</button>
+      </div>
+    </div>`).join('');
+}
+
+function openEditClientModal(id) {
+  const c = adminClients.find(x => x.id === id);
+  if (!c) return;
+
+  const existing = document.getElementById('client-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'client-modal';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:420px">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Client</h3>
+        <button class="modal-close" id="close-client-modal">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="field-group">
+          <label class="field-label">Full Name</label>
+          <input class="field-input" id="cm-name" value="${escHtml(c.name)}" placeholder="Client name" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <input class="field-input" type="email" id="cm-email" value="${escHtml(c.email)}" placeholder="client@example.com" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">New Password <span style="color:var(--text-muted);font-weight:400;text-transform:none">(leave blank to keep)</span></label>
+          <input class="field-input" type="password" id="cm-pw" placeholder="••••••••" />
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem">
+          <button class="btn-secondary" id="cancel-client-modal">Cancel</button>
+          <button class="btn-primary" id="save-client-modal">Save Changes</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  document.getElementById('close-client-modal').addEventListener('click', () => modal.remove());
+  document.getElementById('cancel-client-modal').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById('save-client-modal').addEventListener('click', async () => {
+    const btn = document.getElementById('save-client-modal');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const payload = {
+        name:     document.getElementById('cm-name').value.trim(),
+        email:    document.getElementById('cm-email').value.trim(),
+        password: document.getElementById('cm-pw').value,
+      };
+      if (!payload.name || !payload.email) { showToast('Name and email are required.', 'error'); btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+      const r = await fetch('/api/admin/users/' + id, {
+        method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Error');
+      showToast('Client updated!', 'success');
+      modal.remove();
+      loadAdminClients();
+    } catch(e) { showToast(e.message || 'Failed to update.', 'error'); btn.disabled = false; btn.textContent = 'Save Changes'; }
+  });
+}
+
+async function deleteAdminClient(id, name) {
+  if (!confirm('Remove client "' + name + '"? This will delete their account and cannot be undone.')) return;
+  await fetch('/api/admin/users/' + id, { method: 'DELETE' });
+  showToast('Client removed.', 'success');
+  loadAdminClients();
+}
+
+/* ======================================================================
+   BRANDING
+   ====================================================================== */
+let _brandingLoaded = false;
+
+async function loadBranding() {
+  try {
+    const res = await fetch('/api/branding');
+    const data = await res.json();
+    document.getElementById('branding-name').value  = data.company_name || 'NowDJ';
+    document.getElementById('branding-emoji').value = data.logo_emoji   || '🎧';
+    const color = data.accent_color || '#fa854f';
+    document.getElementById('branding-color-picker').value = color;
+    document.getElementById('branding-color-hex').value    = color;
+    _brandingLoaded = true;
+    updateBrandingPreview();
+  } catch { /* silently fail */ }
+}
+
+function _buildAccentVars(hex) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = '#fa854f';
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  const toHex = n => Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0');
+  return {
+    accent:       hex,
+    accentLight:  `#${toHex(Math.round(r+(255-r)*0.35))}${toHex(Math.round(g+(255-g)*0.35))}${toHex(Math.round(b+(255-b)*0.35))}`,
+    accentDark:   `#${toHex(Math.round(r*0.88))}${toHex(Math.round(g*0.88))}${toHex(Math.round(b*0.88))}`,
+    accentDim:    `rgba(${r},${g},${b},0.14)`,
+    accentGlow:   `rgba(${r},${g},${b},0.28)`,
+    borderActive: `rgba(${r},${g},${b},0.55)`,
+    shadowGlow:   `0 0 32px rgba(${r},${g},${b},0.18)`,
+  };
+}
+
+function _applyAccentVars(hex) {
+  const v = _buildAccentVars(hex);
+  const root = document.documentElement;
+  root.style.setProperty('--accent',        v.accent);
+  root.style.setProperty('--accent-light',  v.accentLight);
+  root.style.setProperty('--accent-dark',   v.accentDark);
+  root.style.setProperty('--accent-dim',    v.accentDim);
+  root.style.setProperty('--accent-glow',   v.accentGlow);
+  root.style.setProperty('--border-active', v.borderActive);
+  root.style.setProperty('--shadow-glow',   v.shadowGlow);
+}
+
+function updateBrandingPreview() {
+  const name  = document.getElementById('branding-name').value  || 'NowDJ';
+  const emoji = document.getElementById('branding-emoji').value || '🎧';
+  const hex   = document.getElementById('branding-color-hex').value || '#fa854f';
+  document.getElementById('preview-name').textContent  = name;
+  document.getElementById('preview-emoji').textContent = emoji;
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) _applyAccentVars(hex);
+  // Update all logo instances in this page
+  document.querySelectorAll('.sidebar-logo-emoji').forEach(el => el.textContent = emoji);
+  document.querySelectorAll('.sidebar-logo-text').forEach(el  => el.textContent = name);
+  document.querySelectorAll('.login-logo-emoji').forEach(el   => el.textContent = emoji);
+  document.querySelectorAll('.login-logo-text').forEach(el    => el.textContent = name);
+}
+
+document.getElementById('branding-color-picker').addEventListener('input', (e) => {
+  document.getElementById('branding-color-hex').value = e.target.value;
+  updateBrandingPreview();
+});
+
+document.getElementById('branding-color-hex').addEventListener('input', (e) => {
+  const val = e.target.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    document.getElementById('branding-color-picker').value = val;
+    updateBrandingPreview();
+  }
+});
+
+document.getElementById('branding-name').addEventListener('input',  updateBrandingPreview);
+document.getElementById('branding-emoji').addEventListener('input', updateBrandingPreview);
+
+document.getElementById('btn-save-branding').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-save-branding');
+  const status = document.getElementById('branding-save-status');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      company_name: document.getElementById('branding-name').value.trim()  || 'NowDJ',
+      logo_emoji:   document.getElementById('branding-emoji').value.trim() || '🎧',
+      accent_color: document.getElementById('branding-color-hex').value,
+    };
+    const res = await fetch('/api/branding', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error();
+    status.textContent   = 'Saved!';
+    status.style.color   = 'var(--success)';
+    status.style.display = '';
+    setTimeout(() => { status.style.display = 'none'; }, 2500);
+    showToast('Branding saved — other pages will update on next load.', 'success');
+  } catch { showToast('Failed to save branding.', 'error'); }
+  finally  { btn.disabled = false; btn.textContent = 'Save Changes'; }
+});
 
 /* ======================================================================
    ADMIN ACCOUNT

@@ -334,6 +334,33 @@ def create_user(name: str, email: str, password_hash: str) -> int:
         conn.close()
 
 
+def get_all_users() -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, created_at FROM users ORDER BY created_at DESC")
+            rows = cur.fetchall()
+            result = []
+            for row in rows:
+                r = dict(row)
+                if r.get("created_at"):
+                    r["created_at"] = r["created_at"].isoformat()
+                result.append(r)
+            return result
+    finally:
+        conn.close()
+
+
+def delete_user(uid: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM users WHERE id = %s", (uid,))
+    finally:
+        conn.close()
+
+
 def get_quotes_by_email(email: str) -> list[dict]:
     conn = _conn()
     try:

@@ -7,16 +7,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from catalog_store import (
+    build_branding_style,
     get_prices,
+    load_branding_config,
     load_catalog,
     load_site_config,
+    save_branding_config,
     save_catalog,
     save_site_config,
 )
 from database import (
     get_all_quotes, get_quote_by_id, init_db, save_quote, update_quote_status,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
-    get_user_by_email, get_user_by_id, create_user, get_quotes_by_email,
+    get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user, get_quotes_by_email,
     get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member, delete_staff_member,
     get_all_bookings, get_booking_by_id, get_bookings_for_user, get_bookings_for_staff,
     create_booking, update_booking, delete_booking,
@@ -61,31 +64,54 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def builder_page(request: Request):
+    branding = load_branding_config()
     return templates.TemplateResponse("builder.html", {
         "request": request,
         "catalog": load_catalog(),
         "config": load_site_config(),
+        "branding": branding,
+        "branding_style": build_branding_style(branding),
     })
 
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request})
+    branding = load_branding_config()
+    return templates.TemplateResponse("admin.html", {
+        "request": request,
+        "branding": branding,
+        "branding_style": build_branding_style(branding),
+    })
 
 
 @app.get("/portal", response_class=HTMLResponse)
 async def portal_page(request: Request):
-    return templates.TemplateResponse("portal.html", {"request": request})
+    branding = load_branding_config()
+    return templates.TemplateResponse("portal.html", {
+        "request": request,
+        "branding": branding,
+        "branding_style": build_branding_style(branding),
+    })
 
 
 @app.get("/staff-portal", response_class=HTMLResponse)
 async def staff_portal_page(request: Request):
-    return templates.TemplateResponse("staff.html", {"request": request})
+    branding = load_branding_config()
+    return templates.TemplateResponse("staff.html", {
+        "request": request,
+        "branding": branding,
+        "branding_style": build_branding_style(branding),
+    })
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    branding = load_branding_config()
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "branding": branding,
+        "branding_style": build_branding_style(branding),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +146,17 @@ async def api_get_site_config():
 @app.post("/api/site-config")
 async def api_save_site_config(config: dict):
     save_site_config(config)
+    return {"success": True}
+
+
+@app.get("/api/branding")
+async def api_get_branding():
+    return load_branding_config()
+
+
+@app.post("/api/branding")
+async def api_save_branding(config: dict):
+    save_branding_config(config)
     return {"success": True}
 
 
@@ -543,6 +580,39 @@ async def admin_delete_booking(bid: int):
     if not get_booking_by_id(bid):
         raise HTTPException(status_code=404, detail="Booking not found")
     delete_booking(bid)
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Admin — user (client) management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/users")
+async def admin_list_users():
+    return get_all_users()
+
+
+@app.patch("/api/admin/users/{uid}")
+async def admin_update_user(uid: int, payload: dict):
+    user = get_user_by_id(uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    new_name  = payload.get("name", "").strip()
+    new_email = payload.get("email", "").strip().lower()
+    new_pw    = payload.get("password", "")
+    if not new_name or not new_email:
+        raise HTTPException(status_code=400, detail="name and email required")
+    from database import update_user
+    pw_hash = hash_password(new_pw) if new_pw else None
+    update_user(uid, new_name, new_email, pw_hash)
+    return {"success": True}
+
+
+@app.delete("/api/admin/users/{uid}")
+async def admin_delete_user(uid: int):
+    if not get_user_by_id(uid):
+        raise HTTPException(status_code=404, detail="User not found")
+    delete_user(uid)
     return {"success": True}
 
 

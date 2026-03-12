@@ -1565,6 +1565,34 @@ tr[draggable].drag-over td {
 .status-declined  { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
 .status-declined::before { background: #ef4444; }
 
+/* Booking statuses */
+.status-confirmed  { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
+.status-confirmed::before  { background: #10b981; }
+.status-completed  { background: rgba(96,165,250,0.12); color: #93c5fd; border: 1px solid rgba(96,165,250,0.25); }
+.status-completed::before  { background: #60a5fa; }
+.status-cancelled  { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+.status-cancelled::before  { background: #ef4444; }
+
+/* Alias for booking status badges rendered in JS */
+.quote-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.quote-status-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .expanded-row td { cursor: default; }
 
 .quote-detail {
@@ -1948,6 +1976,94 @@ tr[draggable].drag-over td {
   border-color: var(--danger) !important;
   background: rgba(239, 68, 68, 0.08) !important;
 }
+
+/* ── Small action buttons (used in list rows) ── */
+.btn-sm {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hover);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 0.28rem 0.7rem;
+  font-size: 0.775rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm.btn-danger { border-color: rgba(239,68,68,0.2); color: #fca5a5; }
+.btn-sm.btn-danger:hover { border-color: var(--danger); background: rgba(239,68,68,0.08); color: #fca5a5; }
+
+/* ── Content card (panel wrapper used in Bookings / Staff / Clients) ── */
+.content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Form field group (used in modals and Account section) ── */
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+
+.field-label {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 0.55rem 0.75rem;
+  transition: var(--transition);
+  outline: none;
+  width: 100%;
+}
+.field-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.field-input[disabled] { opacity: 0.5; cursor: not-allowed; }
+textarea.field-input { resize: vertical; min-height: 80px; }
+
+/* ── Section page header variants (Bookings / Staff use h2 + classes) ── */
+.section-page-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 0.2rem;
+}
+.section-page-sub { color: var(--text-secondary); font-size: 0.875rem; }
+
+/* ── Modal close / title for dynamically created modals ── */
+.modal-overlay.active { display: flex; }
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.modal-close:hover { color: var(--text-primary); }
+.modal-close svg { width: 18px; height: 18px; }
+
+.modal-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
 
 .msg-view-body { flex: 1; overflow: hidden; }
 

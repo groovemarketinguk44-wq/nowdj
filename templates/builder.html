@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NowDJ — Build Your Package</title>
+  <title>{{ branding.company_name }} — Build Your Package</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
+  {{ branding_style | safe }}
 </head>
 <body>
 
 <header class="site-header">
   <a href="/" class="logo">
-    <div class="logo-icon">🎧</div>
-    <span class="logo-text">Now<span>DJ</span></span>
+    <div class="logo-icon">{{ branding.logo_emoji }}</div>
+    <span class="logo-text">{{ branding.company_name }}</span>
   </a>
   <nav class="nav-links">
     <a href="/">Builder</a>

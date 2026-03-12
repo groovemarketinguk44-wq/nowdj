@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NowDJ — Login</title>
+  <title>{{ branding.company_name }} — Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -37,12 +37,13 @@
     .back { display:block; text-align:center; margin-top:1.5rem; color:var(--text-muted); font-size:0.82rem; text-decoration:none; }
     .back:hover { color:var(--text); }
   </style>
+  {{ branding_style | safe }}
 </head>
 <body>
 
 <a href="/" class="logo">
-  <div class="logo-icon">🎧</div>
-  <span class="logo-text">Now<span>DJ</span></span>
+  <div class="logo-icon">{{ branding.logo_emoji }}</div>
+  <span class="logo-text">{{ branding.company_name }}</span>
 </a>
 
 <div class="card">

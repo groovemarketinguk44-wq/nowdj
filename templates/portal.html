@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NowDJ — My Account</title>
+  <title>{{ branding.company_name }} — My Account</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -92,13 +92,14 @@
     .empty-state p { margin-top: 0.5rem; font-size: 0.88rem; }
     .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
   </style>
+  {{ branding_style | safe }}
 </head>
 <body>
 
 <header>
   <a href="/" class="logo">
-    <div class="logo-icon">🎧</div>
-    <span class="logo-text">Now<span>DJ</span></span>
+    <div class="logo-icon">{{ branding.logo_emoji }}</div>
+    <span class="logo-text">{{ branding.company_name }}</span>
   </a>
   <div class="header-nav">
     <a href="/">Quote Builder</a>
