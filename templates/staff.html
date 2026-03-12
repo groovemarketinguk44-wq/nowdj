@@ -7,86 +7,126 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  {{ branding_style | safe }}
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a; --accent: #7c5cfc;
-      --text: #e8eaf0; --text-muted: #888ba0; --success: #22c55e; --error: #ef4444;
+    /* ── Header right ── */
+    #btn-logout {
+      background: none; border: 1px solid var(--border-hover);
+      color: var(--text-secondary); padding: 0.4rem 0.9rem;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 0.82rem; display: none; font-family: inherit;
+      transition: border-color var(--transition), color var(--transition);
     }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    #btn-logout:hover { border-color: var(--accent); color: var(--text-primary); }
+    .staff-label { font-size: 0.82rem; color: var(--text-muted); display: none; }
 
-    header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem;
-      border-bottom: 1px solid var(--border); background: var(--surface); }
-    .logo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text); }
-    .logo-icon { font-size: 1.4rem; }
-    .logo-text { font-size: 1.2rem; font-weight: 800; }
-    .logo-text span { color: var(--accent); }
-    #btn-logout { background: none; border: 1px solid var(--border); color: var(--text-muted);
-      padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; display: none; }
-    #btn-logout:hover { border-color: var(--accent); color: var(--text); }
-    .staff-label { font-size: 0.8rem; color: var(--text-muted); display: none; }
+    /* ── Page ── */
+    .page { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem; }
 
-    .page { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; }
-
-    /* Auth */
-    .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-      padding: 2.5rem; max-width: 400px; margin: 3rem auto; }
+    /* ── Auth card ── */
+    .auth-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-xl); padding: 2.5rem;
+      max-width: 400px; margin: 3rem auto;
+      box-shadow: var(--shadow-card);
+    }
     .auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
-    .auth-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.8rem; }
+    .auth-sub { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.8rem; }
+
+    /* ── Form ── */
     .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; font-size: 0.82rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-muted); }
-    .form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-      padding: 0.65rem 0.9rem; color: var(--text); font-size: 0.9rem; outline: none; }
-    .form-group input:focus { border-color: var(--accent); }
-    .btn-primary { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 0.75rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
-    .btn-primary:hover { opacity: 0.9; }
+    .form-group label {
+      display: block; font-size: 0.82rem; font-weight: 500;
+      color: var(--text-secondary); margin-bottom: 0.4rem;
+    }
+    .form-group input {
+      width: 100%; background: var(--bg-input);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.9rem; color: var(--text-primary);
+      font-size: 0.9rem; outline: none; font-family: inherit;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    .btn-primary {
+      width: 100%; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      padding: 0.75rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; margin-top: 0.5rem; font-family: inherit;
+      transition: opacity var(--transition);
+    }
+    .btn-primary:hover { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .auth-error { color: var(--error); font-size: 0.82rem; margin-top: 0.6rem; display: none; }
+    .auth-error {
+      color: var(--danger); font-size: 0.82rem; margin-top: 0.6rem;
+      display: none; background: rgba(239,68,68,0.08);
+      border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
+    }
     .auth-error.visible { display: block; }
 
-    /* Dashboard */
+    /* ── Dashboard ── */
     #dashboard { display: none; }
     .dash-header { margin-bottom: 2rem; }
     .dash-header h1 { font-size: 1.5rem; font-weight: 700; }
-    .dash-header p { color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem; }
+    .dash-header p { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; }
 
-    .section-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .section-title {
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.75rem;
+    }
 
-    /* Booking cards */
-    .booking-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 1.2rem 1.4rem; margin-bottom: 0.75rem; display: flex; gap: 1.2rem; align-items: flex-start; }
-    .booking-date-box { background: var(--accent-dim, rgba(124,92,252,0.12)); border-radius: 10px;
-      padding: 0.6rem 0.8rem; text-align: center; min-width: 56px; flex-shrink: 0; }
+    /* ── Booking cards ── */
+    .booking-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-lg); padding: 1.2rem 1.4rem;
+      margin-bottom: 0.75rem; display: flex; gap: 1.2rem; align-items: flex-start;
+      transition: border-color var(--transition);
+    }
+    .booking-card:hover { border-color: var(--border-active); }
+    .booking-date-box {
+      background: var(--accent-dim); border-radius: var(--radius-sm);
+      padding: 0.6rem 0.8rem; text-align: center; min-width: 56px;
+      flex-shrink: 0; border: 1px solid var(--border-active);
+    }
     .date-day   { font-size: 1.5rem; font-weight: 800; color: var(--accent); line-height: 1; }
     .date-month { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-top: 0.1rem; }
     .booking-info { flex: 1; min-width: 0; }
     .booking-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
-    .booking-meta { color: var(--text-muted); font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
-    .booking-meta span { display: flex; align-items: center; gap: 0.3rem; }
-    .status-badge { font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.55rem; border-radius: 20px;
-      text-transform: uppercase; letter-spacing: 0.04em; }
-    .status-confirmed { background: rgba(34,197,94,0.15); color: var(--success); }
-    .status-completed { background: rgba(124,92,252,0.15); color: var(--accent); }
-    .status-cancelled { background: rgba(239,68,68,0.15); color: var(--error); }
-    .booking-notes { margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-muted);
-      background: rgba(255,255,255,0.04); border-radius: 6px; padding: 0.4rem 0.6rem; }
+    .booking-meta {
+      color: var(--text-muted); font-size: 0.82rem;
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .status-badge {
+      font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .status-confirmed { background: rgba(16,185,129,0.15); color: var(--success); }
+    .status-completed { background: var(--accent-dim); color: var(--accent); }
+    .status-cancelled { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .booking-notes {
+      margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-muted);
+      background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);
+      padding: 0.4rem 0.6rem;
+    }
 
-    .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .divider { border: none; border-top: 1px solid var(--border-hover); margin: 1.5rem 0; }
 
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
-    .empty-state strong { color: var(--text); }
-    .empty-state p { margin-top: 0.4rem; font-size: 0.85rem; }
+    .empty-state strong { color: var(--text-secondary); display: block; margin-bottom: 0.3rem; }
+    .empty-state p { font-size: 0.875rem; }
     .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
-  .brand-logo-img { height: 28px; width: auto; object-fit: contain; display: block; }
-  .logo-icon--img { background: none !important; }
+
+    .brand-logo-img { height: 28px; width: auto; object-fit: contain; display: block; }
+    .logo-icon--img { background: none !important; box-shadow: none !important; }
   </style>
-  {{ branding_style | safe }}
 </head>
 <body>
 
-<header>
+<header class="site-header">
   <a href="/" class="logo">
     {% if branding.logo_image %}<div class="logo-icon logo-icon--img"><img src="{{ branding.logo_image }}" class="brand-logo-img" alt="{{ branding.company_name }}" /></div>{% else %}<div class="logo-icon">{{ branding.logo_emoji }}</div>{% endif %}
     <span class="logo-text">{{ branding.company_name }} Staff</span>
@@ -106,7 +146,7 @@
       <div class="auth-sub">Sign in to view your schedule</div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="login-email" placeholder="you@nowdj.com" autocomplete="email" />
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email" />
       </div>
       <div class="form-group">
         <label>Password</label>
@@ -142,12 +182,12 @@
     <hr class="divider" style="margin-top:2rem" />
     <div id="profile-section" style="display:none">
       <div class="section-title" style="margin-bottom:0.75rem">Account Settings</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.4rem;max-width:420px">
+      <div style="background:var(--bg-card);border:1px solid var(--border-hover);border-radius:var(--radius-lg);padding:1.4rem;max-width:420px">
         <div class="form-group"><label>Full Name</label><input type="text" id="prof-name" /></div>
         <div class="form-group"><label>Email</label><input type="email" id="prof-email" /></div>
         <div class="form-group"><label>New Password <span style="color:var(--text-muted);font-size:0.8rem">(leave blank to keep current)</span></label><input type="password" id="prof-pw" placeholder="••••••••" /></div>
         <div class="auth-error" id="prof-error"></div>
-        <div style="color:#22c55e;font-size:0.82rem;margin-top:0.5rem;display:none" id="prof-success">Details updated!</div>
+        <div style="color:var(--success);font-size:0.82rem;margin-top:0.5rem;display:none" id="prof-success">Details updated!</div>
         <button class="btn-primary" id="btn-save-profile" style="margin-top:0.75rem">Save Changes</button>
       </div>
     </div>

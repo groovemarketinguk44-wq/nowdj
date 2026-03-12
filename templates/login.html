@@ -3,43 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ branding.company_name }} — Login</title>
+  <title>{{ branding.company_name }} — Sign In</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --bg:#0f1117; --surface:#1a1d27; --border:#2a2d3a; --accent:#7c5cfc; --text:#e8eaf0; --text-muted:#888ba0; --error:#ef4444; }
-    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text);
-      min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.5rem; }
-    .logo { display:flex; align-items:center; gap:0.5rem; text-decoration:none; color:var(--text); margin-bottom:2rem; }
-    .logo-icon { font-size:2rem; }
-    .logo-text { font-size:1.6rem; font-weight:800; }
-    .logo-text span { color:var(--accent); }
-    .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:2.5rem; width:100%; max-width:400px; }
-    h2 { font-size:1.3rem; font-weight:700; margin-bottom:0.3rem; }
-    .sub { color:var(--text-muted); font-size:0.85rem; margin-bottom:1.8rem; }
-    .form-group { margin-bottom:1rem; }
-    label { display:block; font-size:0.82rem; font-weight:500; color:var(--text-muted); margin-bottom:0.4rem; }
-    input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px;
-      padding:0.65rem 0.9rem; color:var(--text); font-size:0.9rem; outline:none; font-family:inherit; }
-    input:focus { border-color:var(--accent); }
-    .btn { width:100%; background:var(--accent); color:#fff; border:none; border-radius:8px;
-      padding:0.75rem; font-size:0.95rem; font-weight:600; cursor:pointer; margin-top:0.5rem; font-family:inherit; }
-    .btn:hover { opacity:0.9; }
-    .btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .error { color:var(--error); font-size:0.82rem; margin-top:0.75rem; display:none; }
-    .error.visible { display:block; }
-    .divider { text-align:center; margin:1.5rem 0 1rem; font-size:0.82rem; color:var(--text-muted); }
-    .btn-secondary { width:100%; background:transparent; color:var(--text-muted); border:1px solid var(--border);
-      border-radius:8px; padding:0.65rem; font-size:0.88rem; cursor:pointer; font-family:inherit; }
-    .btn-secondary:hover { border-color:var(--accent); color:var(--text); }
-    .back { display:block; text-align:center; margin-top:1.5rem; color:var(--text-muted); font-size:0.82rem; text-decoration:none; }
-    .back:hover { color:var(--text); }
-  .brand-logo-img { height: 32px; width: auto; object-fit: contain; display: block; }
-  .logo-icon--img { background: none !important; }
-  </style>
+  <link rel="stylesheet" href="/static/style.css" />
   {{ branding_style | safe }}
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: var(--bg-base);
+    }
+    .logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none; color: var(--text-primary);
+      margin-bottom: 2rem;
+    }
+    .logo-text { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+      width: 100%; max-width: 400px;
+      box-shadow: var(--shadow-card);
+    }
+    h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .sub { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.8rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block; font-size: 0.82rem; font-weight: 500;
+      color: var(--text-secondary); margin-bottom: 0.4rem;
+    }
+    .form-group input {
+      width: 100%; background: var(--bg-input);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.9rem;
+      color: var(--text-primary); font-size: 0.9rem;
+      outline: none; font-family: inherit;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    .btn {
+      width: 100%; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      padding: 0.75rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; margin-top: 0.5rem; font-family: inherit;
+      transition: opacity var(--transition);
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error {
+      color: var(--danger); font-size: 0.82rem;
+      margin-top: 0.75rem; display: none;
+      background: rgba(239,68,68,0.08); border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+    }
+    .error.visible { display: block; }
+    .divider {
+      text-align: center; margin: 1.5rem 0 1rem;
+      font-size: 0.82rem; color: var(--text-muted);
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute; top: 50%; left: 0; right: 0;
+      height: 1px; background: var(--border-hover);
+    }
+    .divider span {
+      position: relative; background: var(--bg-card);
+      padding: 0 0.75rem;
+    }
+    .btn-secondary {
+      width: 100%; background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem; font-size: 0.875rem;
+      cursor: pointer; font-family: inherit;
+      transition: border-color var(--transition), color var(--transition);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
+    .back {
+      display: block; text-align: center; margin-top: 1.5rem;
+      color: var(--text-muted); font-size: 0.82rem; text-decoration: none;
+      transition: color var(--transition);
+    }
+    .back:hover { color: var(--text-secondary); }
+    .brand-logo-img { height: 32px; width: auto; object-fit: contain; display: block; }
+    .logo-icon--img { background: none !important; box-shadow: none !important; }
+  </style>
 </head>
 <body>
 
@@ -64,7 +126,7 @@
   <div class="error" id="error-msg">Incorrect email or password. Please try again.</div>
   <button class="btn" id="btn-login">Sign In</button>
 
-  <div class="divider">Don't have an account?</div>
+  <div class="divider"><span>Don't have an account?</span></div>
   <button class="btn-secondary" onclick="location.href='/portal'">Create a Customer Account</button>
 </div>
 
