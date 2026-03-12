@@ -14,7 +14,7 @@
 
 <header class="site-header">
   <a href="/" class="logo">
-    <div class="logo-icon">{{ branding.logo_emoji }}</div>
+    {% if branding.logo_image %}<div class="logo-icon logo-icon--img"><img src="{{ branding.logo_image }}" class="brand-logo-img" alt="{{ branding.company_name }}" /></div>{% else %}<div class="logo-icon">{{ branding.logo_emoji }}</div>{% endif %}
     <span class="logo-text">{{ branding.company_name }}</span>
   </a>
   <nav class="nav-links">

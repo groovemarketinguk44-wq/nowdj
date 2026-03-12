@@ -117,6 +117,11 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
 
 .logo-text span { color: var(--accent); }
 
+.brand-logo-img { height: 36px; width: auto; object-fit: contain; display: block; }
+.login-logo .brand-logo-img { height: 44px; }
+.sidebar-brand .brand-logo-img { height: 34px; }
+.logo-icon--img { background: none !important; box-shadow: none !important; }
+
 .nav-links {
   display: flex;
   align-items: center;

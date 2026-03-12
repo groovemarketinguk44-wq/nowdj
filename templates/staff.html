@@ -79,6 +79,8 @@
     .empty-state strong { color: var(--text); }
     .empty-state p { margin-top: 0.4rem; font-size: 0.85rem; }
     .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
+  .brand-logo-img { height: 28px; width: auto; object-fit: contain; display: block; }
+  .logo-icon--img { background: none !important; }
   </style>
   {{ branding_style | safe }}
 </head>
@@ -86,7 +88,7 @@
 
 <header>
   <a href="/" class="logo">
-    <div class="logo-icon">{{ branding.logo_emoji }}</div>
+    {% if branding.logo_image %}<div class="logo-icon logo-icon--img"><img src="{{ branding.logo_image }}" class="brand-logo-img" alt="{{ branding.company_name }}" /></div>{% else %}<div class="logo-icon">{{ branding.logo_emoji }}</div>{% endif %}
     <span class="logo-text">{{ branding.company_name }} Staff</span>
   </a>
   <div style="display:flex;align-items:center;gap:1rem">

@@ -18,7 +18,7 @@
 <div id="login-screen" class="login-screen">
   <div class="login-card">
     <div class="login-logo">
-      <div class="logo-icon login-logo-emoji">{{ branding.logo_emoji }}</div>
+      {% if branding.logo_image %}<div class="logo-icon logo-icon--img login-logo-icon"><img src="{{ branding.logo_image }}" class="brand-logo-img" alt="{{ branding.company_name }}" /></div>{% else %}<div class="logo-icon login-logo-icon"><span class="login-logo-emoji">{{ branding.logo_emoji }}</span></div>{% endif %}
       <span class="logo-text login-logo-text">{{ branding.company_name }}</span>
     </div>
     <h2>Admin Access</h2>
@@ -45,7 +45,7 @@
     <!-- ── Sidebar ── -->
     <aside class="admin-sidebar">
       <a href="/" class="sidebar-brand">
-        <div class="logo-icon sidebar-logo-emoji">{{ branding.logo_emoji }}</div>
+        {% if branding.logo_image %}<div class="logo-icon logo-icon--img sidebar-logo-icon"><img src="{{ branding.logo_image }}" class="brand-logo-img" alt="{{ branding.company_name }}" /></div>{% else %}<div class="logo-icon sidebar-logo-icon"><span class="sidebar-logo-emoji">{{ branding.logo_emoji }}</span></div>{% endif %}
         <span class="logo-text sidebar-logo-text">{{ branding.company_name }}</span>
       </a>
 
@@ -494,9 +494,27 @@
             </div>
 
             <div class="field-group" style="margin-top:0.75rem">
-              <label class="field-label">Logo Emoji</label>
+              <label class="field-label">Logo Image <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+              <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" style="display:none" />
+              <div id="logo-upload-area" style="border:2px dashed var(--border-hover);border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:border-color var(--transition)" onclick="document.getElementById('logo-file-input').click()">
+                <div id="logo-current-preview" style="display:none;margin-bottom:0.6rem">
+                  <img id="logo-preview-img" src="" alt="Logo" style="max-height:48px;max-width:180px;object-fit:contain;border-radius:6px" />
+                </div>
+                <div id="logo-upload-prompt">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;margin:0 auto 0.4rem;display:block;color:var(--text-muted)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span style="font-size:0.82rem;color:var(--text-muted)">Click to upload — PNG, SVG, JPG or WebP</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem">
+                <button type="button" id="logo-remove-btn" style="display:none;font-size:0.78rem;color:var(--danger);background:none;border:none;cursor:pointer;padding:0">Remove logo</button>
+                <span id="logo-size-warning" style="display:none;font-size:0.78rem;color:var(--warning)">Image is large — consider compressing it.</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem">If no image is uploaded, the emoji below is used instead.</div>
+            </div>
+
+            <div class="field-group" style="margin-top:0.75rem" id="emoji-fallback-field">
+              <label class="field-label">Emoji Fallback</label>
               <input class="field-input" type="text" id="branding-emoji" placeholder="🎧" maxlength="4" style="font-size:1.4rem;text-align:center;width:80px" />
-              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem">Single emoji shown next to the company name</div>
             </div>
 
             <div class="field-group" style="margin-top:0.75rem">
@@ -514,7 +532,9 @@
             <h3 style="margin-bottom:1.25rem;font-size:1rem;font-weight:700">Live Preview</h3>
             <div style="background:var(--bg-surface);border-radius:12px;padding:1.5rem;border:1px solid var(--border)">
               <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.25rem">
-                <div id="preview-emoji" style="font-size:1.4rem;background:var(--accent-dim);width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--border-active)">🎧</div>
+                <div id="preview-logo-icon" style="font-size:1.4rem;background:var(--accent-dim);width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--border-active);overflow:hidden;flex-shrink:0">
+                  <span id="preview-emoji">🎧</span>
+                </div>
                 <span id="preview-name" style="font-size:1.1rem;font-weight:800">NowDJ</span>
               </div>
               <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
@@ -2236,6 +2256,7 @@ async function deleteAdminClient(id, name) {
    BRANDING
    ====================================================================== */
 let _brandingLoaded = false;
+let _pendingLogoDataUrl = null;  // null = unchanged, '' = cleared, 'data:...' = new image
 
 async function loadBranding() {
   try {
@@ -2246,10 +2267,82 @@ async function loadBranding() {
     const color = data.accent_color || '#fa854f';
     document.getElementById('branding-color-picker').value = color;
     document.getElementById('branding-color-hex').value    = color;
+    _pendingLogoDataUrl = null;
+    _setLogoPreview(data.logo_image || '');
     _brandingLoaded = true;
     updateBrandingPreview();
   } catch { /* silently fail */ }
 }
+
+function _setLogoPreview(dataUrl) {
+  const previewWrap  = document.getElementById('logo-current-preview');
+  const previewImg   = document.getElementById('logo-preview-img');
+  const uploadPrompt = document.getElementById('logo-upload-prompt');
+  const removeBtn    = document.getElementById('logo-remove-btn');
+  const previewIcon  = document.getElementById('preview-logo-icon');
+  const previewEmoji = document.getElementById('preview-emoji');
+
+  if (dataUrl) {
+    previewImg.src = dataUrl;
+    previewWrap.style.display  = '';
+    uploadPrompt.style.display = 'none';
+    removeBtn.style.display    = '';
+    // Update preview card to show image
+    previewIcon.style.background = 'none';
+    previewIcon.style.border     = 'none';
+    previewEmoji.innerHTML = `<img src="${dataUrl}" style="max-height:36px;max-width:36px;object-fit:contain" />`;
+  } else {
+    previewImg.src = '';
+    previewWrap.style.display  = 'none';
+    uploadPrompt.style.display = '';
+    removeBtn.style.display    = 'none';
+    // Revert preview card to emoji
+    previewIcon.style.background = '';
+    previewIcon.style.border     = '';
+    previewEmoji.innerHTML = document.getElementById('branding-emoji').value || '🎧';
+    previewEmoji.textContent = document.getElementById('branding-emoji').value || '🎧';
+  }
+}
+
+// Logo file upload
+document.getElementById('logo-file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const sizeWarn = document.getElementById('logo-size-warning');
+  sizeWarn.style.display = file.size > 500_000 ? '' : 'none';
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    _pendingLogoDataUrl = ev.target.result;
+    _setLogoPreview(_pendingLogoDataUrl);
+    updateBrandingPreview();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';  // allow re-selecting same file
+});
+
+// Drag-over highlight
+const uploadArea = document.getElementById('logo-upload-area');
+uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = 'var(--accent)'; });
+uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    _pendingLogoDataUrl = ev.target.result;
+    _setLogoPreview(_pendingLogoDataUrl);
+    updateBrandingPreview();
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('logo-remove-btn').addEventListener('click', () => {
+  _pendingLogoDataUrl = '';
+  _setLogoPreview('');
+  updateBrandingPreview();
+});
 
 function _buildAccentVars(hex) {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = '#fa854f';
@@ -2284,14 +2377,22 @@ function updateBrandingPreview() {
   const name  = document.getElementById('branding-name').value  || 'NowDJ';
   const emoji = document.getElementById('branding-emoji').value || '🎧';
   const hex   = document.getElementById('branding-color-hex').value || '#fa854f';
-  document.getElementById('preview-name').textContent  = name;
-  document.getElementById('preview-emoji').textContent = emoji;
+  document.getElementById('preview-name').textContent = name;
+  // Only update emoji span if no image is currently showing
+  if (!_pendingLogoDataUrl && _pendingLogoDataUrl !== '') {
+    // unchanged — leave as-is; will be correct from loadBranding
+  } else if (!_pendingLogoDataUrl) {
+    // cleared or no image
+    const emojiEl = document.getElementById('preview-emoji');
+    if (emojiEl && !emojiEl.querySelector('img')) emojiEl.textContent = emoji;
+  }
   if (/^#[0-9a-fA-F]{6}$/.test(hex)) _applyAccentVars(hex);
-  // Update all logo instances in this page
+  // Update name in all logo instances
+  document.querySelectorAll('.sidebar-logo-text').forEach(el => el.textContent = name);
+  document.querySelectorAll('.login-logo-text').forEach(el   => el.textContent = name);
+  // Update emoji in instances that don't have an image
   document.querySelectorAll('.sidebar-logo-emoji').forEach(el => el.textContent = emoji);
-  document.querySelectorAll('.sidebar-logo-text').forEach(el  => el.textContent = name);
   document.querySelectorAll('.login-logo-emoji').forEach(el   => el.textContent = emoji);
-  document.querySelectorAll('.login-logo-text').forEach(el    => el.textContent = name);
 }
 
 document.getElementById('branding-color-picker').addEventListener('input', (e) => {
@@ -2315,16 +2416,25 @@ document.getElementById('btn-save-branding').addEventListener('click', async () 
   const status = document.getElementById('branding-save-status');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
+    // Fetch current branding to keep logo_image if not changed
+    let currentLogoImage = '';
+    try {
+      const cur = await fetch('/api/branding');
+      const curData = await cur.json();
+      currentLogoImage = curData.logo_image || '';
+    } catch { /* ignore */ }
     const payload = {
       company_name: document.getElementById('branding-name').value.trim()  || 'NowDJ',
       logo_emoji:   document.getElementById('branding-emoji').value.trim() || '🎧',
       accent_color: document.getElementById('branding-color-hex').value,
+      logo_image:   _pendingLogoDataUrl !== null ? _pendingLogoDataUrl : currentLogoImage,
     };
     const res = await fetch('/api/branding', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error();
+    _pendingLogoDataUrl = null;
     status.textContent   = 'Saved!';
     status.style.color   = 'var(--success)';
     status.style.display = '';

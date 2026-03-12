@@ -54,6 +54,7 @@ def save_site_config(config: dict) -> None:
 DEFAULT_BRANDING_CONFIG = {
     "company_name": "NowDJ",
     "logo_emoji": "🎧",
+    "logo_image": "",
     "accent_color": "#fa854f",
 }
 
