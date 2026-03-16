@@ -27,15 +27,15 @@ SCOPES = [
 DEFAULT_CONFIG: dict = {
     "client_id":     "",
     "client_secret": "",
-    "tenant_id":     "common",
+    "tenant_id":     "common",  # Azure AD tenant (not our app tenant)
     "redirect_uri":  "",
 }
 
 
 # ── Config ─────────────────────────────────────────────────────────────────
 
-def load_config() -> dict:
-    raw = get_setting("email_config")
+def load_config(app_tenant_id: int) -> dict:
+    raw = get_setting("email_config", tenant_id=app_tenant_id)
     if raw:
         try:
             return {**DEFAULT_CONFIG, **json.loads(raw)}
@@ -44,14 +44,14 @@ def load_config() -> dict:
     return DEFAULT_CONFIG.copy()
 
 
-def save_config(data: dict) -> None:
-    set_setting("email_config", json.dumps(data, ensure_ascii=False))
+def save_config(data: dict, app_tenant_id: int) -> None:
+    set_setting("email_config", json.dumps(data, ensure_ascii=False), tenant_id=app_tenant_id)
 
 
 # ── Tokens ─────────────────────────────────────────────────────────────────
 
-def load_tokens() -> dict:
-    raw = get_setting("email_tokens")
+def load_tokens(app_tenant_id: int) -> dict:
+    raw = get_setting("email_tokens", tenant_id=app_tenant_id)
     if raw:
         try:
             return json.loads(raw)
@@ -60,30 +60,30 @@ def load_tokens() -> dict:
     return {}
 
 
-def save_tokens(tokens: dict) -> None:
+def save_tokens(tokens: dict, app_tenant_id: int) -> None:
     if "expires_in" in tokens:
         tokens = {**tokens, "expires_at": time.time() + int(tokens["expires_in"]) - 60}
-    set_setting("email_tokens", json.dumps(tokens))
+    set_setting("email_tokens", json.dumps(tokens), tenant_id=app_tenant_id)
 
 
-def clear_tokens() -> None:
-    set_setting("email_tokens", "")
+def clear_tokens(app_tenant_id: int) -> None:
+    set_setting("email_tokens", "", tenant_id=app_tenant_id)
 
 
-def is_configured(config: Optional[dict] = None) -> bool:
-    cfg = config or load_config()
+def is_configured(app_tenant_id: int, config: Optional[dict] = None) -> bool:
+    cfg = config or load_config(app_tenant_id)
     return bool(cfg.get("client_id") and cfg.get("client_secret"))
 
 
-def is_authenticated() -> bool:
-    t = load_tokens()
+def is_authenticated(app_tenant_id: int) -> bool:
+    t = load_tokens(app_tenant_id)
     return bool(t.get("refresh_token") or t.get("access_token"))
 
 
 # ── OAuth2 ─────────────────────────────────────────────────────────────────
 
-def get_auth_url() -> str:
-    cfg = load_config()
+def get_auth_url(app_tenant_id: int) -> str:
+    cfg = load_config(app_tenant_id)
     params = {
         "client_id":     cfg["client_id"],
         "response_type": "code",
@@ -92,22 +92,22 @@ def get_auth_url() -> str:
         "response_mode": "query",
         "prompt":        "select_account",
     }
-    tenant = cfg.get("tenant_id") or "common"
+    azure_tenant = cfg.get("tenant_id") or "common"
     return (
-        f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?"
+        f"https://login.microsoftonline.com/{azure_tenant}/oauth2/v2.0/authorize?"
         + urllib.parse.urlencode(params)
     )
 
 
-async def _token_post(data: dict) -> dict:
+async def _token_post(data: dict, app_tenant_id: int) -> dict:
     try:
         import httpx
     except ImportError:
         raise RuntimeError("httpx is required: pip install httpx")
 
-    cfg    = load_config()
-    tenant = cfg.get("tenant_id") or "common"
-    url    = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+    cfg         = load_config(app_tenant_id)
+    azure_tenant = cfg.get("tenant_id") or "common"
+    url          = f"https://login.microsoftonline.com/{azure_tenant}/oauth2/v2.0/token"
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.post(url, data=data)
@@ -115,21 +115,21 @@ async def _token_post(data: dict) -> dict:
         return resp.json()
 
 
-async def exchange_code(code: str) -> dict:
-    cfg    = load_config()
+async def exchange_code(code: str, app_tenant_id: int) -> dict:
+    cfg    = load_config(app_tenant_id)
     tokens = await _token_post({
         "client_id":     cfg["client_id"],
         "client_secret": cfg["client_secret"],
         "code":          code,
         "redirect_uri":  cfg.get("redirect_uri", ""),
         "grant_type":    "authorization_code",
-    })
-    save_tokens(tokens)
+    }, app_tenant_id)
+    save_tokens(tokens, app_tenant_id)
     return tokens
 
 
-async def get_valid_token() -> str:
-    tokens = load_tokens()
+async def get_valid_token(app_tenant_id: int) -> str:
+    tokens = load_tokens(app_tenant_id)
     if not tokens:
         raise ValueError("Not connected. Please link your Outlook account.")
 
@@ -138,20 +138,20 @@ async def get_valid_token() -> str:
             return tokens["access_token"]
 
     if tokens.get("refresh_token"):
-        cfg = load_config()
+        cfg = load_config(app_tenant_id)
         try:
             new_t = await _token_post({
                 "client_id":     cfg["client_id"],
                 "client_secret": cfg["client_secret"],
                 "refresh_token": tokens["refresh_token"],
                 "grant_type":    "refresh_token",
-            })
+            }, app_tenant_id)
             if not new_t.get("refresh_token"):
                 new_t["refresh_token"] = tokens["refresh_token"]
-            save_tokens(new_t)
+            save_tokens(new_t, app_tenant_id)
             return new_t["access_token"]
         except Exception:
-            clear_tokens()
+            clear_tokens(app_tenant_id)
             raise ValueError("Session expired. Please reconnect your Outlook account.")
 
     if tokens.get("access_token"):
@@ -162,13 +162,13 @@ async def get_valid_token() -> str:
 
 # ── Graph helpers ───────────────────────────────────────────────────────────
 
-async def _get(path: str, params: dict | None = None) -> Optional[dict]:
+async def _get(path: str, app_tenant_id: int, params: dict | None = None) -> Optional[dict]:
     try:
         import httpx
     except ImportError:
         raise RuntimeError("pip install httpx")
 
-    token = await get_valid_token()
+    token = await get_valid_token(app_tenant_id)
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.get(
             f"{GRAPH_BASE}{path}",
@@ -178,13 +178,13 @@ async def _get(path: str, params: dict | None = None) -> Optional[dict]:
         return r.json() if r.status_code == 200 else None
 
 
-async def _post(path: str, body: dict) -> tuple[int, dict]:
+async def _post(path: str, body: dict, app_tenant_id: int) -> tuple[int, dict]:
     try:
         import httpx
     except ImportError:
         raise RuntimeError("pip install httpx")
 
-    token = await get_valid_token()
+    token = await get_valid_token(app_tenant_id)
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.post(
             f"{GRAPH_BASE}{path}",
@@ -196,13 +196,13 @@ async def _post(path: str, body: dict) -> tuple[int, dict]:
         return r.status_code, data
 
 
-async def _patch(path: str, body: dict) -> int:
+async def _patch(path: str, body: dict, app_tenant_id: int) -> int:
     try:
         import httpx
     except ImportError:
         raise RuntimeError("pip install httpx")
 
-    token = await get_valid_token()
+    token = await get_valid_token(app_tenant_id)
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.patch(
             f"{GRAPH_BASE}{path}",
@@ -212,13 +212,13 @@ async def _patch(path: str, body: dict) -> int:
         return r.status_code
 
 
-async def _delete(path: str) -> int:
+async def _delete(path: str, app_tenant_id: int) -> int:
     try:
         import httpx
     except ImportError:
         raise RuntimeError("pip install httpx")
 
-    token = await get_valid_token()
+    token = await get_valid_token(app_tenant_id)
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.delete(
             f"{GRAPH_BASE}{path}",
@@ -229,12 +229,12 @@ async def _delete(path: str) -> int:
 
 # ── Graph operations ────────────────────────────────────────────────────────
 
-async def get_me() -> dict:
-    return await _get("/me", {"$select": "displayName,mail,userPrincipalName"}) or {}
+async def get_me(app_tenant_id: int) -> dict:
+    return await _get("/me", app_tenant_id, {"$select": "displayName,mail,userPrincipalName"}) or {}
 
 
-async def get_inbox(top: int = 40) -> list:
-    r = await _get("/me/mailFolders/inbox/messages", {
+async def get_inbox(app_tenant_id: int, top: int = 40) -> list:
+    r = await _get("/me/mailFolders/inbox/messages", app_tenant_id, {
         "$top": top,
         "$orderby": "receivedDateTime desc",
         "$select": "id,subject,from,receivedDateTime,isRead,bodyPreview",
@@ -242,8 +242,8 @@ async def get_inbox(top: int = 40) -> list:
     return (r or {}).get("value", [])
 
 
-async def get_sent(top: int = 20) -> list:
-    r = await _get("/me/mailFolders/sentitems/messages", {
+async def get_sent(app_tenant_id: int, top: int = 20) -> list:
+    r = await _get("/me/mailFolders/sentitems/messages", app_tenant_id, {
         "$top": top,
         "$orderby": "sentDateTime desc",
         "$select": "id,subject,toRecipients,sentDateTime,bodyPreview",
@@ -251,21 +251,21 @@ async def get_sent(top: int = 20) -> list:
     return (r or {}).get("value", [])
 
 
-async def get_message(msg_id: str) -> Optional[dict]:
-    return await _get(f"/me/messages/{msg_id}", {
+async def get_message(msg_id: str, app_tenant_id: int) -> Optional[dict]:
+    return await _get(f"/me/messages/{msg_id}", app_tenant_id, {
         "$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,isRead,body,bodyPreview"
     })
 
 
-async def mark_read(msg_id: str) -> bool:
-    return await _patch(f"/me/messages/{msg_id}", {"isRead": True}) == 200
+async def mark_read(msg_id: str, app_tenant_id: int) -> bool:
+    return await _patch(f"/me/messages/{msg_id}", {"isRead": True}, app_tenant_id) == 200
 
 
-async def delete_message(msg_id: str) -> bool:
-    return await _delete(f"/me/messages/{msg_id}") == 204
+async def delete_message(msg_id: str, app_tenant_id: int) -> bool:
+    return await _delete(f"/me/messages/{msg_id}", app_tenant_id) == 204
 
 
-async def send_email(to_email: str, to_name: str, subject: str, body_html: str) -> bool:
+async def send_email(to_email: str, to_name: str, subject: str, body_html: str, app_tenant_id: int) -> bool:
     status, _ = await _post("/me/sendMail", {
         "message": {
             "subject": subject,
@@ -275,12 +275,12 @@ async def send_email(to_email: str, to_name: str, subject: str, body_html: str) 
             ],
         },
         "saveToSentItems": True,
-    })
+    }, app_tenant_id)
     return status == 202
 
 
-async def reply_email(msg_id: str, body_html: str) -> bool:
+async def reply_email(msg_id: str, body_html: str, app_tenant_id: int) -> bool:
     status, _ = await _post(f"/me/messages/{msg_id}/reply", {
         "message": {"body": {"contentType": "HTML", "content": body_html}}
-    })
+    }, app_tenant_id)
     return status == 202

@@ -22,17 +22,20 @@
       <span class="logo-text login-logo-text">{{ branding.company_name }}</span>
     </div>
     <h2>Admin Access</h2>
-    <p>Enter your password to continue</p>
+    <p>Sign in to your dashboard</p>
 
+    <div class="login-input-wrap" style="margin-bottom:0.6rem">
+      <input type="email" id="email-input" placeholder="Email address" autocomplete="email" style="width:100%;padding:0.6rem 0.8rem;border-radius:var(--radius-sm);border:1px solid var(--border-hover);background:var(--bg-input);color:var(--text-primary);font-family:inherit;font-size:0.9rem;outline:none;" />
+    </div>
     <div class="login-input-wrap">
-      <input type="password" id="pw-input" autocomplete="off" />
+      <input type="password" id="pw-input" placeholder="Password" autocomplete="current-password" />
       <button class="toggle-pw" id="toggle-pw" type="button" title="Show/hide password">
         <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
 
     <button class="btn-login" id="btn-login">Enter Dashboard</button>
-    <div class="login-error" id="login-error">Incorrect password. Please try again.</div>
+    <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
@@ -712,35 +715,72 @@ function showToast(msg, type = 'success') {
 }
 
 /* ======================================================================
+   FETCH INTERCEPTOR — attach admin JWT to all /api/ requests
+   ====================================================================== */
+(function () {
+  const _fetch = window.fetch;
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    const token = localStorage.getItem('ndj_admin_token');
+    if (token && typeof url === 'string' && url.startsWith('/api/')) {
+      opts = Object.assign({}, opts, {
+        headers: Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token }),
+      });
+    }
+    return _fetch(url, opts);
+  };
+})();
+
+/* ======================================================================
    LOGIN
    ====================================================================== */
-const CORRECT_PW = '     '; // 5 spaces
 
 function checkLogin() {
-  return sessionStorage.getItem('ndj_auth') === '1';
+  return !!localStorage.getItem('ndj_admin_token');
 }
 
 document.getElementById('btn-login').addEventListener('click', tryLogin);
-document.getElementById('pw-input').addEventListener('input', () => {
-  const pw = document.getElementById('pw-input');
-  pw.classList.remove('invalid');
-  document.getElementById('login-error').classList.remove('visible');
-  if (pw.value.length === 5) tryLogin();
-});
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+document.getElementById('email-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pw-input').focus(); });
 
-function tryLogin() {
-  const val = document.getElementById('pw-input').value;
+async function tryLogin() {
+  const btn   = document.getElementById('btn-login');
   const errEl = document.getElementById('login-error');
-  const input = document.getElementById('pw-input');
-  if (val === CORRECT_PW) {
-    sessionStorage.setItem('ndj_auth', '1');
+  const email = document.getElementById('email-input').value.trim();
+  const pw    = document.getElementById('pw-input').value;
+
+  errEl.classList.remove('visible');
+  errEl.textContent = '';
+
+  if (!email || !pw) {
+    errEl.textContent = 'Enter your email and password.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in\u2026';
+  try {
+    const r = await window.fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Login failed');
+    if (d.role !== 'tenant_admin') throw new Error('No admin access for this workspace.');
+    localStorage.setItem('ndj_admin_token', d.token);
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = '';
     initDashboard();
-  } else {
+  } catch (e) {
+    const input = document.getElementById('pw-input');
     input.classList.add('invalid');
-    errEl.classList.add('visible');
     setTimeout(() => input.classList.remove('invalid'), 400);
+    errEl.textContent = e.message || 'Incorrect email or password.';
+    errEl.classList.add('visible');
+    btn.disabled = false;
+    btn.textContent = 'Enter Dashboard';
   }
 }
 
@@ -750,10 +790,11 @@ document.getElementById('toggle-pw').addEventListener('click', () => {
 });
 
 document.getElementById('btn-logout').addEventListener('click', () => {
-  sessionStorage.removeItem('ndj_auth');
+  localStorage.removeItem('ndj_admin_token');
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('pw-input').value = '';
+  document.getElementById('email-input').value = '';
   document.getElementById('login-error').classList.remove('visible');
 });
 
@@ -763,7 +804,7 @@ if (checkLogin()) {
   document.getElementById('dashboard').style.display = '';
   initDashboard();
 } else {
-  setTimeout(() => document.getElementById('pw-input').focus(), 80);
+  setTimeout(() => document.getElementById('email-input').focus(), 80);
 }
 
 /* ======================================================================

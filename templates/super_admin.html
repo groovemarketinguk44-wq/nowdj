@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NowDJ — Super Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body { min-height: 100vh; background: var(--bg-base); font-family: 'Inter', sans-serif; }
+
+    /* ── Login ── */
+    .login-wrap {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
+    }
+    .login-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-xl); padding: 2.5rem; width: 100%; max-width: 380px;
+      box-shadow: var(--shadow-card);
+    }
+    .login-brand {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text-primary); margin-bottom: 1.8rem;
+    }
+    .login-brand .dot { color: #fa854f; }
+    .login-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .login-card p  { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .field { margin-bottom: 0.9rem; }
+    .field label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.35rem; }
+    .field input {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 0.6rem 0.9rem;
+      color: var(--text-primary); font-size: 0.9rem; outline: none; font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box;
+    }
+    .field input:focus { border-color: #fa854f; box-shadow: 0 0 0 3px rgba(250,133,79,0.14); }
+    .btn-primary {
+      width: 100%; background: #fa854f; color: #fff; border: none;
+      border-radius: var(--radius-sm); padding: 0.7rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: opacity 0.15s; margin-top: 0.25rem;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-err {
+      color: var(--danger); font-size: 0.82rem; margin-top: 0.75rem;
+      background: rgba(239,68,68,0.08); border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem; display: none;
+    }
+    .login-err.show { display: block; }
+
+    /* ── Dashboard ── */
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px; min-height: 100vh; background: var(--bg-card);
+      border-right: 1px solid var(--border-default); padding: 1.5rem 1rem;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 1.15rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text-primary); margin-bottom: 2rem;
+    }
+    .sidebar-brand .dot { color: #fa854f; }
+    .sidebar-label {
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text-muted); margin: 1rem 0 0.4rem 0.5rem;
+    }
+    .sidebar-footer { margin-top: auto; }
+    .btn-logout-side {
+      width: 100%; background: transparent; border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
+      color: var(--text-secondary); font-size: 0.82rem; cursor: pointer; font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-logout-side:hover { border-color: var(--danger); color: var(--danger); }
+
+    .main { flex: 1; padding: 2.5rem; max-width: 960px; }
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.25rem; }
+    .page-header p  { color: var(--text-secondary); font-size: 0.875rem; }
+    .accent { color: #fa854f; }
+
+    /* Tenant table */
+    .tenants-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; }
+    .tenants-table th {
+      text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted);
+      padding: 0 0.75rem 0.6rem; border-bottom: 1px solid var(--border-default);
+    }
+    .tenants-table td {
+      padding: 0.75rem; border-bottom: 1px solid var(--border-default);
+      font-size: 0.875rem; vertical-align: middle;
+    }
+    .tenants-table tr:last-child td { border-bottom: none; }
+    .tenant-name { font-weight: 600; color: var(--text-primary); }
+    .tenant-slug {
+      font-size: 0.78rem; font-family: monospace;
+      background: var(--bg-input); border-radius: 4px; padding: 0.2rem 0.45rem;
+      color: var(--text-secondary);
+    }
+    .plan-badge {
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+      background: rgba(250,133,79,0.12); color: #fa854f;
+      border-radius: 20px; padding: 0.2rem 0.6rem;
+    }
+    .btn-visit {
+      font-size: 0.78rem; font-weight: 500; color: #fa854f; text-decoration: none;
+      border: 1px solid rgba(250,133,79,0.3); border-radius: var(--radius-sm);
+      padding: 0.3rem 0.65rem; transition: background 0.15s;
+    }
+    .btn-visit:hover { background: rgba(250,133,79,0.08); }
+    .btn-del {
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius-sm); padding: 0.3rem 0.6rem;
+      color: var(--text-muted); font-size: 0.78rem; cursor: pointer; font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-del:hover { border-color: var(--danger); color: var(--danger); }
+    .empty-state {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--text-muted); font-size: 0.9rem;
+    }
+
+    /* Create form */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-xl); padding: 1.75rem; margin-bottom: 2rem;
+    }
+    .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+    .form-grid .span2 { grid-column: span 2; }
+    .form-field label {
+      display: block; font-size: 0.78rem; font-weight: 500;
+      color: var(--text-secondary); margin-bottom: 0.3rem;
+    }
+    .form-field input, .form-field select {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 0.6rem 0.8rem;
+      color: var(--text-primary); font-size: 0.875rem; outline: none; font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box;
+    }
+    .form-field input:focus, .form-field select:focus {
+      border-color: #fa854f; box-shadow: 0 0 0 3px rgba(250,133,79,0.14);
+    }
+    .form-footer { margin-top: 1.25rem; display: flex; align-items: center; gap: 1rem; }
+    .btn-create {
+      background: #fa854f; color: #fff; border: none;
+      border-radius: var(--radius-sm); padding: 0.65rem 1.4rem;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn-create:hover { opacity: 0.88; }
+    .btn-create:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-msg { font-size: 0.82rem; }
+    .form-msg.ok  { color: var(--success); }
+    .form-msg.err { color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<!-- ======================================================================
+     LOGIN
+     ====================================================================== -->
+<div id="login-wrap" class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">🎧 NowDJ <span class="dot">·</span> Super Admin</div>
+    <h2>Sign In</h2>
+    <p>Platform administration access</p>
+    <div class="field"><label>Email</label><input type="email" id="sa-email" placeholder="ben@groovemarketing.co.uk" autocomplete="email" /></div>
+    <div class="field"><label>Password</label><input type="password" id="sa-pw" placeholder="••••••" autocomplete="current-password" /></div>
+    <button class="btn-primary" id="sa-btn-login">Sign In</button>
+    <div class="login-err" id="sa-err"></div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     DASHBOARD
+     ====================================================================== -->
+<div id="dashboard" style="display:none">
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">🎧 NowDJ <span class="dot">·</span> Admin</div>
+      <div class="sidebar-label">Platform</div>
+      <div class="sidebar-footer">
+        <button class="btn-logout-side" id="sa-btn-logout">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Workspace <span class="accent">Management</span></h1>
+        <p>Create and manage client workspaces. Each workspace gets its own subdomain.</p>
+      </div>
+
+      <!-- Tenant list -->
+      <div id="tenants-wrap">
+        <div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</div>
+      </div>
+
+      <!-- Create form -->
+      <div class="card">
+        <h2>Create New Workspace</h2>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Business Name</label>
+            <input type="text" id="new-name" placeholder="Ajax DJ Services" />
+          </div>
+          <div class="form-field">
+            <label>Subdomain Slug</label>
+            <input type="text" id="new-slug" placeholder="ajax-dj" />
+          </div>
+          <div class="form-field">
+            <label>Admin Email</label>
+            <input type="email" id="new-email" placeholder="owner@ajaxdj.com" />
+          </div>
+          <div class="form-field">
+            <label>Admin Password</label>
+            <input type="password" id="new-pw" placeholder="Set a strong password" />
+          </div>
+          <div class="form-field">
+            <label>Plan</label>
+            <select id="new-plan">
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+              <option value="agency">Agency</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button class="btn-create" id="btn-create">Create Workspace</button>
+          <span class="form-msg" id="create-msg"></span>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ── Auth ────────────────────────────────────────────────────────────────────
+
+function saFetch(url, opts) {
+  opts = opts || {};
+  const token = localStorage.getItem('ndj_super_token');
+  if (token) {
+    opts = Object.assign({}, opts, {
+      headers: Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token }),
+    });
+  }
+  return fetch(url, opts);
+}
+
+function isLoggedIn() { return !!localStorage.getItem('ndj_super_token'); }
+
+document.getElementById('sa-btn-login').addEventListener('click', doLogin);
+document.getElementById('sa-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('sa-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sa-pw').focus(); });
+
+async function doLogin() {
+  const btn   = document.getElementById('sa-btn-login');
+  const errEl = document.getElementById('sa-err');
+  const email = document.getElementById('sa-email').value.trim();
+  const pw    = document.getElementById('sa-pw').value;
+  errEl.classList.remove('show');
+  if (!email || !pw) { errEl.textContent = 'Enter your email and password.'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in\u2026';
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Login failed');
+    if (d.role !== 'super_admin') throw new Error('Not a super admin account.');
+    localStorage.setItem('ndj_super_token', d.token);
+    showDashboard();
+  } catch (e) {
+    errEl.textContent = e.message || 'Incorrect credentials.';
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+document.getElementById('sa-btn-logout').addEventListener('click', () => {
+  localStorage.removeItem('ndj_super_token');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-wrap').style.display = 'flex';
+});
+
+function showDashboard() {
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+  loadTenants();
+}
+
+if (isLoggedIn()) showDashboard();
+else setTimeout(() => document.getElementById('sa-email').focus(), 80);
+
+// ── Tenant list ─────────────────────────────────────────────────────────────
+
+async function loadTenants() {
+  const wrap = document.getElementById('tenants-wrap');
+  try {
+    const r = await saFetch('/api/super/tenants');
+    if (r.status === 401) { localStorage.removeItem('ndj_super_token'); location.reload(); return; }
+    const tenants = await r.json();
+    renderTenants(tenants);
+  } catch {
+    wrap.innerHTML = '<p style="color:var(--danger);padding:1rem">Failed to load workspaces.</p>';
+  }
+}
+
+function renderTenants(tenants) {
+  const wrap = document.getElementById('tenants-wrap');
+  if (!tenants.length) {
+    wrap.innerHTML = '<div class="empty-state">No workspaces yet. Create one below.</div>';
+    return;
+  }
+  const rows = tenants.map(t => `
+    <tr>
+      <td><span class="tenant-name">${esc(t.name)}</span></td>
+      <td><span class="tenant-slug">${esc(t.slug)}</span></td>
+      <td>${esc(t.email)}</td>
+      <td><span class="plan-badge">${esc(t.plan)}</span></td>
+      <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
+      <td>
+        <a class="btn-visit" href="http://${esc(t.slug)}.localhost:8000/admin" target="_blank">Open ↗</a>
+      </td>
+      <td>
+        <button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+  wrap.innerHTML = `
+    <table class="tenants-table">
+      <thead>
+        <tr>
+          <th>Name</th><th>Slug</th><th>Email</th><th>Plan</th><th>Created</th><th></th><th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function deleteTenant(id, name) {
+  if (!confirm(`Delete workspace "${name}"?\n\nThis will permanently remove all their quotes, bookings, staff and data. This cannot be undone.`)) return;
+  try {
+    const r = await saFetch(`/api/super/tenants/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error();
+    loadTenants();
+  } catch {
+    alert('Failed to delete workspace.');
+  }
+}
+
+// ── Create tenant ────────────────────────────────────────────────────────────
+
+document.getElementById('new-slug').addEventListener('input', function () {
+  this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-{2,}/g, '-');
+});
+
+document.getElementById('btn-create').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-create');
+  const msgEl  = document.getElementById('create-msg');
+  const name   = document.getElementById('new-name').value.trim();
+  const slug   = document.getElementById('new-slug').value.trim();
+  const email  = document.getElementById('new-email').value.trim();
+  const pw     = document.getElementById('new-pw').value;
+  const plan   = document.getElementById('new-plan').value;
+
+  msgEl.textContent = ''; msgEl.className = 'form-msg';
+  if (!name || !slug || !email || !pw) {
+    msgEl.textContent = 'All fields are required.'; msgEl.classList.add('err'); return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Creating\u2026';
+  try {
+    const r = await saFetch('/api/super/tenants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, slug, email, password: pw, plan }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Failed to create workspace');
+    msgEl.textContent = `Workspace "${name}" created! Subdomain: ${slug}.nowdj.com`;
+    msgEl.classList.add('ok');
+    ['new-name','new-slug','new-email','new-pw'].forEach(id => document.getElementById(id).value = '');
+    loadTenants();
+  } catch (e) {
+    msgEl.textContent = e.message || 'Failed to create workspace.';
+    msgEl.classList.add('err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Workspace';
+  }
+});
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>

@@ -12,8 +12,8 @@ DEFAULT_SITE_CONFIG = {
 }
 
 
-def load_catalog() -> dict:
-    raw = get_setting("catalog_override")
+def load_catalog(tenant_id: int) -> dict:
+    raw = get_setting("catalog_override", tenant_id=tenant_id)
     if raw:
         try:
             return json.loads(raw)
@@ -22,13 +22,13 @@ def load_catalog() -> dict:
     return deepcopy(_DEFAULT_CATALOG)
 
 
-def save_catalog(catalog: dict) -> None:
-    set_setting("catalog_override", json.dumps(catalog, ensure_ascii=False))
+def save_catalog(catalog: dict, tenant_id: int) -> None:
+    set_setting("catalog_override", json.dumps(catalog, ensure_ascii=False), tenant_id=tenant_id)
 
 
-def get_prices(catalog: dict | None = None) -> dict[str, float]:
+def get_prices(catalog: dict | None = None, tenant_id: int | None = None) -> dict[str, float]:
     if catalog is None:
-        catalog = load_catalog()
+        catalog = load_catalog(tenant_id)
     return {
         item_id: float(item["price"])
         for category in catalog.values()
@@ -36,8 +36,8 @@ def get_prices(catalog: dict | None = None) -> dict[str, float]:
     }
 
 
-def load_site_config() -> dict:
-    raw = get_setting("site_config")
+def load_site_config(tenant_id: int) -> dict:
+    raw = get_setting("site_config", tenant_id=tenant_id)
     if raw:
         try:
             saved = json.loads(raw)
@@ -47,8 +47,8 @@ def load_site_config() -> dict:
     return DEFAULT_SITE_CONFIG.copy()
 
 
-def save_site_config(config: dict) -> None:
-    set_setting("site_config", json.dumps(config, ensure_ascii=False))
+def save_site_config(config: dict, tenant_id: int) -> None:
+    set_setting("site_config", json.dumps(config, ensure_ascii=False), tenant_id=tenant_id)
 
 
 DEFAULT_BRANDING_CONFIG = {
@@ -93,8 +93,8 @@ def build_branding_style(branding: dict) -> str:
     )
 
 
-def load_branding_config() -> dict:
-    raw = get_setting("branding_config")
+def load_branding_config(tenant_id: int) -> dict:
+    raw = get_setting("branding_config", tenant_id=tenant_id)
     if raw:
         try:
             saved = json.loads(raw)
@@ -104,5 +104,5 @@ def load_branding_config() -> dict:
     return DEFAULT_BRANDING_CONFIG.copy()
 
 
-def save_branding_config(config: dict) -> None:
-    set_setting("branding_config", json.dumps(config, ensure_ascii=False))
+def save_branding_config(config: dict, tenant_id: int) -> None:
+    set_setting("branding_config", json.dumps(config, ensure_ascii=False), tenant_id=tenant_id)

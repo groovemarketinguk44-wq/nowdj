@@ -52,25 +52,44 @@ def init_db() -> None:
     try:
         with conn:
             with conn.cursor() as cur:
+                # ── Tenants (must be first — all other tables FK to this)
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS quotes (
+                    CREATE TABLE IF NOT EXISTS tenants (
                         id            SERIAL PRIMARY KEY,
-                        name          TEXT    NOT NULL,
-                        email         TEXT    NOT NULL,
-                        phone         TEXT    DEFAULT '',
-                        event_date    TEXT    DEFAULT '',
-                        location      TEXT    DEFAULT '',
-                        event_type    TEXT    DEFAULT '',
-                        selected_items TEXT   DEFAULT '[]',
-                        total_price   REAL    DEFAULT 0,
-                        message       TEXT    DEFAULT '',
-                        status        TEXT    DEFAULT 'new',
+                        name          TEXT NOT NULL,
+                        slug          TEXT UNIQUE NOT NULL,
+                        email         TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        plan          TEXT NOT NULL DEFAULT 'starter',
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+
+                # ── Quotes
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS quotes (
+                        id             SERIAL PRIMARY KEY,
+                        tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+                        name           TEXT    NOT NULL,
+                        email          TEXT    NOT NULL,
+                        phone          TEXT    DEFAULT '',
+                        event_date     TEXT    DEFAULT '',
+                        location       TEXT    DEFAULT '',
+                        event_type     TEXT    DEFAULT '',
+                        selected_items TEXT    DEFAULT '[]',
+                        total_price    REAL    DEFAULT 0,
+                        message        TEXT    DEFAULT '',
+                        status         TEXT    DEFAULT 'new',
+                        created_at     TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
+                cur.execute("ALTER TABLE quotes ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+
+                # ── Email templates
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS email_templates (
                         id         SERIAL PRIMARY KEY,
+                        tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
                         name       TEXT    NOT NULL,
                         subject    TEXT    NOT NULL DEFAULT '',
                         body       TEXT    NOT NULL DEFAULT '',
@@ -78,33 +97,52 @@ def init_db() -> None:
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                cur.execute("ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+
+                # ── Settings (plain key-value; tenant keys are prefixed t{id}:key)
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS settings (
                         key   TEXT PRIMARY KEY,
                         value TEXT NOT NULL DEFAULT ''
                     )
                 """)
+
+                # ── Users (customers)
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id            SERIAL PRIMARY KEY,
+                        tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
                         name          TEXT NOT NULL,
-                        email         TEXT UNIQUE NOT NULL,
+                        email         TEXT NOT NULL,
                         password_hash TEXT NOT NULL,
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+                # Email uniqueness is per-tenant, not global
+                cur.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_tenant_email ON users(tenant_id, email) WHERE tenant_id IS NOT NULL")
+
+                # ── Staff members
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS staff_members (
                         id            SERIAL PRIMARY KEY,
+                        tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
                         name          TEXT NOT NULL,
-                        email         TEXT UNIQUE NOT NULL,
+                        email         TEXT NOT NULL,
                         password_hash TEXT NOT NULL,
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                cur.execute("ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+                cur.execute("ALTER TABLE staff_members DROP CONSTRAINT IF EXISTS staff_members_email_key")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS staff_tenant_email ON staff_members(tenant_id, email) WHERE tenant_id IS NOT NULL")
+
+                # ── Bookings
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS bookings (
                         id          SERIAL PRIMARY KEY,
+                        tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
                         quote_id    INTEGER REFERENCES quotes(id) ON DELETE SET NULL,
                         user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
                         staff_id    INTEGER REFERENCES staff_members(id) ON DELETE SET NULL,
@@ -118,33 +156,48 @@ def init_db() -> None:
                         created_at  TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
-                cur.execute("SELECT COUNT(*) AS c FROM email_templates")
-                if cur.fetchone()["c"] == 0:
-                    for t in DEFAULT_TEMPLATES:
-                        cur.execute(
-                            "INSERT INTO email_templates (name, subject, body) VALUES (%s, %s, %s)",
-                            (t["name"], t["subject"], t["body"]),
-                        )
+                cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+    finally:
+        conn.close()
+
+
+def migrate_null_tenant_ids(tenant_id: int) -> None:
+    """Assign any legacy rows with NULL tenant_id to the given tenant. Safe to call repeatedly."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE quotes SET tenant_id = %s WHERE tenant_id IS NULL", (tenant_id,))
+                cur.execute("UPDATE email_templates SET tenant_id = %s WHERE tenant_id IS NULL", (tenant_id,))
+                cur.execute("UPDATE users SET tenant_id = %s WHERE tenant_id IS NULL", (tenant_id,))
+                cur.execute("UPDATE staff_members SET tenant_id = %s WHERE tenant_id IS NULL", (tenant_id,))
+                cur.execute("UPDATE bookings SET tenant_id = %s WHERE tenant_id IS NULL", (tenant_id,))
     finally:
         conn.close()
 
 
 # ---------------------------------------------------------------------------
-# Settings (key-value store — replaces JSON config files)
+# Settings (key-value store)
+# Tenant-specific keys are prefixed with t{tenant_id}:
+# Super-admin / global keys have no prefix.
 # ---------------------------------------------------------------------------
 
-def get_setting(key: str, default: str = "") -> str:
+def _skey(key: str, tenant_id: int | None = None) -> str:
+    return f"t{tenant_id}:{key}" if tenant_id is not None else key
+
+
+def get_setting(key: str, default: str = "", tenant_id: int | None = None) -> str:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT value FROM settings WHERE key = %s", (key,))
+            cur.execute("SELECT value FROM settings WHERE key = %s", (_skey(key, tenant_id),))
             row = cur.fetchone()
             return row["value"] if row else default
     finally:
         conn.close()
 
 
-def set_setting(key: str, value: str) -> None:
+def set_setting(key: str, value: str, tenant_id: int | None = None) -> None:
     conn = _conn()
     try:
         with conn:
@@ -152,7 +205,108 @@ def set_setting(key: str, value: str) -> None:
                 cur.execute("""
                     INSERT INTO settings (key, value) VALUES (%s, %s)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-                """, (key, value))
+                """, (_skey(key, tenant_id), value))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Tenants
+# ---------------------------------------------------------------------------
+
+def create_tenant(name: str, slug: str, email: str, password_hash: str, plan: str = "starter") -> int:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO tenants (name, slug, email, password_hash, plan) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                    (name, slug, email, password_hash, plan),
+                )
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def get_tenant_by_slug(slug: str) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM tenants WHERE slug = %s", (slug,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_tenant_by_id(tid: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, slug, email, plan, created_at FROM tenants WHERE id = %s", (tid,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            r = dict(row)
+            if r.get("created_at"):
+                r["created_at"] = r["created_at"].isoformat()
+            return r
+    finally:
+        conn.close()
+
+
+def get_tenant_by_email(email: str) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM tenants WHERE email = %s", (email,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_all_tenants() -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, slug, email, plan, created_at FROM tenants ORDER BY created_at ASC")
+            result = []
+            for row in cur.fetchall():
+                r = dict(row)
+                if r.get("created_at"):
+                    r["created_at"] = r["created_at"].isoformat()
+                result.append(r)
+            return result
+    finally:
+        conn.close()
+
+
+def update_tenant(tid: int, name: str, email: str, plan: str, password_hash: str | None = None) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                if password_hash:
+                    cur.execute(
+                        "UPDATE tenants SET name=%s, email=%s, plan=%s, password_hash=%s WHERE id=%s",
+                        (name, email, plan, password_hash, tid),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE tenants SET name=%s, email=%s, plan=%s WHERE id=%s",
+                        (name, email, plan, tid),
+                    )
+    finally:
+        conn.close()
+
+
+def delete_tenant(tid: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM tenants WHERE id = %s", (tid,))
     finally:
         conn.close()
 
@@ -161,18 +315,19 @@ def set_setting(key: str, value: str) -> None:
 # Quotes
 # ---------------------------------------------------------------------------
 
-def save_quote(data: dict) -> int:
+def save_quote(data: dict, tenant_id: int) -> int:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO quotes
-                        (name, email, phone, event_date, location, event_type,
+                        (tenant_id, name, email, phone, event_date, location, event_type,
                          selected_items, total_price, message)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
+                    tenant_id,
                     data["name"],
                     data["email"],
                     data.get("phone", ""),
@@ -200,33 +355,36 @@ def _parse_quote(row: dict) -> dict:
     return q
 
 
-def get_all_quotes() -> list[dict]:
+def get_all_quotes(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM quotes ORDER BY created_at DESC")
+            cur.execute("SELECT * FROM quotes WHERE tenant_id = %s ORDER BY created_at DESC", (tenant_id,))
             return [_parse_quote(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_quote_by_id(quote_id: int) -> dict | None:
+def get_quote_by_id(quote_id: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM quotes WHERE id = %s", (quote_id,))
+            cur.execute("SELECT * FROM quotes WHERE id = %s AND tenant_id = %s", (quote_id, tenant_id))
             row = cur.fetchone()
             return _parse_quote(row) if row else None
     finally:
         conn.close()
 
 
-def update_quote_status(quote_id: int, status: str) -> None:
+def update_quote_status(quote_id: int, status: str, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("UPDATE quotes SET status = %s WHERE id = %s", (status, quote_id))
+                cur.execute(
+                    "UPDATE quotes SET status = %s WHERE id = %s AND tenant_id = %s",
+                    (status, quote_id, tenant_id),
+                )
     finally:
         conn.close()
 
@@ -235,42 +393,65 @@ def update_quote_status(quote_id: int, status: str) -> None:
 # Email templates
 # ---------------------------------------------------------------------------
 
-def get_all_templates() -> list[dict]:
+def seed_templates_for_tenant(tenant_id: int) -> None:
+    """Insert default email templates for a newly created tenant."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) AS c FROM email_templates WHERE tenant_id = %s", (tenant_id,))
+                if cur.fetchone()["c"] == 0:
+                    for t in DEFAULT_TEMPLATES:
+                        cur.execute(
+                            "INSERT INTO email_templates (tenant_id, name, subject, body) VALUES (%s, %s, %s, %s)",
+                            (tenant_id, t["name"], t["subject"], t["body"]),
+                        )
+    finally:
+        conn.close()
+
+
+def get_all_templates(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM email_templates ORDER BY id ASC")
+            cur.execute(
+                "SELECT * FROM email_templates WHERE tenant_id = %s ORDER BY id ASC",
+                (tenant_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_template_by_id(tid: int) -> dict | None:
+def get_template_by_id(tid: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM email_templates WHERE id = %s", (tid,))
+            cur.execute(
+                "SELECT * FROM email_templates WHERE id = %s AND tenant_id = %s",
+                (tid, tenant_id),
+            )
             row = cur.fetchone()
             return dict(row) if row else None
     finally:
         conn.close()
 
 
-def create_template(name: str, subject: str, body: str) -> int:
+def create_template(name: str, subject: str, body: str, tenant_id: int) -> int:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO email_templates (name, subject, body) VALUES (%s, %s, %s) RETURNING id",
-                    (name, subject, body),
+                    "INSERT INTO email_templates (tenant_id, name, subject, body) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (tenant_id, name, subject, body),
                 )
                 return cur.fetchone()["id"]
     finally:
         conn.close()
 
 
-def update_template(tid: int, name: str, subject: str, body: str) -> None:
+def update_template(tid: int, name: str, subject: str, body: str, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
@@ -278,18 +459,21 @@ def update_template(tid: int, name: str, subject: str, body: str) -> None:
                 cur.execute("""
                     UPDATE email_templates
                     SET name=%s, subject=%s, body=%s, updated_at=NOW()
-                    WHERE id=%s
-                """, (name, subject, body, tid))
+                    WHERE id=%s AND tenant_id=%s
+                """, (name, subject, body, tid, tenant_id))
     finally:
         conn.close()
 
 
-def delete_template(tid: int) -> None:
+def delete_template(tid: int, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM email_templates WHERE id = %s", (tid,))
+                cur.execute(
+                    "DELETE FROM email_templates WHERE id = %s AND tenant_id = %s",
+                    (tid, tenant_id),
+                )
     finally:
         conn.close()
 
@@ -298,50 +482,58 @@ def delete_template(tid: int) -> None:
 # Users (customers)
 # ---------------------------------------------------------------------------
 
-def get_user_by_email(email: str) -> dict | None:
+def get_user_by_email(email: str, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            cur.execute(
+                "SELECT * FROM users WHERE email = %s AND tenant_id = %s",
+                (email, tenant_id),
+            )
             row = cur.fetchone()
             return dict(row) if row else None
     finally:
         conn.close()
 
 
-def get_user_by_id(uid: int) -> dict | None:
+def get_user_by_id(uid: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, created_at FROM users WHERE id = %s", (uid,))
+            cur.execute(
+                "SELECT id, name, email, created_at FROM users WHERE id = %s AND tenant_id = %s",
+                (uid, tenant_id),
+            )
             row = cur.fetchone()
             return dict(row) if row else None
     finally:
         conn.close()
 
 
-def create_user(name: str, email: str, password_hash: str) -> int:
+def create_user(name: str, email: str, password_hash: str, tenant_id: int) -> int:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
-                    (name, email, password_hash),
+                    "INSERT INTO users (tenant_id, name, email, password_hash) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (tenant_id, name, email, password_hash),
                 )
                 return cur.fetchone()["id"]
     finally:
         conn.close()
 
 
-def get_all_users() -> list[dict]:
+def get_all_users(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, created_at FROM users ORDER BY created_at DESC")
-            rows = cur.fetchall()
+            cur.execute(
+                "SELECT id, name, email, created_at FROM users WHERE tenant_id = %s ORDER BY created_at DESC",
+                (tenant_id,),
+            )
             result = []
-            for row in rows:
+            for row in cur.fetchall():
                 r = dict(row)
                 if r.get("created_at"):
                     r["created_at"] = r["created_at"].isoformat()
@@ -351,25 +543,44 @@ def get_all_users() -> list[dict]:
         conn.close()
 
 
-def delete_user(uid: int) -> None:
+def delete_user(uid: int, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM users WHERE id = %s", (uid,))
+                cur.execute("DELETE FROM users WHERE id = %s AND tenant_id = %s", (uid, tenant_id))
     finally:
         conn.close()
 
 
-def get_quotes_by_email(email: str) -> list[dict]:
+def get_quotes_by_email(email: str, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM quotes WHERE LOWER(email) = LOWER(%s) ORDER BY created_at DESC",
-                (email,),
+                "SELECT * FROM quotes WHERE LOWER(email) = LOWER(%s) AND tenant_id = %s ORDER BY created_at DESC",
+                (email, tenant_id),
             )
             return [_parse_quote(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def update_user(uid: int, name: str, email: str, tenant_id: int, password_hash: str | None = None) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                if password_hash:
+                    cur.execute(
+                        "UPDATE users SET name=%s, email=%s, password_hash=%s WHERE id=%s AND tenant_id=%s",
+                        (name, email, password_hash, uid, tenant_id),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE users SET name=%s, email=%s WHERE id=%s AND tenant_id=%s",
+                        (name, email, uid, tenant_id),
+                    )
     finally:
         conn.close()
 
@@ -378,58 +589,89 @@ def get_quotes_by_email(email: str) -> list[dict]:
 # Staff members
 # ---------------------------------------------------------------------------
 
-def get_all_staff() -> list[dict]:
+def get_all_staff(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, created_at FROM staff_members ORDER BY name ASC")
+            cur.execute(
+                "SELECT id, name, email, created_at FROM staff_members WHERE tenant_id = %s ORDER BY name ASC",
+                (tenant_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_staff_by_email(email: str) -> dict | None:
+def get_staff_by_email(email: str, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM staff_members WHERE email = %s", (email,))
+            cur.execute(
+                "SELECT * FROM staff_members WHERE email = %s AND tenant_id = %s",
+                (email, tenant_id),
+            )
             row = cur.fetchone()
             return dict(row) if row else None
     finally:
         conn.close()
 
 
-def get_staff_by_id(sid: int) -> dict | None:
+def get_staff_by_id(sid: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, created_at FROM staff_members WHERE id = %s", (sid,))
+            cur.execute(
+                "SELECT id, name, email, created_at FROM staff_members WHERE id = %s AND tenant_id = %s",
+                (sid, tenant_id),
+            )
             row = cur.fetchone()
             return dict(row) if row else None
     finally:
         conn.close()
 
 
-def create_staff_member(name: str, email: str, password_hash: str) -> int:
+def create_staff_member(name: str, email: str, password_hash: str, tenant_id: int) -> int:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO staff_members (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
-                    (name, email, password_hash),
+                    "INSERT INTO staff_members (tenant_id, name, email, password_hash) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (tenant_id, name, email, password_hash),
                 )
                 return cur.fetchone()["id"]
     finally:
         conn.close()
 
 
-def delete_staff_member(sid: int) -> None:
+def delete_staff_member(sid: int, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM staff_members WHERE id = %s", (sid,))
+                cur.execute(
+                    "DELETE FROM staff_members WHERE id = %s AND tenant_id = %s",
+                    (sid, tenant_id),
+                )
+    finally:
+        conn.close()
+
+
+def update_staff_member_info(sid: int, name: str, email: str, tenant_id: int, password_hash: str | None = None) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                if password_hash:
+                    cur.execute(
+                        "UPDATE staff_members SET name=%s, email=%s, password_hash=%s WHERE id=%s AND tenant_id=%s",
+                        (name, email, password_hash, sid, tenant_id),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE staff_members SET name=%s, email=%s WHERE id=%s AND tenant_id=%s",
+                        (name, email, sid, tenant_id),
+                    )
     finally:
         conn.close()
 
@@ -445,7 +687,7 @@ def _parse_booking(row: dict) -> dict:
     return b
 
 
-def get_all_bookings() -> list[dict]:
+def get_all_bookings(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -454,14 +696,15 @@ def get_all_bookings() -> list[dict]:
                 FROM bookings b
                 LEFT JOIN staff_members s ON b.staff_id = s.id
                 LEFT JOIN users u ON b.user_id = u.id
+                WHERE b.tenant_id = %s
                 ORDER BY b.event_date ASC, b.created_at DESC
-            """)
+            """, (tenant_id,))
             return [_parse_booking(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_booking_by_id(bid: int) -> dict | None:
+def get_booking_by_id(bid: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -470,15 +713,15 @@ def get_booking_by_id(bid: int) -> dict | None:
                 FROM bookings b
                 LEFT JOIN staff_members s ON b.staff_id = s.id
                 LEFT JOIN users u ON b.user_id = u.id
-                WHERE b.id = %s
-            """, (bid,))
+                WHERE b.id = %s AND b.tenant_id = %s
+            """, (bid, tenant_id))
             row = cur.fetchone()
             return _parse_booking(row) if row else None
     finally:
         conn.close()
 
 
-def get_bookings_for_user(user_id: int) -> list[dict]:
+def get_bookings_for_user(user_id: int, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -486,15 +729,15 @@ def get_bookings_for_user(user_id: int) -> list[dict]:
                 SELECT b.*, s.name AS staff_name
                 FROM bookings b
                 LEFT JOIN staff_members s ON b.staff_id = s.id
-                WHERE b.user_id = %s
+                WHERE b.user_id = %s AND b.tenant_id = %s
                 ORDER BY b.event_date ASC
-            """, (user_id,))
+            """, (user_id, tenant_id))
             return [_parse_booking(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_bookings_for_staff(staff_id: int) -> list[dict]:
+def get_bookings_for_staff(staff_id: int, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -502,26 +745,27 @@ def get_bookings_for_staff(staff_id: int) -> list[dict]:
                 SELECT b.*, u.name AS customer_name, u.email AS customer_email
                 FROM bookings b
                 LEFT JOIN users u ON b.user_id = u.id
-                WHERE b.staff_id = %s
+                WHERE b.staff_id = %s AND b.tenant_id = %s
                 ORDER BY b.event_date ASC
-            """, (staff_id,))
+            """, (staff_id, tenant_id))
             return [_parse_booking(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def create_booking(data: dict) -> int:
+def create_booking(data: dict, tenant_id: int) -> int:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO bookings
-                        (quote_id, user_id, staff_id, title, event_date, event_type,
+                        (tenant_id, quote_id, user_id, staff_id, title, event_date, event_type,
                          location, notes, total_price, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
+                    tenant_id,
                     data.get("quote_id"),
                     data.get("user_id"),
                     data.get("staff_id"),
@@ -538,7 +782,7 @@ def create_booking(data: dict) -> int:
         conn.close()
 
 
-def update_booking(bid: int, data: dict) -> None:
+def update_booking(bid: int, data: dict, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
@@ -553,7 +797,7 @@ def update_booking(bid: int, data: dict) -> None:
                         notes       = %s,
                         total_price = %s,
                         status      = %s
-                    WHERE id = %s
+                    WHERE id = %s AND tenant_id = %s
                 """, (
                     data.get("staff_id"),
                     data.get("title", ""),
@@ -564,44 +808,17 @@ def update_booking(bid: int, data: dict) -> None:
                     data.get("total_price", 0),
                     data.get("status", "confirmed"),
                     bid,
+                    tenant_id,
                 ))
     finally:
         conn.close()
 
 
-def delete_booking(bid: int) -> None:
+def delete_booking(bid: int, tenant_id: int) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM bookings WHERE id = %s", (bid,))
-    finally:
-        conn.close()
-
-
-def update_user(uid: int, name: str, email: str, password_hash: str | None = None) -> None:
-    conn = _conn()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                if password_hash:
-                    cur.execute("UPDATE users SET name=%s, email=%s, password_hash=%s WHERE id=%s",
-                                (name, email, password_hash, uid))
-                else:
-                    cur.execute("UPDATE users SET name=%s, email=%s WHERE id=%s", (name, email, uid))
-    finally:
-        conn.close()
-
-
-def update_staff_member_info(sid: int, name: str, email: str, password_hash: str | None = None) -> None:
-    conn = _conn()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                if password_hash:
-                    cur.execute("UPDATE staff_members SET name=%s, email=%s, password_hash=%s WHERE id=%s",
-                                (name, email, password_hash, sid))
-                else:
-                    cur.execute("UPDATE staff_members SET name=%s, email=%s WHERE id=%s", (name, email, sid))
+                cur.execute("DELETE FROM bookings WHERE id = %s AND tenant_id = %s", (bid, tenant_id))
     finally:
         conn.close()

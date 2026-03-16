@@ -2,7 +2,7 @@ import os
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "nowdj-dev-secret-change-me-in-production")
 ALGORITHM  = "HS256"
@@ -19,12 +19,12 @@ def verify_password(pw: str, hashed: str) -> bool:
         return False
 
 
-def create_token(role: str, uid: int, email: str, name: str) -> str:
+def create_token(role: str, uid: int, email: str, name: str, tenant_id: int | None = None) -> str:
     exp = datetime.now(timezone.utc) + timedelta(days=30)
-    return jwt.encode(
-        {"role": role, "uid": uid, "email": email, "name": name, "exp": exp},
-        SECRET_KEY, algorithm=ALGORITHM,
-    )
+    payload: dict = {"role": role, "uid": uid, "email": email, "name": name, "exp": exp}
+    if tenant_id is not None:
+        payload["tenant_id"] = tenant_id
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> dict | None:
@@ -51,3 +51,19 @@ async def require_customer(authorization: str = Header(default=None)) -> dict:
 
 async def require_staff(authorization: str = Header(default=None)) -> dict:
     return _require_role("staff", authorization)
+
+
+async def require_tenant_admin(
+    request: Request,
+    authorization: str = Header(default=None),
+) -> dict:
+    payload = _require_role("tenant_admin", authorization)
+    # Verify the token's tenant matches the subdomain the request arrived on
+    tenant = getattr(request.state, "tenant", None)
+    if tenant and payload.get("tenant_id") != tenant["id"]:
+        raise HTTPException(status_code=403, detail="Token does not match this workspace")
+    return payload
+
+
+async def require_super_admin(authorization: str = Header(default=None)) -> dict:
+    return _require_role("super_admin", authorization)

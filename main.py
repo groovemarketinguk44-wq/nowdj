@@ -17,19 +17,52 @@ from catalog_store import (
     save_site_config,
 )
 from database import (
-    get_all_quotes, get_quote_by_id, init_db, save_quote, update_quote_status,
+    init_db, migrate_null_tenant_ids,
+    get_all_quotes, get_quote_by_id, save_quote, update_quote_status,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
-    get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user, get_quotes_by_email,
-    get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member, delete_staff_member,
+    seed_templates_for_tenant,
+    get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user,
+    get_quotes_by_email, update_user,
+    get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member,
+    delete_staff_member, update_staff_member_info,
     get_all_bookings, get_booking_by_id, get_bookings_for_user, get_bookings_for_staff,
     create_booking, update_booking, delete_booking,
+    get_setting, set_setting,
+    create_tenant, get_tenant_by_slug, get_tenant_by_id, get_tenant_by_email,
+    get_all_tenants, update_tenant, delete_tenant,
 )
 from models import QuoteRequest, StatusUpdate
-from auth import hash_password, verify_password, create_token, require_customer, require_staff
+from auth import (
+    hash_password, verify_password, create_token,
+    require_customer, require_staff, require_tenant_admin, require_super_admin,
+)
 import email_manager as em
 
 
 DEFAULT_PW = "     "  # 5 spaces
+
+# Subdomains reserved for platform use — never matched as tenant slugs
+_RESERVED = {"admin", "www", "app", "api", "mail", "static"}
+
+
+def extract_subdomain(host: str) -> str | None:
+    """
+    Returns the subdomain component, or None if there is none.
+    Handles:  slug.nowdj.com → "slug"
+              slug.localhost  → "slug"
+              localhost       → None
+              nowdj.com       → None
+    """
+    host = host.split(":")[0]   # strip port
+    parts = host.split(".")
+    if len(parts) == 1:
+        return None             # bare "localhost"
+    if parts[-1] == "localhost":
+        return parts[0]         # slug.localhost
+    if len(parts) >= 3:
+        return parts[0]         # slug.nowdj.com
+    return None                 # nowdj.com (apex domain)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,23 +72,61 @@ async def lifespan(app: FastAPI):
 
 
 def _seed_defaults():
-    from database import get_setting, set_setting
-    # Admin credentials
+    # Super-admin credentials (global — no tenant prefix)
     if not get_setting("admin_email"):
         set_setting("admin_email", "ben@groovemarketing.co.uk")
         set_setting("admin_pw_hash", hash_password(DEFAULT_PW))
-    # Default staff account
-    if not get_staff_by_email("staffmember@dj.co.uk"):
-        create_staff_member("Staff Member", "staffmember@dj.co.uk", hash_password(DEFAULT_PW))
-    # Default customer account
-    if not get_user_by_email("client@dj.co.uk"):
-        create_user("Test Client", "client@dj.co.uk", hash_password(DEFAULT_PW))
+
+    # Migrate any legacy rows that pre-date multi-tenancy
+    # (safe no-op if tenant 1 doesn't exist or all rows already have tenant_id)
+    conn_check = get_setting("admin_email")  # quick DB connectivity check
+    if conn_check:
+        try:
+            from database import _conn
+            c = _conn()
+            try:
+                with c.cursor() as cur:
+                    cur.execute("SELECT id FROM tenants ORDER BY id ASC LIMIT 1")
+                    row = cur.fetchone()
+                    if row:
+                        migrate_null_tenant_ids(row["id"])
+            finally:
+                c.close()
+        except Exception:
+            pass
 
 
-app = FastAPI(title="NowDJ", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="NowDJ", version="2.0.0", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+# ---------------------------------------------------------------------------
+# Subdomain / tenant middleware
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def tenant_middleware(request: Request, call_next):
+    host = request.headers.get("host", "")
+    subdomain = extract_subdomain(host)
+
+    request.state.subdomain = subdomain
+    request.state.tenant = None
+    request.state.is_admin_domain = subdomain in ("admin", None)
+
+    if subdomain and subdomain not in _RESERVED:
+        tenant = get_tenant_by_slug(subdomain)
+        request.state.tenant = tenant   # None if slug not found
+
+    return await call_next(request)
+
+
+def _get_tenant_or_404(request: Request) -> dict:
+    tenant = getattr(request.state, "tenant", None)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return tenant
 
 
 # ---------------------------------------------------------------------------
@@ -64,11 +135,13 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def builder_page(request: Request):
-    branding = load_branding_config()
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    branding = load_branding_config(tid)
     return templates.TemplateResponse("builder.html", {
         "request": request,
-        "catalog": load_catalog(),
-        "config": load_site_config(),
+        "catalog": load_catalog(tid),
+        "config": load_site_config(tid),
         "branding": branding,
         "branding_style": build_branding_style(branding),
     })
@@ -76,7 +149,10 @@ async def builder_page(request: Request):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    branding = load_branding_config()
+    if getattr(request.state, "is_admin_domain", False):
+        return templates.TemplateResponse("super_admin.html", {"request": request})
+    tenant = _get_tenant_or_404(request)
+    branding = load_branding_config(tenant["id"])
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "branding": branding,
@@ -86,7 +162,8 @@ async def admin_page(request: Request):
 
 @app.get("/portal", response_class=HTMLResponse)
 async def portal_page(request: Request):
-    branding = load_branding_config()
+    tenant = _get_tenant_or_404(request)
+    branding = load_branding_config(tenant["id"])
     return templates.TemplateResponse("portal.html", {
         "request": request,
         "branding": branding,
@@ -96,7 +173,8 @@ async def portal_page(request: Request):
 
 @app.get("/staff-portal", response_class=HTMLResponse)
 async def staff_portal_page(request: Request):
-    branding = load_branding_config()
+    tenant = _get_tenant_or_404(request)
+    branding = load_branding_config(tenant["id"])
     return templates.TemplateResponse("staff.html", {
         "request": request,
         "branding": branding,
@@ -106,7 +184,15 @@ async def staff_portal_page(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    branding = load_branding_config()
+    # Allow login on both tenant subdomains and the admin domain
+    if getattr(request.state, "is_admin_domain", False):
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "branding": {"company_name": "NowDJ", "logo_emoji": "🎧", "logo_image": "", "accent_color": "#fa854f"},
+            "branding_style": "",
+        })
+    tenant = _get_tenant_or_404(request)
+    branding = load_branding_config(tenant["id"])
     return templates.TemplateResponse("login.html", {
         "request": request,
         "branding": branding,
@@ -115,62 +201,85 @@ async def login_page(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Catalog & site config API
+# Catalog & site config API  (tenant-scoped, require tenant_admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/catalog")
-async def api_get_catalog():
-    return load_catalog()
+async def api_get_catalog(request: Request):
+    tenant = _get_tenant_or_404(request)
+    return load_catalog(tenant["id"])
 
 
 @app.post("/api/catalog")
-async def api_save_catalog(catalog: dict):
-    save_catalog(catalog)
+async def api_save_catalog(
+    catalog: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    save_catalog(catalog, tenant["id"])
     return {"success": True}
 
 
 @app.post("/api/catalog/reset")
-async def api_reset_catalog():
-    from pathlib import Path
-    override = Path(__file__).parent / "catalog_override.json"
-    if override.exists():
-        override.unlink()
+async def api_reset_catalog(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    from database import set_setting
+    set_setting("catalog_override", "", tenant_id=tenant["id"])
     return {"success": True}
 
 
 @app.get("/api/site-config")
-async def api_get_site_config():
-    return load_site_config()
+async def api_get_site_config(request: Request):
+    tenant = _get_tenant_or_404(request)
+    return load_site_config(tenant["id"])
 
 
 @app.post("/api/site-config")
-async def api_save_site_config(config: dict):
-    save_site_config(config)
+async def api_save_site_config(
+    config: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    save_site_config(config, tenant["id"])
     return {"success": True}
 
 
 @app.get("/api/branding")
-async def api_get_branding():
-    return load_branding_config()
+async def api_get_branding(request: Request):
+    tenant = _get_tenant_or_404(request)
+    return load_branding_config(tenant["id"])
 
 
 @app.post("/api/branding")
-async def api_save_branding(config: dict):
-    save_branding_config(config)
+async def api_save_branding(
+    config: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    save_branding_config(config, tenant["id"])
     return {"success": True}
 
 
 # ---------------------------------------------------------------------------
-# Quote submission
+# Quote submission (public)
 # ---------------------------------------------------------------------------
 
 @app.post("/submit-quote")
-async def submit_quote(quote: QuoteRequest):
+async def submit_quote(quote: QuoteRequest, request: Request):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+
     if not quote.selected_items:
         raise HTTPException(status_code=400, detail="Please select at least one item.")
 
-    catalog = load_catalog()
-    prices = get_prices(catalog)
+    catalog = load_catalog(tid)
+    prices  = get_prices(catalog)
 
     total = 0.0
     item_details = []
@@ -184,8 +293,6 @@ async def submit_quote(quote: QuoteRequest):
                 name = cat_item["name"]
                 break
 
-        # pricing_type: "fixed" | "hourly" | "daily" | "tbc"
-        # backward-compat: old `hourly: true` flag treated as "hourly"
         pt = cat_item.get("pricing_type") or ("hourly" if cat_item.get("hourly") else "fixed")
 
         if pt == "tbc":
@@ -213,7 +320,7 @@ async def submit_quote(quote: QuoteRequest):
         "selected_items": item_details,
         "total_price": total,
         "message": quote.message,
-    })
+    }, tid)
 
     return {
         "success": True,
@@ -224,99 +331,143 @@ async def submit_quote(quote: QuoteRequest):
 
 
 # ---------------------------------------------------------------------------
-# Quotes API
+# Quotes API  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/quotes")
-async def list_quotes():
-    return get_all_quotes()
+async def list_quotes(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_quotes(tenant["id"])
 
 
 @app.get("/quotes/{quote_id}")
-async def get_quote(quote_id: int):
-    q = get_quote_by_id(quote_id)
+async def get_quote(
+    quote_id: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    q = get_quote_by_id(quote_id, tenant["id"])
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
     return q
 
 
 @app.patch("/quotes/{quote_id}/status")
-async def patch_status(quote_id: int, payload: StatusUpdate):
-    q = get_quote_by_id(quote_id)
+async def patch_status(
+    quote_id: int,
+    payload: StatusUpdate,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    q = get_quote_by_id(quote_id, tenant["id"])
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
-    update_quote_status(quote_id, payload.status)
+    update_quote_status(quote_id, payload.status, tenant["id"])
     return {"success": True, "quote_id": quote_id, "status": payload.status}
 
 
 # ---------------------------------------------------------------------------
-# Email — config & auth
+# Email — config & auth  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/email/status")
-async def email_status():
-    configured = em.is_configured()
-    authenticated = em.is_authenticated() if configured else False
+async def email_status(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    configured   = em.is_configured(tid)
+    authenticated = em.is_authenticated(tid) if configured else False
     user: dict = {}
     if authenticated:
         try:
-            user = await em.get_me()
+            user = await em.get_me(tid)
         except Exception:
             authenticated = False
     return {"configured": configured, "authenticated": authenticated, "user": user}
 
 
 @app.get("/api/email/config")
-async def email_get_config():
-    cfg = em.load_config()
-    # Never expose the secret
+async def email_get_config(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    cfg = em.load_config(tenant["id"])
     return {k: (v if k != "client_secret" else ("***" if v else "")) for k, v in cfg.items()}
 
 
 @app.post("/api/email/config")
-async def email_save_config(payload: dict):
-    existing = em.load_config()
-    # Keep existing secret if placeholder sent
+async def email_save_config(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    existing = em.load_config(tid)
     if payload.get("client_secret") == "***":
         payload["client_secret"] = existing.get("client_secret", "")
-    em.save_config({**existing, **payload})
+    em.save_config({**existing, **payload}, tid)
     return {"success": True}
 
 
 @app.get("/api/email/auth/connect")
-async def email_auth_connect():
-    if not em.is_configured():
+async def email_auth_connect(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    if not em.is_configured(tid):
         raise HTTPException(status_code=400, detail="Email not configured. Add client_id and client_secret first.")
-    return RedirectResponse(em.get_auth_url())
+    return RedirectResponse(em.get_auth_url(tid))
 
 
 @app.get("/api/email/auth/callback")
-async def email_auth_callback(code: str = "", error: str = ""):
+async def email_auth_callback(request: Request, code: str = "", error: str = ""):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     if error:
         return HTMLResponse(f"<script>window.location='/admin#email';alert('Auth error: {error}');</script>")
     if not code:
         raise HTTPException(status_code=400, detail="No code provided")
     try:
-        await em.exchange_code(code)
+        await em.exchange_code(code, tid)
     except Exception as exc:
         return HTMLResponse(f"<script>window.location='/admin#email';alert('Auth failed: {exc}');</script>")
     return HTMLResponse("<script>window.opener&&window.opener.postMessage('email_auth_ok','*');window.close();if(!window.opener)window.location='/admin#email';</script>")
 
 
 @app.post("/api/email/auth/disconnect")
-async def email_auth_disconnect():
-    em.clear_tokens()
+async def email_auth_disconnect(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    em.clear_tokens(tenant["id"])
     return {"success": True}
 
 
 # ---------------------------------------------------------------------------
-# Email — mailbox operations
+# Email — mailbox operations  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/email/inbox")
-async def email_inbox(top: int = 40):
+async def email_inbox(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+    top: int = 40,
+):
+    tenant = _get_tenant_or_404(request)
     try:
-        return await em.get_inbox(top)
+        return await em.get_inbox(tenant["id"], top)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
@@ -324,9 +475,14 @@ async def email_inbox(top: int = 40):
 
 
 @app.get("/api/email/sent")
-async def email_sent(top: int = 20):
+async def email_sent(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+    top: int = 20,
+):
+    tenant = _get_tenant_or_404(request)
     try:
-        return await em.get_sent(top)
+        return await em.get_sent(tenant["id"], top)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
@@ -334,9 +490,14 @@ async def email_sent(top: int = 20):
 
 
 @app.get("/api/email/messages/{msg_id:path}")
-async def email_get_message(msg_id: str):
+async def email_get_message(
+    msg_id: str,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     try:
-        msg = await em.get_message(msg_id)
+        msg = await em.get_message(msg_id, tenant["id"])
         if not msg:
             raise HTTPException(status_code=404, detail="Message not found")
         return msg
@@ -349,25 +510,40 @@ async def email_get_message(msg_id: str):
 
 
 @app.patch("/api/email/messages/{msg_id:path}/read")
-async def email_mark_read(msg_id: str):
+async def email_mark_read(
+    msg_id: str,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     try:
-        ok = await em.mark_read(msg_id)
+        ok = await em.mark_read(msg_id, tenant["id"])
         return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
 
 @app.delete("/api/email/messages/{msg_id:path}")
-async def email_delete_message(msg_id: str):
+async def email_delete_message(
+    msg_id: str,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     try:
-        ok = await em.delete_message(msg_id)
+        ok = await em.delete_message(msg_id, tenant["id"])
         return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
 
 @app.post("/api/email/send")
-async def email_send(payload: dict):
+async def email_send(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     to_email = payload.get("to_email", "")
     to_name  = payload.get("to_name", "")
     subject  = payload.get("subject", "")
@@ -375,7 +551,7 @@ async def email_send(payload: dict):
     if not to_email or not subject:
         raise HTTPException(status_code=400, detail="to_email and subject are required")
     try:
-        ok = await em.send_email(to_email, to_name, subject, body)
+        ok = await em.send_email(to_email, to_name, subject, body, tenant["id"])
         return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -384,10 +560,16 @@ async def email_send(payload: dict):
 
 
 @app.post("/api/email/reply/{msg_id:path}")
-async def email_reply(msg_id: str, payload: dict):
+async def email_reply(
+    msg_id: str,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     body = payload.get("body", "")
     try:
-        ok = await em.reply_email(msg_id, body)
+        ok = await em.reply_email(msg_id, body, tenant["id"])
         return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -396,57 +578,90 @@ async def email_reply(msg_id: str, payload: dict):
 
 
 # ---------------------------------------------------------------------------
-# Email — templates CRUD
+# Email — templates CRUD  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/email/templates")
-async def list_email_templates():
-    return get_all_templates()
+async def list_email_templates(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_templates(tenant["id"])
 
 
 @app.get("/api/email/templates/{tid}")
-async def get_email_template(tid: int):
-    t = get_template_by_id(tid)
+async def get_email_template(
+    tid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    t = get_template_by_id(tid, tenant["id"])
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
     return t
 
 
 @app.post("/api/email/templates")
-async def create_email_template(payload: dict):
+async def create_email_template(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
     name    = payload.get("name", "").strip()
     subject = payload.get("subject", "").strip()
     body    = payload.get("body", "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
-    tid = create_template(name, subject, body)
+    tid = create_template(name, subject, body, tenant["id"])
     return {"success": True, "id": tid}
 
 
 @app.put("/api/email/templates/{tid}")
-async def update_email_template(tid: int, payload: dict):
-    t = get_template_by_id(tid)
+async def update_email_template(
+    tid: int,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    t = get_template_by_id(tid, tenant["id"])
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
-    update_template(tid, payload.get("name", t["name"]), payload.get("subject", t["subject"]), payload.get("body", t["body"]))
+    update_template(
+        tid,
+        payload.get("name", t["name"]),
+        payload.get("subject", t["subject"]),
+        payload.get("body", t["body"]),
+        tenant["id"],
+    )
     return {"success": True}
 
 
 @app.delete("/api/email/templates/{tid}")
-async def delete_email_template(tid: int):
-    t = get_template_by_id(tid)
+async def delete_email_template(
+    tid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    t = get_template_by_id(tid, tenant["id"])
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
-    delete_template(tid)
+    delete_template(tid, tenant["id"])
     return {"success": True}
 
 
 # ---------------------------------------------------------------------------
-# Auth — customer
+# Auth — customer  (public, tenant-scoped)
 # ---------------------------------------------------------------------------
 
 @app.post("/api/auth/customer/register")
-async def customer_register(payload: dict):
+async def customer_register(payload: dict, request: Request):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     name     = payload.get("name", "").strip()
     email    = payload.get("email", "").strip().lower()
     password = payload.get("password", "")
@@ -456,37 +671,80 @@ async def customer_register(payload: dict):
         raise HTTPException(status_code=400, detail="Invalid email")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    if get_user_by_email(email):
+    if get_user_by_email(email, tid):
         raise HTTPException(status_code=409, detail="An account with that email already exists")
-    uid   = create_user(name, email, hash_password(password))
-    token = create_token("customer", uid, email, name)
+    uid   = create_user(name, email, hash_password(password), tid)
+    token = create_token("customer", uid, email, name, tenant_id=tid)
     return {"token": token, "name": name, "email": email}
 
 
 @app.post("/api/auth/customer/login")
-async def customer_login(payload: dict):
+async def customer_login(payload: dict, request: Request):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     email    = payload.get("email", "").strip().lower()
     password = payload.get("password", "")
-    user     = get_user_by_email(email)
+    user     = get_user_by_email(email, tid)
     if not user or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    token = create_token("customer", user["id"], user["email"], user["name"])
+    token = create_token("customer", user["id"], user["email"], user["name"], tenant_id=tid)
     return {"token": token, "name": user["name"], "email": user["email"]}
 
 
 # ---------------------------------------------------------------------------
-# Auth — staff
+# Auth — staff  (public, tenant-scoped)
 # ---------------------------------------------------------------------------
 
 @app.post("/api/auth/staff/login")
-async def staff_login(payload: dict):
+async def staff_login(payload: dict, request: Request):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     email    = payload.get("email", "").strip().lower()
     password = payload.get("password", "")
-    member   = get_staff_by_email(email)
+    member   = get_staff_by_email(email, tid)
     if not member or not verify_password(password, member["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    token = create_token("staff", member["id"], member["email"], member["name"])
+    token = create_token("staff", member["id"], member["email"], member["name"], tenant_id=tid)
     return {"token": token, "name": member["name"], "email": member["email"]}
+
+
+# ---------------------------------------------------------------------------
+# Unified login  (handles super_admin, tenant_admin, staff, customer)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/login")
+async def unified_login(payload: dict, request: Request):
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+
+    # ── Super admin (only valid on the admin domain)
+    if getattr(request.state, "is_admin_domain", False):
+        admin_email   = get_setting("admin_email", "").lower()
+        admin_pw_hash = get_setting("admin_pw_hash", "")
+        if email == admin_email and admin_pw_hash and verify_password(password, admin_pw_hash):
+            token = create_token("super_admin", 0, email, "Super Admin")
+            return {"role": "super_admin", "token": token}
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    # ── Tenant subdomain — check tenant admin, then staff, then customer
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+
+    if email == tenant["email"].lower() and verify_password(password, tenant["password_hash"]):
+        token = create_token("tenant_admin", tenant["id"], tenant["email"], tenant["name"], tenant_id=tid)
+        return {"role": "tenant_admin", "token": token, "name": tenant["name"], "email": tenant["email"]}
+
+    member = get_staff_by_email(email, tid)
+    if member and verify_password(password, member["password_hash"]):
+        token = create_token("staff", member["id"], member["email"], member["name"], tenant_id=tid)
+        return {"role": "staff", "token": token, "name": member["name"], "email": member["email"]}
+
+    user = get_user_by_email(email, tid)
+    if user and verify_password(password, user["password_hash"]):
+        token = create_token("customer", user["id"], user["email"], user["name"], tenant_id=tid)
+        return {"role": "customer", "token": token, "name": user["name"], "email": user["email"]}
+
+    raise HTTPException(status_code=401, detail="Incorrect email or password")
 
 
 # ---------------------------------------------------------------------------
@@ -499,13 +757,21 @@ async def customer_me(user: Annotated[dict, Depends(require_customer)]):
 
 
 @app.get("/api/customer/quotes")
-async def customer_quotes(user: Annotated[dict, Depends(require_customer)]):
-    return get_quotes_by_email(user["email"])
+async def customer_quotes(
+    request: Request,
+    user: Annotated[dict, Depends(require_customer)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_quotes_by_email(user["email"], tenant["id"])
 
 
 @app.get("/api/customer/bookings")
-async def customer_bookings(user: Annotated[dict, Depends(require_customer)]):
-    return get_bookings_for_user(user["uid"])
+async def customer_bookings(
+    request: Request,
+    user: Annotated[dict, Depends(require_customer)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_bookings_for_user(user["uid"], tenant["id"])
 
 
 # ---------------------------------------------------------------------------
@@ -518,83 +784,133 @@ async def staff_me(member: Annotated[dict, Depends(require_staff)]):
 
 
 @app.get("/api/staff/bookings")
-async def staff_bookings(member: Annotated[dict, Depends(require_staff)]):
-    return get_bookings_for_staff(member["uid"])
+async def staff_bookings(
+    request: Request,
+    member: Annotated[dict, Depends(require_staff)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_bookings_for_staff(member["uid"], tenant["id"])
 
 
 # ---------------------------------------------------------------------------
-# Admin — staff management
+# Admin — staff management  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/admin/staff")
-async def admin_list_staff():
-    return get_all_staff()
+async def admin_list_staff(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_staff(tenant["id"])
 
 
 @app.post("/api/admin/staff")
-async def admin_create_staff(payload: dict):
+async def admin_create_staff(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     name     = payload.get("name", "").strip()
     email    = payload.get("email", "").strip().lower()
     password = payload.get("password", "")
     if not name or not email or not password:
         raise HTTPException(status_code=400, detail="name, email and password required")
-    if get_staff_by_email(email):
+    if get_staff_by_email(email, tid):
         raise HTTPException(status_code=409, detail="Staff member with that email already exists")
-    sid = create_staff_member(name, email, hash_password(password))
+    sid = create_staff_member(name, email, hash_password(password), tid)
     return {"success": True, "id": sid}
 
 
 @app.delete("/api/admin/staff/{sid}")
-async def admin_delete_staff(sid: int):
-    if not get_staff_by_id(sid):
+async def admin_delete_staff(
+    sid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    if not get_staff_by_id(sid, tenant["id"]):
         raise HTTPException(status_code=404, detail="Staff member not found")
-    delete_staff_member(sid)
+    delete_staff_member(sid, tenant["id"])
     return {"success": True}
 
 
 # ---------------------------------------------------------------------------
-# Admin — bookings
+# Admin — bookings  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/admin/bookings")
-async def admin_list_bookings():
-    return get_all_bookings()
+async def admin_list_bookings(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_bookings(tenant["id"])
 
 
 @app.post("/api/admin/bookings")
-async def admin_create_booking(payload: dict):
-    bid = create_booking(payload)
+async def admin_create_booking(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    bid = create_booking(payload, tenant["id"])
     return {"success": True, "id": bid}
 
 
 @app.patch("/api/admin/bookings/{bid}")
-async def admin_update_booking(bid: int, payload: dict):
-    if not get_booking_by_id(bid):
+async def admin_update_booking(
+    bid: int,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    if not get_booking_by_id(bid, tenant["id"]):
         raise HTTPException(status_code=404, detail="Booking not found")
-    update_booking(bid, payload)
+    update_booking(bid, payload, tenant["id"])
     return {"success": True}
 
 
 @app.delete("/api/admin/bookings/{bid}")
-async def admin_delete_booking(bid: int):
-    if not get_booking_by_id(bid):
+async def admin_delete_booking(
+    bid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    if not get_booking_by_id(bid, tenant["id"]):
         raise HTTPException(status_code=404, detail="Booking not found")
-    delete_booking(bid)
+    delete_booking(bid, tenant["id"])
     return {"success": True}
 
 
 # ---------------------------------------------------------------------------
-# Admin — user (client) management
+# Admin — user (client) management  (tenant admin)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/admin/users")
-async def admin_list_users():
-    return get_all_users()
+async def admin_list_users(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_users(tenant["id"])
 
 
 @app.patch("/api/admin/users/{uid}")
-async def admin_update_user(uid: int, payload: dict):
-    user = get_user_by_id(uid)
+async def admin_update_user(
+    uid: int,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    user = get_user_by_id(uid, tid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     new_name  = payload.get("name", "").strip()
@@ -602,49 +918,22 @@ async def admin_update_user(uid: int, payload: dict):
     new_pw    = payload.get("password", "")
     if not new_name or not new_email:
         raise HTTPException(status_code=400, detail="name and email required")
-    from database import update_user
     pw_hash = hash_password(new_pw) if new_pw else None
-    update_user(uid, new_name, new_email, pw_hash)
+    update_user(uid, new_name, new_email, tid, pw_hash)
     return {"success": True}
 
 
 @app.delete("/api/admin/users/{uid}")
-async def admin_delete_user(uid: int):
-    if not get_user_by_id(uid):
+async def admin_delete_user(
+    uid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    if not get_user_by_id(uid, tenant["id"]):
         raise HTTPException(status_code=404, detail="User not found")
-    delete_user(uid)
+    delete_user(uid, tenant["id"])
     return {"success": True}
-
-
-# ---------------------------------------------------------------------------
-# Unified login
-# ---------------------------------------------------------------------------
-
-@app.post("/api/auth/login")
-async def unified_login(payload: dict):
-    from database import get_setting
-    email    = payload.get("email", "").strip().lower()
-    password = payload.get("password", "")
-
-    # Admin check
-    admin_email   = get_setting("admin_email", "ben@groovemarketing.co.uk").lower()
-    admin_pw_hash = get_setting("admin_pw_hash", "")
-    if email == admin_email and admin_pw_hash and verify_password(password, admin_pw_hash):
-        return {"role": "admin"}
-
-    # Staff check
-    member = get_staff_by_email(email)
-    if member and verify_password(password, member["password_hash"]):
-        token = create_token("staff", member["id"], member["email"], member["name"])
-        return {"role": "staff", "token": token, "name": member["name"], "email": member["email"]}
-
-    # Customer check
-    user = get_user_by_email(email)
-    if user and verify_password(password, user["password_hash"]):
-        token = create_token("customer", user["id"], user["email"], user["name"])
-        return {"role": "customer", "token": token, "name": user["name"], "email": user["email"]}
-
-    raise HTTPException(status_code=401, detail="Incorrect email or password")
 
 
 # ---------------------------------------------------------------------------
@@ -654,45 +943,118 @@ async def unified_login(payload: dict):
 @app.patch("/api/customer/profile")
 async def update_customer_profile(
     payload: dict,
+    request: Request,
     user: Annotated[dict, Depends(require_customer)],
 ):
-    from database import update_user
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     new_name  = payload.get("name", "").strip()
     new_email = payload.get("email", "").strip().lower()
     new_pw    = payload.get("password", "")
     if not new_name or not new_email:
         raise HTTPException(status_code=400, detail="name and email required")
     pw_hash = hash_password(new_pw) if new_pw else None
-    update_user(user["uid"], new_name, new_email, pw_hash)
-    token = create_token("customer", user["uid"], new_email, new_name)
+    update_user(user["uid"], new_name, new_email, tid, pw_hash)
+    token = create_token("customer", user["uid"], new_email, new_name, tenant_id=tid)
     return {"success": True, "token": token, "name": new_name, "email": new_email}
 
 
 @app.patch("/api/staff/profile")
 async def update_staff_profile(
     payload: dict,
+    request: Request,
     member: Annotated[dict, Depends(require_staff)],
 ):
-    from database import update_staff_member_info
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
     new_name  = payload.get("name", "").strip()
     new_email = payload.get("email", "").strip().lower()
     new_pw    = payload.get("password", "")
     if not new_name or not new_email:
         raise HTTPException(status_code=400, detail="name and email required")
     pw_hash = hash_password(new_pw) if new_pw else None
-    update_staff_member_info(member["uid"], new_name, new_email, pw_hash)
-    token = create_token("staff", member["uid"], new_email, new_name)
+    update_staff_member_info(member["uid"], new_name, new_email, tid, pw_hash)
+    token = create_token("staff", member["uid"], new_email, new_name, tenant_id=tid)
     return {"success": True, "token": token, "name": new_name, "email": new_email}
 
 
 @app.patch("/api/admin/credentials")
-async def update_admin_credentials(payload: dict):
-    from database import get_setting, set_setting
+async def update_tenant_admin_credentials(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    """Tenant admin updates their own login email / password."""
+    tenant = _get_tenant_or_404(request)
     new_email = payload.get("email", "").strip().lower()
     new_pw    = payload.get("password", "")
     if not new_email:
         raise HTTPException(status_code=400, detail="email required")
-    set_setting("admin_email", new_email)
-    if new_pw:
-        set_setting("admin_pw_hash", hash_password(new_pw))
+    pw_hash = hash_password(new_pw) if new_pw else None
+    update_tenant(tenant["id"], tenant["name"], new_email, tenant["plan"], pw_hash)
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Super admin — tenant management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/super/tenants")
+async def super_list_tenants(
+    _admin: Annotated[dict, Depends(require_super_admin)],
+):
+    return get_all_tenants()
+
+
+@app.post("/api/super/tenants")
+async def super_create_tenant(
+    payload: dict,
+    _admin: Annotated[dict, Depends(require_super_admin)],
+):
+    name     = payload.get("name", "").strip()
+    slug     = payload.get("slug", "").strip().lower()
+    email    = payload.get("email", "").strip().lower()
+    password = payload.get("password", "")
+    plan     = payload.get("plan", "starter")
+
+    if not name or not slug or not email or not password:
+        raise HTTPException(status_code=400, detail="name, slug, email and password are required")
+    if slug in _RESERVED:
+        raise HTTPException(status_code=400, detail=f"'{slug}' is a reserved slug")
+    if get_tenant_by_slug(slug):
+        raise HTTPException(status_code=409, detail="A workspace with that slug already exists")
+    if get_tenant_by_email(email):
+        raise HTTPException(status_code=409, detail="A workspace with that email already exists")
+
+    tid = create_tenant(name, slug, email, hash_password(password), plan)
+    seed_templates_for_tenant(tid)
+    return {"success": True, "id": tid, "slug": slug}
+
+
+@app.patch("/api/super/tenants/{tid}")
+async def super_update_tenant(
+    tid: int,
+    payload: dict,
+    _admin: Annotated[dict, Depends(require_super_admin)],
+):
+    tenant = get_tenant_by_id(tid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    name     = payload.get("name", tenant["name"]).strip()
+    email    = payload.get("email", tenant["email"]).strip().lower()
+    plan     = payload.get("plan", tenant["plan"])
+    new_pw   = payload.get("password", "")
+    pw_hash  = hash_password(new_pw) if new_pw else None
+    update_tenant(tid, name, email, plan, pw_hash)
+    return {"success": True}
+
+
+@app.delete("/api/super/tenants/{tid}")
+async def super_delete_tenant(
+    tid: int,
+    _admin: Annotated[dict, Depends(require_super_admin)],
+):
+    if not get_tenant_by_id(tid):
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    delete_tenant(tid)
     return {"success": True}
