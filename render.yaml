@@ -9,6 +9,8 @@ services:
         fromDatabase:
           name: nowdj-db
           property: connectionString
+      - key: BASE_DOMAIN
+        value: nowdj.onrender.com
 
 databases:
   - name: nowdj-db

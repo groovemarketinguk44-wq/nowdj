@@ -36,6 +36,7 @@ from auth import (
     hash_password, verify_password, create_token,
     require_customer, require_staff, require_tenant_admin, require_super_admin,
 )
+import os
 import email_manager as em
 
 
@@ -44,24 +45,45 @@ DEFAULT_PW = "     "  # 5 spaces
 # Subdomains reserved for platform use — never matched as tenant slugs
 _RESERVED = {"admin", "www", "app", "api", "mail", "static"}
 
+# Set BASE_DOMAIN in your environment so the app knows its root domain.
+# e.g.  BASE_DOMAIN=nowdj.onrender.com   or   BASE_DOMAIN=nowdj.com
+# Without it the app falls back to a heuristic that works for simple cases
+# but breaks on multi-part provider domains like nowdj.onrender.com.
+_BASE_DOMAIN = os.environ.get("BASE_DOMAIN", "").strip().lower()
+
 
 def extract_subdomain(host: str) -> str | None:
     """
-    Returns the subdomain component, or None if there is none.
-    Handles:  slug.nowdj.com → "slug"
-              slug.localhost  → "slug"
-              localhost       → None
-              nowdj.com       → None
+    Returns the subdomain slug, or None if this is the root/apex domain.
+
+    With BASE_DOMAIN set (recommended):
+        nowdj.onrender.com          → None   (apex)
+        admin.nowdj.onrender.com    → "admin"
+        ajax-dj.nowdj.onrender.com  → "ajax-dj"
+
+    Without BASE_DOMAIN (local dev fallback):
+        localhost                   → None
+        admin.localhost             → "admin"
+        ajax-dj.localhost           → "ajax-dj"
     """
-    host = host.split(":")[0]   # strip port
+    host = host.split(":")[0].lower()   # strip port
+
+    if _BASE_DOMAIN:
+        if host == _BASE_DOMAIN:
+            return None                              # exact apex match
+        if host.endswith("." + _BASE_DOMAIN):
+            return host[: -(len(_BASE_DOMAIN) + 1)] # strip .base-domain
+        return None                                  # unrelated host
+
+    # ── Local dev fallback (no BASE_DOMAIN set) ──────────────────────────
     parts = host.split(".")
     if len(parts) == 1:
-        return None             # bare "localhost"
+        return None          # bare "localhost"
     if parts[-1] == "localhost":
-        return parts[0]         # slug.localhost
-    if len(parts) >= 3:
-        return parts[0]         # slug.nowdj.com
-    return None                 # nowdj.com (apex domain)
+        return parts[0]      # slug.localhost
+    # For production without BASE_DOMAIN, avoid misidentifying the service
+    # name as a subdomain (e.g. nowdj.onrender.com → None, not "nowdj")
+    return None
 
 
 @asynccontextmanager
@@ -135,6 +157,9 @@ def _get_tenant_or_404(request: Request) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def builder_page(request: Request):
+    # Root domain with no tenant → redirect to admin panel
+    if not request.state.tenant and getattr(request.state, "is_admin_domain", False):
+        return RedirectResponse("/admin")
     tenant = _get_tenant_or_404(request)
     tid = tenant["id"]
     branding = load_branding_config(tid)
