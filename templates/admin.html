@@ -674,17 +674,17 @@
         <div class="sig-form-section">
           <div class="sig-form-section-title">From</div>
           <div class="modal-field">
-            <label>Company</label>
+            <label>Pre-fill from signature</label>
             <select id="doc-from-sig">
-              <option value="">— Use global doc settings —</option>
+              <option value="">— Enter details manually —</option>
             </select>
           </div>
-          <div id="doc-from-preview" style="display:none;margin-top:0.6rem;padding:0.65rem 0.75rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8rem;display:none">
-            <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.4rem">
-              <img id="doc-from-logo" src="" alt="" style="max-height:36px;max-width:80px;object-fit:contain;border-radius:4px;display:none" onerror="this.style.display='none'" />
-              <strong id="doc-from-name" style="color:var(--text-primary);font-size:0.85rem"></strong>
-            </div>
-            <div id="doc-from-details" style="color:var(--text-muted);line-height:1.6;white-space:pre-line"></div>
+          <div class="modal-field"><label>Company Name</label><input type="text" id="doc-from-name-input" placeholder="Your company name" /></div>
+          <div class="modal-field"><label>Logo URL</label><input type="text" id="doc-from-logo-input" placeholder="https://…/logo.png" /></div>
+          <div class="modal-field"><label>Address</label><textarea id="doc-from-address-input" rows="2" placeholder="123 High Street&#10;London, EC1A 1BB"></textarea></div>
+          <div class="doc-form-row">
+            <div class="modal-field"><label>Phone</label><input type="text" id="doc-from-phone-input" /></div>
+            <div class="modal-field"><label>Email</label><input type="email" id="doc-from-email-input" /></div>
           </div>
         </div>
 
@@ -866,6 +866,12 @@
           <option value="">— Select a signature —</option>
         </select>
       </div>
+      <div class="modal-field" id="compose-attachment-row" style="display:none">
+        <label>Attachment</label>
+        <select id="compose-attachment-select">
+          <option value="">No attachment</option>
+        </select>
+      </div>
       <div class="modal-field" id="compose-vars-row" style="display:none">
         <label>Fill Variables</label>
         <div class="compose-vars" id="compose-vars"></div>
@@ -886,6 +892,7 @@
         </div>
         <div class="compose-email-frame">
           <div id="compose-body" contenteditable="true" class="wysiwyg-body compose-body-area" data-placeholder="Your message here…"></div>
+          <div id="compose-attachment-inline" class="compose-sig-inline" style="display:none"></div>
           <div id="compose-sig-inline" class="compose-sig-inline" style="display:none"></div>
         </div>
       </div>
@@ -1659,11 +1666,11 @@ function renderQuotes() {
       });
       dr.querySelector('.btn-send-email')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        const linkedDoc = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === 'quote') || null;
+        const enquiryDocs = allDocs.filter(d => d.source_quote_id == q.id);
         openComposeModal({
           to_email: q.email || '',
           to_name:  q.name  || '',
-          linkedDoc,
+          enquiryDocs,
           quoteVars: {
             name:       q.name       || '',
             email:      q.email      || '',
@@ -1678,7 +1685,11 @@ function renderQuotes() {
       });
       dr.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        openDocEditorFromEnquiry(q);
+        openDocEditorFromEnquiry(q, 'quote');
+      });
+      dr.querySelector('.btn-create-invoice')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDocEditorFromEnquiry(q, 'invoice');
       });
       dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -1728,14 +1739,18 @@ function buildDetail(q) {
             <option value="declined"  ${q.status==='declined'?'selected':''}>Declined</option>
           </select>
         </div>
-        <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
-          <button class="btn-send-email" data-quote-id="${q.id}" style="flex:1">
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
+          <button class="btn-send-email" data-quote-id="${q.id}" style="flex:1;min-width:0">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             Send Email
           </button>
-          <button class="btn-secondary btn-create-quote" data-quote-id="${q.id}" style="flex:1">
+          <button class="btn-secondary btn-create-quote" data-quote-id="${q.id}" style="flex:1;min-width:0">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-            ${allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote') ? 'Edit Quote' : 'Create Quote'}
+            ${allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote') ? 'Edit Quote' : 'Quote'}
+          </button>
+          <button class="btn-secondary btn-create-invoice" data-quote-id="${q.id}" style="flex:1;min-width:0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            ${allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'invoice') ? 'Edit Invoice' : 'Invoice'}
           </button>
         </div>
         <button class="btn-delete-enquiry btn-sm btn-danger" data-quote-id="${q.id}" style="margin-top:0.5rem;width:100%;justify-content:center">
@@ -2033,12 +2048,9 @@ document.getElementById('compose-modal').addEventListener('click', (e) => { if (
 
 let _composeQuoteVars = {};
 
-let _composeLinkedDoc = null;
-
-async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {}, linkedDoc = null } = {}) {
+async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {}, enquiryDocs = [] } = {}) {
   composeMsgId = null;
   _composeQuoteVars = quoteVars;
-  _composeLinkedDoc = linkedDoc;
   document.getElementById('compose-to').value      = to_email;
   document.getElementById('compose-to-name').value = to_name;
   document.getElementById('compose-subject').value = prefill.subject || '';
@@ -2081,49 +2093,46 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
   });
   updateComposeSigPreview();
 
-  // If a linked quote doc exists, auto-apply Quote Reply template and append quote link
-  if (linkedDoc) {
-    const tmpl = emailTemplates.find(t => /quote\s*repl/i.test(t.name)) || emailTemplates[0];
-    if (tmpl) {
-      sel.value = tmpl.id;
-      document.getElementById('compose-subject').value = tmpl.subject || '';
-      document.getElementById('compose-body').innerHTML = tmpl.body || '';
-      // Populate variable fields from quoteVars
-      Object.entries(quoteVars).forEach(([k, v]) => {
-        const el = document.getElementById(`var-${k}`);
-        if (el) el.value = v;
-      });
-      const varsDiv = document.getElementById('compose-vars');
-      const tmplText = (tmpl.subject || '') + (tmpl.body || '');
-      const varMatches = [...new Set([...tmplText.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]))];
-      if (varMatches.length) {
-        document.getElementById('compose-vars-row').style.display = '';
-        varsDiv.innerHTML = varMatches.map(v => `
-          <div class="compose-var-field">
-            <div class="compose-var-label">+ V +</div>
-            <input id="var-${v}" type="text" value="${escHtml(quoteVars[v] || '')}" placeholder="${v}" />
-          </div>`).join('');
+  // Populate attachment dropdown from enquiry docs
+  const attachSel = document.getElementById('compose-attachment-select');
+  const attachRow = document.getElementById('compose-attachment-row');
+  attachSel.innerHTML = '<option value="">No attachment</option>';
+  if (enquiryDocs.length > 0) {
+    enquiryDocs.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      const label = d.doc_type === 'invoice' ? 'Invoice' : 'Quote';
+      opt.textContent = `${label} — ${d.doc_number || '#' + d.id}`;
+      attachSel.appendChild(opt);
+    });
+    attachRow.style.display = '';
+    // Auto-select quote if present
+    const defaultDoc = enquiryDocs.find(d => d.doc_type === 'quote') || enquiryDocs[0];
+    if (defaultDoc) attachSel.value = String(defaultDoc.id);
+    // Auto-apply Quote Reply template if we have a quote doc
+    if (defaultDoc && defaultDoc.doc_type === 'quote') {
+      const tmpl = emailTemplates.find(t => /quote\s*repl/i.test(t.name));
+      if (tmpl) {
+        sel.value = tmpl.id;
+        document.getElementById('compose-subject').value = tmpl.subject || '';
+        document.getElementById('compose-body').innerHTML = tmpl.body || '';
+        const varsDiv = document.getElementById('compose-vars');
+        const tmplText = (tmpl.subject || '') + (tmpl.body || '');
+        const varMatches = [...new Set([...tmplText.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]))];
+        if (varMatches.length) {
+          document.getElementById('compose-vars-row').style.display = '';
+          varsDiv.innerHTML = varMatches.map(v => `
+            <div class="compose-var-field">
+              <label>{{${v}}}</label>
+              <input id="var-${v}" type="text" value="${escHtml(quoteVars[v] || '')}" placeholder="${v}" />
+            </div>`).join('');
+        }
       }
     }
-    // Append quote view link to body
-    const token = localStorage.getItem('ndj_admin_token') || '';
-    const quoteUrl = `${location.origin}/api/docs/${linkedDoc.id}/print?token=${encodeURIComponent(token)}`;
-    const quoteBtn = `<br/><br/><table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${quoteUrl}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;font-family:Arial,sans-serif">&#128196; View Your Quote (${escHtml(linkedDoc.doc_number || '')})</a></td></tr></table>`;
-    document.getElementById('compose-body').innerHTML += quoteBtn;
-    // Show attachment badge
-    let badge = document.getElementById('compose-quote-badge');
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'compose-quote-badge';
-      badge.style.cssText = 'display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--accent);margin-top:0.4rem;padding:0.35rem 0.6rem;background:rgba(250,133,79,0.1);border-radius:var(--radius-sm);border:1px solid rgba(250,133,79,0.25)';
-      document.getElementById('compose-sig-select').parentElement.appendChild(badge);
-    }
-    badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> Quote ${escHtml(linkedDoc.doc_number || '')} attached`;
-    badge.style.display = 'flex';
   } else {
-    const badge = document.getElementById('compose-quote-badge');
-    if (badge) badge.style.display = 'none';
+    attachRow.style.display = 'none';
   }
+  updateAttachmentInline();
 
   // If Outlook not connected, show warning in compose
   const sendBtn = document.getElementById('btn-send-compose');
@@ -2139,9 +2148,9 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
 function closeComposeModal() {
   document.getElementById('compose-modal').classList.remove('open');
   composeMsgId = null;
-  _composeLinkedDoc = null;
-  const badge = document.getElementById('compose-quote-badge');
-  if (badge) badge.style.display = 'none';
+  document.getElementById('compose-attachment-select').innerHTML = '<option value="">No attachment</option>';
+  document.getElementById('compose-attachment-row').style.display = 'none';
+  updateAttachmentInline();
 }
 
 // Signature preview in compose modal
@@ -2157,6 +2166,21 @@ function updateComposeSigInline() {
 // keep old name as alias so any other callers still work
 const updateComposeSigPreview = updateComposeSigInline;
 document.getElementById('compose-sig-select').addEventListener('change', updateComposeSigInline);
+
+function updateAttachmentInline() {
+  const attachSel = document.getElementById('compose-attachment-select');
+  const inlineEl  = document.getElementById('compose-attachment-inline');
+  const docId = attachSel.value;
+  if (!docId) { inlineEl.style.display = 'none'; inlineEl.innerHTML = ''; return; }
+  const token = localStorage.getItem('ndj_admin_token') || '';
+  const url = `${location.origin}/api/docs/${docId}/print?token=${encodeURIComponent(token)}`;
+  // Find the doc to get its label
+  const opt = attachSel.options[attachSel.selectedIndex];
+  const label = opt ? opt.textContent : 'Document';
+  inlineEl.style.display = '';
+  inlineEl.innerHTML = `<table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${url}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:8px 18px;border-radius:6px;font-weight:600;font-size:13px;font-family:Arial,sans-serif">&#128196; View ${escHtml(label)}</a></td></tr></table>`;
+}
+document.getElementById('compose-attachment-select').addEventListener('change', updateAttachmentInline);
 
 // Apply template
 document.getElementById('btn-apply-template').addEventListener('click', () => {
@@ -2190,6 +2214,12 @@ document.getElementById('btn-apply-template').addEventListener('click', () => {
   // Pre-fill subject/body — will be interpolated on send
   document.getElementById('compose-subject').value = tmpl.subject;
   document.getElementById('compose-body').innerHTML = tmpl.body || '';
+  // Auto-select invoice attachment when Booking Confirmation template is chosen
+  if (/booking\s*conf/i.test(tmpl.name)) {
+    const attachSel = document.getElementById('compose-attachment-select');
+    const invoiceOpt = [...attachSel.options].find(o => /invoice/i.test(o.textContent));
+    if (invoiceOpt) { attachSel.value = invoiceOpt.value; updateAttachmentInline(); }
+  }
   // Focus first empty var field
   const firstEmpty = varsDiv.querySelector('input:not([value])') || varsDiv.querySelector('input');
   firstEmpty?.focus();
@@ -2221,7 +2251,17 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
   // Append selected signature (sigId already validated above)
   const sigObj = savedSignatures.find(s => String(s.id) === String(sigId));
   const sigHtml = sigObj ? buildSigHTML(sigObj.fields || {}) : '';
-  const body = rawBody + (sigHtml ? '<br/><br/>' + sigHtml : '');
+  // Append attachment link if one is selected
+  const attachDocId = document.getElementById('compose-attachment-select').value;
+  let attachHtml = '';
+  if (attachDocId) {
+    const token = localStorage.getItem('ndj_admin_token') || '';
+    const url = `${location.origin}/api/docs/${attachDocId}/print?token=${encodeURIComponent(token)}`;
+    const opt = document.getElementById('compose-attachment-select').options[document.getElementById('compose-attachment-select').selectedIndex];
+    const label = opt ? opt.textContent : 'Document';
+    attachHtml = `<br/><br/><table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${url}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;font-family:Arial,sans-serif">&#128196; View ${label}</a></td></tr></table>`;
+  }
+  const body = rawBody + attachHtml + (sigHtml ? '<br/><br/>' + sigHtml : '');
 
   if (!to_email || !subject) { showToast('To and Subject are required.', 'error'); return; }
 
@@ -2510,9 +2550,9 @@ function renderDocLineItems() {
 }
 
 // ── Open doc editor pre-filled from an enquiry ───────────────────────────
-function openDocEditorFromEnquiry(q) {
-  // Find existing quote doc linked to this enquiry
-  const existing = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === 'quote');
+function openDocEditorFromEnquiry(q, docType = 'quote') {
+  // Find existing doc of this type linked to this enquiry
+  const existing = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === docType);
 
   if (existing) {
     openDocEditor(existing);
@@ -2532,7 +2572,7 @@ function openDocEditorFromEnquiry(q) {
   // Construct a synthetic "doc" with enquiry data pre-filled
   const prefilled = {
     id:             null,
-    doc_type:       'quote',
+    doc_type:       docType,
     doc_number:     '',
     status:         'draft',
     client_name:    q.name    || '',
@@ -2548,7 +2588,7 @@ function openDocEditorFromEnquiry(q) {
     sender:         {},
   };
 
-  openDocEditor(prefilled, 'quote');
+  openDocEditor(prefilled, docType);
 }
 
 function recalcDocTotal() {
@@ -2620,43 +2660,50 @@ async function openDocEditor(doc, type = 'quote') {
     opt.textContent = company;
     fromSel.appendChild(opt);
   });
-  // Restore sender selection for existing docs
-  if (doc?.sender && doc.sender.name) {
-    const match = savedSignatures.find(s => (s.fields?.company || s.label) === doc.sender.name);
-    fromSel.value = match ? String(match.id) : '';
+  // Restore From fields — from saved sender or default to first signature
+  const sender = doc?.sender || {};
+  if (sender.name) {
+    // Doc has saved sender data — populate fields directly
+    document.getElementById('doc-from-name-input').value    = sender.name    || '';
+    document.getElementById('doc-from-logo-input').value    = sender.logo    || '';
+    document.getElementById('doc-from-address-input').value = sender.address || '';
+    document.getElementById('doc-from-phone-input').value   = sender.phone   || '';
+    document.getElementById('doc-from-email-input').value   = sender.email   || '';
+    fromSel.value = '';
   } else if (savedSignatures.length > 0) {
-    // Default to first signature for new docs
     const def = savedSignatures.find(s => s.is_default) || savedSignatures[0];
     fromSel.value = String(def.id);
+    _fillFromSig(def);
   } else {
     fromSel.value = '';
+    _clearFromFields();
   }
-  updateDocFromPreview();
   renderDocLineItems();
   document.getElementById('doc-editor-modal').classList.add('open');
 }
 
 function closeDocModal() { document.getElementById('doc-editor-modal').classList.remove('open'); }
 
-function updateDocFromPreview() {
-  const sigId   = document.getElementById('doc-from-sig').value;
-  const preview = document.getElementById('doc-from-preview');
-  if (!sigId) { preview.style.display = 'none'; return; }
-  const sig = savedSignatures.find(s => String(s.id) === sigId);
-  if (!sig) { preview.style.display = 'none'; return; }
+function _fillFromSig(sig) {
   const f = sig.fields || {};
-  const logo   = document.getElementById('doc-from-logo');
-  const name   = document.getElementById('doc-from-name');
-  const detail = document.getElementById('doc-from-details');
-  if (f.logo) { logo.src = f.logo; logo.style.display = ''; }
-  else        { logo.style.display = 'none'; }
-  name.textContent = f.company || f.display_name || sig.label || '';
-  const parts = [f.address, f.phone, f.email, f.website].filter(Boolean);
-  detail.textContent = parts.join('\n');
-  preview.style.display = '';
+  document.getElementById('doc-from-name-input').value    = f.company || f.display_name || sig.label || '';
+  document.getElementById('doc-from-logo-input').value    = f.logo    || '';
+  document.getElementById('doc-from-address-input').value = f.address || '';
+  document.getElementById('doc-from-phone-input').value   = f.phone   || '';
+  document.getElementById('doc-from-email-input').value   = f.email   || '';
 }
 
-document.getElementById('doc-from-sig').addEventListener('change', updateDocFromPreview);
+function _clearFromFields() {
+  ['doc-from-name-input','doc-from-logo-input','doc-from-address-input','doc-from-phone-input','doc-from-email-input']
+    .forEach(id => { document.getElementById(id).value = ''; });
+}
+
+document.getElementById('doc-from-sig').addEventListener('change', () => {
+  const sigId = document.getElementById('doc-from-sig').value;
+  if (!sigId) { _clearFromFields(); return; }
+  const sig = savedSignatures.find(s => String(s.id) === sigId);
+  if (sig) _fillFromSig(sig);
+});
 
 document.getElementById('btn-save-doc').addEventListener('click', async () => {
   const id     = document.getElementById('doc-edit-id').value;
@@ -2676,20 +2723,13 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     status:          document.getElementById('doc-status').value,
     line_items:      JSON.stringify(docLineItems),
     source_quote_id: document.getElementById('doc-source-quote-id').value || null,
-    sender:          (() => {
-      const sigId = document.getElementById('doc-from-sig').value;
-      if (!sigId) return '{}';
-      const sig = savedSignatures.find(s => String(s.id) === sigId);
-      if (!sig) return '{}';
-      const f = sig.fields || {};
-      return JSON.stringify({
-        name:    f.company || f.display_name || sig.label || '',
-        logo:    f.logo || '',
-        phone:   f.phone || '',
-        email:   f.email || '',
-        address: f.address || '',
-      });
-    })(),
+    sender: JSON.stringify({
+      name:    document.getElementById('doc-from-name-input').value.trim(),
+      logo:    document.getElementById('doc-from-logo-input').value.trim(),
+      address: document.getElementById('doc-from-address-input').value.trim(),
+      phone:   document.getElementById('doc-from-phone-input').value.trim(),
+      email:   document.getElementById('doc-from-email-input').value.trim(),
+    }),
   };
   const btn = document.getElementById('btn-save-doc');
   btn.disabled = true;

@@ -878,6 +878,19 @@ def get_bookings_for_staff(staff_id: int, tenant_id: int) -> list[dict]:
         conn.close()
 
 
+def get_booking_by_quote_id(quote_id: int, tenant_id: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM bookings WHERE quote_id = %s AND tenant_id = %s LIMIT 1",
+                (quote_id, tenant_id),
+            )
+            return cur.fetchone()
+    finally:
+        conn.close()
+
+
 def create_booking(data: dict, tenant_id: int) -> int:
     conn = _conn()
     try:

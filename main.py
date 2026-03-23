@@ -25,7 +25,7 @@ from database import (
     get_quotes_by_email, update_user,
     get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member,
     delete_staff_member, update_staff_member_info,
-    get_all_bookings, get_booking_by_id, get_bookings_for_user, get_bookings_for_staff,
+    get_all_bookings, get_booking_by_id, get_booking_by_quote_id, get_bookings_for_user, get_bookings_for_staff,
     create_booking, update_booking, delete_booking,
     create_document, get_document, list_documents, update_document, delete_document,
     next_doc_number,
@@ -475,6 +475,19 @@ async def patch_status(
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
     update_quote_status(quote_id, payload.status, tenant["id"])
+    # Auto-create a booking when marked as booked (if one doesn't already exist)
+    if payload.status == "booked":
+        existing = get_booking_by_quote_id(quote_id, tenant["id"])
+        if not existing:
+            create_booking({
+                "quote_id":    quote_id,
+                "title":       q.get("name", ""),
+                "event_date":  q.get("event_date", ""),
+                "event_type":  q.get("event_type", ""),
+                "location":    q.get("location", ""),
+                "total_price": q.get("total_price", 0),
+                "status":      "confirmed",
+            }, tenant["id"])
     return {"success": True, "quote_id": quote_id, "status": payload.status}
 
 
