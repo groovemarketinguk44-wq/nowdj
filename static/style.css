@@ -1454,6 +1454,14 @@ tr[draggable].drag-over td {
 .stat-sub { font-size: 0.78rem; color: var(--text-muted); }
 .stat-card.highlight { border-color: rgba(250, 133, 79, 0.28); }
 .stat-card.highlight .stat-value { color: var(--accent); }
+.stat-card.stat-red  { border-color: rgba(239,68,68,0.3); }
+.stat-card.stat-red  .stat-value { color: #f87171; }
+.stat-card.stat-blue { border-color: rgba(96,165,250,0.3); }
+.stat-card.stat-blue .stat-value { color: #93c5fd; }
+.stat-card.stat-orange { border-color: rgba(251,146,60,0.3); }
+.stat-card.stat-orange .stat-value { color: #fb923c; }
+.stat-card.stat-green { border-color: rgba(34,197,94,0.3); }
+.stat-card.stat-green .stat-value { color: #4ade80; }
 
 .admin-toolbar {
   display: flex;
@@ -1601,6 +1609,8 @@ tr[draggable].drag-over td {
 .status-booked::before { background: #10b981; }
 .status-declined  { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
 .status-declined::before { background: #ef4444; }
+.status-attended  { background: rgba(251,146,60,0.12); color: #fdba74; border: 1px solid rgba(251,146,60,0.25); }
+.status-attended::before { background: #fb923c; }
 
 /* Booking statuses */
 .status-confirmed  { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }

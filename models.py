@@ -37,7 +37,7 @@ class StatusUpdate(BaseModel):
     @field_validator("status")
     @classmethod
     def valid_status(cls, v: str) -> str:
-        allowed = {"new", "contacted", "booked", "declined"}
+        allowed = {"new", "contacted", "booked", "declined", "attended"}
         if v not in allowed:
             raise ValueError(f"Status must be one of: {', '.join(allowed)}")
         return v
