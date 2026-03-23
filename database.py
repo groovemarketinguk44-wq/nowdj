@@ -616,6 +616,42 @@ def get_staff_by_email(email: str, tenant_id: int) -> dict | None:
         conn.close()
 
 
+def find_staff_globally(email: str) -> dict | None:
+    """Find a staff member by email across all tenants; includes tenant_slug."""
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT sm.*, t.slug AS tenant_slug
+                   FROM staff_members sm
+                   JOIN tenants t ON t.id = sm.tenant_id
+                   WHERE sm.email = %s LIMIT 1""",
+                (email,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def find_user_globally(email: str) -> dict | None:
+    """Find a customer by email across all tenants; includes tenant_slug."""
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.*, t.slug AS tenant_slug
+                   FROM users u
+                   JOIN tenants t ON t.id = u.tenant_id
+                   WHERE u.email = %s LIMIT 1""",
+                (email,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def get_staff_by_id(sid: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:

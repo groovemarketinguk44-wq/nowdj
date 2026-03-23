@@ -152,20 +152,21 @@ async function tryLogin() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Login failed');
 
-    if (d.role === 'tenant_admin') {
-      localStorage.setItem('ndj_admin_token', d.token);
-      location.href = '/admin';
-    } else if (d.role === 'super_admin') {
+    const prefix = d.slug ? '/t/' + d.slug : '';
+    if (d.role === 'super_admin') {
       localStorage.setItem('ndj_super_token', d.token);
       location.href = '/admin';
+    } else if (d.role === 'tenant_admin') {
+      localStorage.setItem('ndj_admin_token', d.token);
+      location.href = prefix + '/admin';
     } else if (d.role === 'staff') {
       localStorage.setItem('ndj_staff_token', d.token);
       localStorage.setItem('ndj_staff_user', JSON.stringify({ name: d.name, email: d.email }));
-      location.href = '/staff-portal';
+      location.href = prefix + '/staff-portal';
     } else {
       localStorage.setItem('ndj_customer_token', d.token);
       localStorage.setItem('ndj_customer_user', JSON.stringify({ name: d.name, email: d.email }));
-      location.href = '/portal';
+      location.href = prefix + '/portal';
     }
   } catch(e) {
     errEl.textContent = e.message || 'Incorrect email or password.';
