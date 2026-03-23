@@ -271,7 +271,7 @@ function renderTenants(tenants) {
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
       <td class="col-action">
         <div class="action-links">
-          <a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Admin ↗</a>
+          <a class="btn-visit" href="${t.custom_domain ? 'https://' + esc(t.custom_domain) + '/admin' : '/' + esc(t.slug) + '/admin'}" target="_blank">Admin ↗</a>
           <a class="btn-preview" href="${t.custom_domain ? 'https://' + esc(t.custom_domain) : '/' + esc(t.slug) + '/'}" target="_blank">Preview ↗</a>
         </div>
       </td>
