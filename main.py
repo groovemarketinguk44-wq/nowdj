@@ -1,3 +1,4 @@
+import re
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -1319,10 +1320,9 @@ def _doc_grand_total(line_items_json: str) -> float:
             unit = float(p.replace(",", ""))
         except ValueError:
             continue
-        try:
-            qty = float(str(item.get("qty", "1")).replace(",", ""))
-        except ValueError:
-            qty = 1.0
+        qty_str = str(item.get("qty", "1"))
+        m = re.match(r"[\d.,]+", qty_str.replace(",", ""))
+        qty = float(m.group()) if m else 1.0
         total += unit * qty
     return total
 
@@ -1478,10 +1478,9 @@ async def docs_print(
 
     for item in raw_items:
         unit_val, currency = _parse_price(item.get("price", ""))
-        try:
-            qty = float(str(item.get("qty", "1")).replace(",", ""))
-        except ValueError:
-            qty = 1.0
+        qty_raw = str(item.get("qty", "1"))
+        m = re.match(r"[\d.,]+", qty_raw.replace(",", ""))
+        qty = float(m.group()) if m else 1.0
         if unit_val is not None:
             line_total = unit_val * qty
             grand_total += line_total
@@ -1490,7 +1489,7 @@ async def docs_print(
                 **item,
                 "line_total": f"{currency}{line_total:,.2f}",
                 "unit_price_fmt": f"{currency}{unit_val:,.2f}",
-                "qty_fmt": f"{qty:g}",
+                "qty_fmt": qty_raw,
             })
         else:
             all_numeric = False

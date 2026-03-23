@@ -1680,7 +1680,7 @@ function renderQuotes() {
       <td>${escHtml(q.location||'—')}</td>
       <td style="font-size:.82rem">${escHtml(q.event_type||'—')}</td>
       <td class="col-items"><div class="items-tags">${tags}</div></td>
-      <td class="col-price">${fmt(q.total_price||0)}</td>
+      <td class="col-price">${fmt(getEnquiryEffectiveTotal(q))}</td>
       <td>${statusBadge(q.status||'new')}</td>
       <td style="font-size:.78rem;color:var(--text-muted);white-space:nowrap">${fmtDate(q.created_at)}</td>`;
 
@@ -1712,7 +1712,7 @@ function renderQuotes() {
             event_date: q.event_date || '',
             event_type: q.event_type || '',
             location:   q.location   || '',
-            total:      q.total_price ? '£' + parseFloat(q.total_price).toFixed(2) : '',
+            total:      '£' + getEnquiryEffectiveTotal(q).toFixed(2),
             quote_id:   String(q.id),
           },
         });
@@ -1747,7 +1747,7 @@ function buildDetail(q) {
   const items = Array.isArray(q.selected_items) ? q.selected_items : [];
   const itemsHtml = items.length
     ? items.map(i=>`<div class="detail-item"><span>${escHtml(i.name)}</span><span class="di-price">${fmt(i.price||0)}</span></div>`).join('')
-      + `<div class="detail-total"><span>Total</span><span class="dt-price">${fmt(q.total_price||0)}</span></div>`
+      + `<div class="detail-total"><span>Total</span><span class="dt-price">${fmt(getEnquiryEffectiveTotal(q))}</span></div>`
     : '<p style="color:var(--text-muted);font-size:.82rem">No items</p>';
 
   return `
@@ -2546,6 +2546,24 @@ function calcLineTotal(item) {
   if (isNaN(unit)) return { currency, val: null };
   const qty = parseFloat((item.qty || '1').replace(',', ''));
   return { currency, val: isNaN(qty) ? unit : unit * qty };
+}
+
+// Returns the best available total for an enquiry — prefers linked doc's computed total
+function getEnquiryEffectiveTotal(q) {
+  const doc = allDocs.find(d => d.source_quote_id == q.id);
+  if (doc) {
+    try {
+      const items = typeof doc.line_items === 'string' ? JSON.parse(doc.line_items) : (doc.line_items || []);
+      let total = 0;
+      for (const item of items) {
+        const { val } = calcLineTotal(item);
+        if (val === null) return q.total_price || 0;
+        total += val;
+      }
+      return total;
+    } catch { /* fall through */ }
+  }
+  return q.total_price || 0;
 }
 
 function calcDocTotal(items) {
