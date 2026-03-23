@@ -157,8 +157,9 @@ async def tenant_middleware(request: Request, call_next):
         request.state.tenant = tenant   # None if slug not found
 
     # Last resort: infer tenant from the Bearer JWT so JS API calls from
-    # /t/{slug} pages work without needing to prefix every fetch URL
-    if not request.state.tenant and not request.state.is_admin_domain:
+    # /t/{slug} pages work without needing to prefix every fetch URL.
+    # Applies even on the admin domain so tenant API calls work on onrender.com.
+    if not request.state.tenant:
         auth_header = request.headers.get("authorization", "")
         if auth_header.startswith("Bearer "):
             tok = decode_token(auth_header[7:])
