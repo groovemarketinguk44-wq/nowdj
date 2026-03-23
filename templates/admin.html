@@ -180,6 +180,11 @@
             <div class="stat-value" id="stat-week">—</div>
             <div class="stat-sub">New enquiries</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" id="stat-month">—</div>
+            <div class="stat-sub" id="stat-month-sub">New enquiries</div>
+          </div>
           <div class="stat-card highlight">
             <div class="stat-label">Pipeline Value</div>
             <div class="stat-value" id="stat-value">—</div>
@@ -652,6 +657,16 @@
       <div class="doc-form-col">
         <input type="hidden" id="doc-edit-id" />
         <input type="hidden" id="doc-edit-type" value="quote" />
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">From</div>
+          <div class="modal-field">
+            <label>Company</label>
+            <select id="doc-from-sig">
+              <option value="">— Use global doc settings —</option>
+            </select>
+          </div>
+        </div>
 
         <div class="sig-form-section">
           <div class="sig-form-section-title">
@@ -1173,7 +1188,7 @@ function switchSection(id) {
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
   if (id === 'email')     { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
-  if (id === 'documents') { loadDocSettings(); loadDocs(); }
+  if (id === 'documents') { loadDocSettings(); loadDocs(); loadSignatures(); }
   if (id === 'bookings')  loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
@@ -1533,6 +1548,9 @@ function filteredQuotes() {
 function updateStats(quotes) {
   const now  = new Date();
   const week = new Date(now - 7 * 86400e3);
+  // Month boundaries
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   document.getElementById('stat-total').textContent  = quotes.length;
   document.getElementById('stat-week').textContent   = quotes.filter(q => new Date(q.created_at) > week).length;
   const pipeline = quotes.filter(q => q.status==='new'||q.status==='contacted').reduce((s,q)=>s+(q.total_price||0),0);
@@ -1540,6 +1558,19 @@ function updateStats(quotes) {
   const confirmed = quotes.filter(q => q.status==='booked').reduce((s,q)=>s+(q.total_price||0),0);
   document.getElementById('stat-confirmed-value').textContent = fmtK(confirmed);
   document.getElementById('stat-booked').textContent = quotes.filter(q=>q.status==='booked').length;
+  // This month + % change
+  const thisMonth = quotes.filter(q => new Date(q.created_at) >= monthStart).length;
+  const lastMonth = quotes.filter(q => { const d = new Date(q.created_at); return d >= lastMonthStart && d < monthStart; }).length;
+  document.getElementById('stat-month').textContent = thisMonth;
+  const subEl = document.getElementById('stat-month-sub');
+  if (lastMonth > 0) {
+    const pct = Math.round(((thisMonth - lastMonth) / lastMonth) * 100);
+    subEl.textContent = pct >= 0 ? `↑ ${pct}% vs last month` : `↓ ${Math.abs(pct)}% vs last month`;
+    subEl.style.color = pct >= 0 ? 'var(--success, #22c55e)' : 'var(--danger)';
+  } else {
+    subEl.textContent = 'New enquiries';
+    subEl.style.color = '';
+  }
 
   const newCount = quotes.filter(q=>q.status==='new').length;
   const badge = document.getElementById('sidebar-new-count');
@@ -2438,6 +2469,23 @@ function openDocEditor(doc, type = 'quote') {
     ? `<option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option>`
     : `<option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option>`;
   sel.value = doc?.status || 'draft';
+  // Populate From selector from signatures
+  const fromSel = document.getElementById('doc-from-sig');
+  fromSel.innerHTML = '<option value="">— Use global doc settings —</option>';
+  savedSignatures.forEach(s => {
+    const company = s.fields?.company || s.label || 'Untitled';
+    const opt = document.createElement('option');
+    opt.value = String(s.id);
+    opt.textContent = company;
+    fromSel.appendChild(opt);
+  });
+  // Restore sender selection for existing docs
+  if (doc?.sender && doc.sender.name) {
+    const match = savedSignatures.find(s => (s.fields?.company || s.label) === doc.sender.name);
+    fromSel.value = match ? String(match.id) : '';
+  } else {
+    fromSel.value = '';
+  }
   renderDocLineItems();
   document.getElementById('doc-editor-modal').classList.add('open');
 }
@@ -2461,6 +2509,20 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     notes:           document.getElementById('doc-notes').value.trim(),
     status:          document.getElementById('doc-status').value,
     line_items:      JSON.stringify(docLineItems),
+    sender:          (() => {
+      const sigId = document.getElementById('doc-from-sig').value;
+      if (!sigId) return '{}';
+      const sig = savedSignatures.find(s => String(s.id) === sigId);
+      if (!sig) return '{}';
+      const f = sig.fields || {};
+      return JSON.stringify({
+        name:    f.company || f.display_name || sig.label || '',
+        logo:    f.logo || '',
+        phone:   f.phone || '',
+        email:   f.email || '',
+        address: f.address || '',
+      });
+    })(),
   };
   const btn = document.getElementById('btn-save-doc');
   btn.disabled = true;
@@ -2683,9 +2745,10 @@ async function loadSignatures() {
   try {
     const res = await fetch('/api/email/signatures');
     savedSignatures = await res.json();
-    renderSigCards();
+    if (document.getElementById('sig-cards')) renderSigCards();
   } catch {
-    document.getElementById('sig-cards').innerHTML = '<div style="color:var(--danger);padding:2rem">Failed to load signatures.</div>';
+    const el = document.getElementById('sig-cards');
+    if (el) el.innerHTML = '<div style="color:var(--danger);padding:2rem">Failed to load signatures.</div>';
   }
 }
 

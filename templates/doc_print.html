@@ -329,10 +329,12 @@
       <div class="doc-number-label">{{ doc.doc_number }}</div>
     </div>
     <div class="doc-header-logo">
-      {% if settings.logo %}
-        <img src="{{ settings.logo }}" alt="{{ settings.company_name or '' }}" />
+      {% set logo_src = (doc.sender.logo if doc.sender else None) or settings.logo %}
+      {% set logo_name = (doc.sender.name if doc.sender else None) or settings.company_name or '' %}
+      {% if logo_src %}
+        <img src="{{ logo_src }}" alt="{{ logo_name }}" />
       {% else %}
-        <div class="company-name-text">{{ settings.company_name or '' }}</div>
+        <div class="company-name-text">{{ logo_name }}</div>
       {% endif %}
     </div>
   </div>
@@ -350,12 +352,21 @@
     </div>
     <div class="doc-meta-col">
       <div class="doc-meta-label">From</div>
-      {% if settings.company_name %}
-        <div class="doc-meta-name">{{ settings.company_name }}</div>
-      {% endif %}
-      <div class="doc-meta-detail">{% if settings.company_address %}{{ settings.company_address }}{% endif %}{% if settings.banking %}
+      {% if doc.sender and doc.sender.name %}
+        <div class="doc-meta-name">{{ doc.sender.name }}</div>
+        <div class="doc-meta-detail">{% if doc.sender.phone %}{{ doc.sender.phone }}
+{% endif %}{% if doc.sender.email %}{{ doc.sender.email }}
+{% endif %}{% if doc.sender.address %}{{ doc.sender.address }}{% endif %}{% if settings.banking %}
 
 {{ settings.banking }}{% endif %}</div>
+      {% else %}
+        {% if settings.company_name %}
+          <div class="doc-meta-name">{{ settings.company_name }}</div>
+        {% endif %}
+        <div class="doc-meta-detail">{% if settings.company_address %}{{ settings.company_address }}{% endif %}{% if settings.banking %}
+
+{{ settings.banking }}{% endif %}</div>
+      {% endif %}
     </div>
   </div>
 

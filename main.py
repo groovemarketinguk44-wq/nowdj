@@ -382,16 +382,26 @@ async def submit_quote(quote: QuoteRequest, request: Request):
         if pt == "tbc":
             detail: dict = {"id": item_id, "name": name, "price": 0, "tbc": True}
         elif pt in ("hourly", "daily"):
-            qty = quote.item_quantities.get(item_id, 1)
+            raw = quote.item_quantities.get(item_id, 1)
+            # "qty:days" format sent when item has both allow_quantity and time-based pricing
+            if isinstance(raw, str) and ":" in raw:
+                parts = raw.split(":", 1)
+                item_qty = int(parts[0]) if parts[0].isdigit() else 1
+                item_days = int(parts[1]) if parts[1].isdigit() else 1
+            else:
+                item_qty = 1
+                item_days = int(raw) if raw else 1
+            qty = item_qty * item_days
             price = base_price * qty
             total += price
             unit = "hrs" if pt == "hourly" else "days"
             detail = {"id": item_id, "name": name, "price": price,
                       "base_price": base_price, "qty": qty, "unit": unit}
         else:
-            price = base_price
+            qty = int(quote.item_quantities.get(item_id, 1) or 1)
+            price = base_price * qty
             total += price
-            detail = {"id": item_id, "name": name, "price": price}
+            detail = {"id": item_id, "name": name, "price": price, "qty": qty}
         item_details.append(detail)
 
     quote_id = save_quote({

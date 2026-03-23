@@ -196,9 +196,14 @@ def init_db() -> None:
                         line_items       TEXT DEFAULT '[]',
                         notes            TEXT DEFAULT '',
                         source_quote_id  INTEGER,
+                        sender           TEXT DEFAULT '{}',
                         created_at       TIMESTAMPTZ DEFAULT NOW(),
                         updated_at       TIMESTAMPTZ DEFAULT NOW()
                     )
+                """)
+                # Migration: add sender column if missing
+                cur.execute("""
+                    ALTER TABLE documents ADD COLUMN IF NOT EXISTS sender TEXT DEFAULT '{}'
                 """)
     finally:
         conn.close()
@@ -941,6 +946,11 @@ def _parse_document(row: dict) -> dict:
         d["created_at"] = d["created_at"].isoformat()
     if d.get("updated_at"):
         d["updated_at"] = d["updated_at"].isoformat()
+    if isinstance(d.get("sender"), str):
+        try:
+            d["sender"] = json.loads(d["sender"])
+        except (ValueError, TypeError):
+            d["sender"] = {}
     return d
 
 
@@ -974,8 +984,8 @@ def create_document(tenant_id: int, doc_type: str, doc_number: str, data: dict) 
                     INSERT INTO documents
                         (tenant_id, doc_type, doc_number, status,
                          client_name, client_email, client_phone, client_address,
-                         event_date, event_type, location, line_items, notes, source_quote_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         event_date, event_type, location, line_items, notes, source_quote_id, sender)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     tenant_id,
@@ -992,6 +1002,7 @@ def create_document(tenant_id: int, doc_type: str, doc_number: str, data: dict) 
                     data.get("line_items", "[]"),
                     data.get("notes", ""),
                     data.get("source_quote_id"),
+                    data.get("sender", "{}"),
                 ))
                 return cur.fetchone()["id"]
     finally:
@@ -1036,7 +1047,7 @@ def update_document(doc_id: int, tenant_id: int, data: dict) -> None:
     """Update any subset of columns. Also sets updated_at=NOW()."""
     allowed = {
         "status", "client_name", "client_email", "client_phone", "client_address",
-        "event_date", "event_type", "location", "line_items", "notes", "doc_number",
+        "event_date", "event_type", "location", "line_items", "notes", "doc_number", "sender",
     }
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:

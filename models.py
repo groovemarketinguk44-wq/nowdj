@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Any, Optional
 
 
 class QuoteRequest(BaseModel):
@@ -10,7 +10,7 @@ class QuoteRequest(BaseModel):
     location: Optional[str] = ""
     event_type: Optional[str] = ""
     selected_items: list[str] = []
-    item_quantities: dict[str, int] = {}  # item_id → qty (hours or days depending on pricing_type)
+    item_quantities: dict[str, Any] = {}  # item_id → qty (int) or "qty:days" (str) for dual-stepper items
     message: Optional[str] = ""
 
     @field_validator("name")

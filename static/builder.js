@@ -344,6 +344,8 @@ function resetAll() {
   clearError();
   document.getElementById('success-overlay')?.classList.remove('visible');
   document.getElementById('form-content').style.display = '';
+  const btn = document.getElementById('btn-submit');
+  if (btn) { btn.disabled = false; btn.innerHTML = sendBtnHTML(); }
 }
 
 async function handleSubmit(e) {

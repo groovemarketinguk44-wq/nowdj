@@ -1435,7 +1435,7 @@ tr[draggable].drag-over td {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
@@ -2746,7 +2746,24 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 .doc-form-col .modal-field label { font-size: 0.75rem; }
 .doc-form-col input,
 .doc-form-col select,
-.doc-form-col textarea { padding: 0.45rem 0.65rem; font-size: 0.85rem; }
+.doc-form-col textarea,
+.doc-line-row input,
+.doc-line-row select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  padding: 0.45rem 0.65rem;
+  transition: border-color var(--transition);
+}
+.doc-form-col input:focus,
+.doc-form-col select:focus,
+.doc-form-col textarea:focus,
+.doc-line-row input:focus { border-color: var(--accent); }
+.doc-form-col textarea { resize: vertical; }
 
 .doc-items-col {
   display: flex;
