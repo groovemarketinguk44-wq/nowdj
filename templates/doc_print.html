@@ -108,12 +108,9 @@
       letter-spacing: 0.04em;
     }
     .doc-header-logo img {
-      max-height: 56px;
-      max-width: 170px;
+      max-height: 80px;
+      max-width: 200px;
       object-fit: contain;
-      background: rgba(255,255,255,0.95);
-      border-radius: 6px;
-      padding: 5px 10px;
     }
     .doc-header-logo .company-name-text {
       font-size: 1.15rem;
@@ -358,8 +355,11 @@
       {% if from_address %}
         <div class="doc-meta-detail">{{ from_address }}</div>
       {% endif %}
-      {% if doc.doc_type == 'invoice' and settings.banking %}
-        <div class="doc-meta-detail" style="margin-top:0.75rem">{{ settings.banking }}</div>
+      {% if doc.doc_type == 'invoice' %}
+        {% set banking_text = (doc.sender.banking if doc.sender else None) or settings.banking %}
+        {% if banking_text %}
+          <div class="doc-meta-detail" style="margin-top:0.75rem">{{ banking_text }}</div>
+        {% endif %}
       {% endif %}
     </div>
   </div>

@@ -700,6 +700,7 @@
             <div class="modal-field"><label>Phone</label><input type="text" id="doc-from-phone-input" /></div>
             <div class="modal-field"><label>Email</label><input type="email" id="doc-from-email-input" /></div>
           </div>
+          <input type="hidden" id="doc-from-banking-input" />
         </div>
 
         <div class="sig-form-section">
@@ -1052,8 +1053,8 @@
             </div>
             <input type="hidden" id="sig-doc_logo" />
           </div>
-          <div class="modal-field"><label>Company Address</label><textarea id="sig-address" rows="2" placeholder="123 High Street&#10;London, EC1A 1BB"></textarea></div>
-          <p style="font-size:0.73rem;color:var(--text-muted);margin-top:0.25rem">Company name, phone, and email are taken from the Identity and Contact sections above.</p>
+          <div class="modal-field"><label>Company Address</label><textarea id="sig-address" rows="2" placeholder="Hertfordshire DJ Rental&#10;123 High Street&#10;London, EC1A 1BB"></textarea></div>
+          <div class="modal-field"><label>Bank Details <span style="color:var(--text-muted);font-weight:400">(invoices only)</span></label><textarea id="sig-doc_banking" rows="3" placeholder="Sort Code: 00-00-00&#10;Account: 12345678&#10;Reference: Invoice number"></textarea></div>
         </div>
 
         <div class="sig-form-section">
@@ -2724,11 +2725,12 @@ function _fillFromProfile(p) {
   document.getElementById('doc-from-address-input').value = p.address || '';
   document.getElementById('doc-from-phone-input').value   = p.phone   || '';
   document.getElementById('doc-from-email-input').value   = p.email   || '';
+  document.getElementById('doc-from-banking-input').value = p.banking || '';
 }
 
 function _clearFromFields() {
   _updateLogoPreview('');
-  ['doc-from-logo-input','doc-from-name-input','doc-from-address-input','doc-from-phone-input','doc-from-email-input']
+  ['doc-from-logo-input','doc-from-name-input','doc-from-address-input','doc-from-phone-input','doc-from-email-input','doc-from-banking-input']
     .forEach(id => { document.getElementById(id).value = ''; });
 }
 
@@ -2740,6 +2742,7 @@ function _fillFromSigProfile(sig) {
     address: f.address  || '',
     phone:   f.phone    || '',
     email:   f.email    || '',
+    banking: f.doc_banking || '',
   });
 }
 
@@ -2815,6 +2818,7 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
       address: document.getElementById('doc-from-address-input').value.trim(),
       phone:   document.getElementById('doc-from-phone-input').value.trim(),
       email:   document.getElementById('doc-from-email-input').value.trim(),
+      banking: document.getElementById('doc-from-banking-input').value.trim(),
     }),
   };
   const btn = document.getElementById('btn-save-doc');
@@ -3194,7 +3198,7 @@ document.getElementById('close-sig-modal').addEventListener('click', closeSigMod
 document.getElementById('cancel-sig-modal').addEventListener('click', closeSigModal);
 document.getElementById('sig-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSigModal(); });
 
-const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address'];
+const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address','doc_banking'];
 
 function _updateSigDocLogoPreview(src) {
   const el = document.getElementById('sig-doc-logo-preview');
