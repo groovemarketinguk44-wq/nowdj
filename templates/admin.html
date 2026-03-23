@@ -237,8 +237,8 @@
           <table class="quotes-table">
             <thead>
               <tr>
-                <th>#</th><th>Name</th><th>Event Date</th><th>Location</th>
-                <th>Type</th><th>Items</th><th>Total</th><th>Status</th><th>Received</th>
+                <th>#</th><th>Name</th><th>Event Date</th><th class="col-location">Location</th>
+                <th class="col-type">Type</th><th>Items</th><th>Total</th><th>Status</th><th class="col-received">Received</th>
               </tr>
             </thead>
             <tbody id="quotes-tbody">
@@ -607,6 +607,51 @@
 
     </main>
   </div>
+
+  <!-- ── Mobile bottom navigation ── -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <button class="mbn-item" data-section="enquiries">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.28h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.62-.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+      <span>Enquiries</span>
+      <span class="mbn-badge" id="mbn-enquiry-badge" style="display:none">0</span>
+    </button>
+    <button class="mbn-item" data-section="email">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <span>Email</span>
+      <span class="mbn-badge" id="mbn-email-badge" style="display:none">0</span>
+    </button>
+    <button class="mbn-item" data-section="documents">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Docs</span>
+    </button>
+    <button class="mbn-item" data-section="bookings">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Bookings</span>
+      <span class="mbn-badge" id="mbn-booking-badge" style="display:none">0</span>
+    </button>
+    <button class="mbn-item" id="mbn-more-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- Mobile "More" sheet -->
+  <div class="mobile-more-overlay" id="mobile-more-overlay"></div>
+  <div class="mobile-more-sheet" id="mobile-more-sheet">
+    <div class="mobile-more-header">
+      <span>Menu</span>
+      <button id="close-mobile-more" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="mobile-more-items">
+      <button class="mobile-more-item" data-section="catalog"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Product Catalog</button>
+      <button class="mobile-more-item" data-section="staff"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Staff</button>
+      <button class="mobile-more-item" data-section="clients"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Clients</button>
+      <button class="mobile-more-item" data-section="account"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Account</button>
+      <button class="mobile-more-item" data-section="branding"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>Branding</button>
+      <button class="mobile-more-item" id="btn-logout-mobile" style="color:var(--danger);margin-top:0.5rem;border-top:1px solid var(--border);border-radius:0;padding-top:1rem"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log Out</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- ======================================================================
@@ -1272,8 +1317,31 @@ function initNav() {
   document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
     btn.addEventListener('click', () => switchSection(btn.dataset.section));
   });
-
   document.getElementById('nav-site-config').addEventListener('click', openSiteConfigModal);
+
+  // Mobile bottom nav
+  document.querySelectorAll('.mbn-item[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => switchSection(btn.dataset.section));
+  });
+  const moreBtn = document.getElementById('mbn-more-btn');
+  const moreSheet = document.getElementById('mobile-more-sheet');
+  const moreOverlay = document.getElementById('mobile-more-overlay');
+  function openMoreSheet() { moreSheet.classList.add('open'); moreOverlay.classList.add('open'); }
+  function closeMoreSheet() { moreSheet.classList.remove('open'); moreOverlay.classList.remove('open'); }
+  moreBtn.addEventListener('click', openMoreSheet);
+  moreOverlay.addEventListener('click', closeMoreSheet);
+  document.getElementById('close-mobile-more').addEventListener('click', closeMoreSheet);
+  document.querySelectorAll('.mobile-more-item[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => { switchSection(btn.dataset.section); closeMoreSheet(); });
+  });
+  document.getElementById('btn-logout-mobile')?.addEventListener('click', () => {
+    document.getElementById('btn-logout').click();
+  });
+
+  // Default to enquiries on mobile
+  if (window.innerWidth <= 768) {
+    document.querySelector('.mbn-item[data-section="enquiries"]')?.classList.add('active');
+  }
 }
 
 function switchSection(id) {
@@ -1281,6 +1349,9 @@ function switchSection(id) {
   document.getElementById(`section-${id}`)?.classList.add('active');
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
+  // Sync mobile bottom nav
+  document.querySelectorAll('.mbn-item[data-section]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.mbn-item[data-section="${id}"]`)?.classList.add('active');
   if (id === 'email')     { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
   if (id === 'documents') { loadDocSettings(); loadDocs(); loadSignatures(); }
   if (id === 'bookings')  loadAdminBookings();
@@ -1676,6 +1747,8 @@ function updateStats(quotes) {
   const badge = document.getElementById('sidebar-new-count');
   if (newCount > 0) { badge.style.display=''; badge.textContent=newCount; }
   else badge.style.display='none';
+  const mbnBadge = document.getElementById('mbn-enquiry-badge');
+  if (mbnBadge) { if (newCount > 0) { mbnBadge.style.display=''; mbnBadge.textContent=newCount; } else mbnBadge.style.display='none'; }
 }
 
 function statusBadge(s) {
@@ -1707,12 +1780,12 @@ function renderQuotes() {
       <td class="col-id">#${q.id}</td>
       <td class="col-name">${escHtml(q.name||'—')}</td>
       <td>${fmtDate(q.event_date)}</td>
-      <td>${escHtml(q.location||'—')}</td>
-      <td style="font-size:.82rem">${escHtml(q.event_type||'—')}</td>
+      <td class="col-location">${escHtml(q.location||'—')}</td>
+      <td class="col-type" style="font-size:.82rem">${escHtml(q.event_type||'—')}</td>
       <td class="col-items"><div class="items-tags">${tags}</div></td>
       <td class="col-price">${fmt(getEnquiryEffectiveTotal(q))}</td>
       <td>${statusBadge(q.status||'new')}</td>
-      <td style="font-size:.78rem;color:var(--text-muted);white-space:nowrap">${fmtDate(q.created_at)}</td>`;
+      <td class="col-received" style="font-size:.78rem;color:var(--text-muted);white-space:nowrap">${fmtDate(q.created_at)}</td>`;
 
     row.addEventListener('click', () => {
       expandedId = expandedId === q.id ? null : q.id;
@@ -1749,12 +1822,14 @@ function renderQuotes() {
       });
       dr.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (savedSignatures.length > 1) openSigPickerForDoc(q, 'quote');
+        const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote');
+        if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'quote');
         else openDocEditorFromEnquiry(q, 'quote');
       });
       dr.querySelector('.btn-create-invoice')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
+        const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'invoice');
+        if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
         else openDocEditorFromEnquiry(q, 'invoice');
       });
       dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
@@ -2000,6 +2075,8 @@ async function loadInbox() {
     const tabBadge = document.getElementById('tab-unread-badge');
     if (unread > 0) { badge.style.display=''; badge.textContent=unread; tabBadge.style.display=''; tabBadge.textContent=unread; }
     else            { badge.style.display='none'; tabBadge.style.display='none'; }
+    const mbnEmailBadge = document.getElementById('mbn-email-badge');
+    if (mbnEmailBadge) { if (unread > 0) { mbnEmailBadge.style.display=''; mbnEmailBadge.textContent=unread; } else mbnEmailBadge.style.display='none'; }
   } catch {
     document.getElementById('email-list').innerHTML = '<div class="email-list-loading" style="color:var(--danger)">Failed to load inbox.</div>';
   }
@@ -2147,24 +2224,33 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
     sel.appendChild(opt);
   });
 
-  // Load signatures into select
+  // Load signatures — pre-select the one matching the linked doc's company
   const sigSel = document.getElementById('compose-sig-select');
   sigSel.innerHTML = '<option value="">— Select a signature —</option>';
+  const latestLinkedDoc = enquiryDocs.filter(d => d.doc_type === 'invoice').sort((a,b) => b.id - a.id)[0]
+    || enquiryDocs[0];
+  const matchedSigId = latestLinkedDoc?.sender?.name
+    ? savedSignatures.find(s => (s.fields?.company || s.label) === latestLinkedDoc.sender.name)?.id
+    : null;
   savedSignatures.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
     opt.textContent = s.label || s.fields?.display_name || 'Untitled';
-    if (s.is_default) opt.selected = true;
+    if (matchedSigId ? s.id === matchedSigId : s.is_default) opt.selected = true;
     sigSel.appendChild(opt);
   });
   updateComposeSigPreview();
 
-  // Populate attachment dropdown from enquiry docs
+  // Populate attachment dropdown — invoices first (latest), then quotes
   const attachSel = document.getElementById('compose-attachment-select');
   const attachRow = document.getElementById('compose-attachment-row');
   attachSel.innerHTML = '<option value="">No attachment</option>';
   if (enquiryDocs.length > 0) {
-    enquiryDocs.forEach(d => {
+    const sorted = [...enquiryDocs].sort((a, b) => {
+      if (a.doc_type === b.doc_type) return b.id - a.id;
+      return a.doc_type === 'invoice' ? -1 : 1;
+    });
+    sorted.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
       const label = d.doc_type === 'invoice' ? 'Invoice' : 'Quote';
@@ -2172,8 +2258,8 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
       attachSel.appendChild(opt);
     });
     attachRow.style.display = '';
-    // Auto-select quote if present
-    const defaultDoc = enquiryDocs.find(d => d.doc_type === 'quote') || enquiryDocs[0];
+    // Auto-select latest invoice, else latest quote
+    const defaultDoc = sorted[0];
     if (defaultDoc) attachSel.value = String(defaultDoc.id);
     // Auto-apply Quote Reply template if we have a quote doc
     if (defaultDoc && defaultDoc.doc_type === 'quote') {
@@ -3523,6 +3609,8 @@ async function loadAdminBookings() {
   const upcoming = adminBookings.filter(b => b.event_date && new Date(b.event_date) >= now && b.status !== 'cancelled').length;
   badge.textContent = upcoming;
   badge.style.display = upcoming ? '' : 'none';
+  const mbnBookingBadge = document.getElementById('mbn-booking-badge');
+  if (mbnBookingBadge) { mbnBookingBadge.textContent = upcoming; mbnBookingBadge.style.display = upcoming ? '' : 'none'; }
 }
 
 function renderAdminBookingList() {
