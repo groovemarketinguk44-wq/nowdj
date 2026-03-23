@@ -2711,6 +2711,7 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 
 .doc-editor-card {
   width: min(1080px, 96vw);
+  max-width: min(1080px, 96vw);
   max-height: 92vh;
   display: flex;
   flex-direction: column;

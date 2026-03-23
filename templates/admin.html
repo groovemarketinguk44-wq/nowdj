@@ -826,10 +826,11 @@
         <div class="field-hint">Applying a template will fill in the subject and body below. Edit as needed before sending.</div>
       </div>
       <div class="modal-field">
-        <label>Signature</label>
+        <label>Signature <span style="color:var(--danger);font-size:0.72rem">* required</span></label>
         <select id="compose-sig-select">
-          <option value="">— No signature —</option>
+          <option value="">— Select a signature —</option>
         </select>
+        <div id="compose-sig-preview" style="margin-top:0.5rem;padding:0.75rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);display:none;overflow:auto"></div>
       </div>
       <div class="modal-field" id="compose-vars-row" style="display:none">
         <label>Fill Variables</label>
@@ -1053,7 +1054,7 @@ function showToast(msg, type = 'success') {
   window.fetch = function (url, opts) {
     opts = opts || {};
     const token = localStorage.getItem('ndj_admin_token');
-    if (token && typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('/quotes'))) {
+    if (token && typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('/quotes') || url.startsWith('/bookings'))) {
       opts = Object.assign({}, opts, {
         headers: Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token }),
       });
@@ -1613,6 +1614,19 @@ function renderQuotes() {
           },
         });
       });
+      dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete enquiry from ${q.name || 'this person'}? This cannot be undone.`)) return;
+        try {
+          const res = await fetch(`/quotes/${q.id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error();
+          expandedId = null;
+          allQuotes = allQuotes.filter(x => x.id !== q.id);
+          updateStats(allQuotes);
+          renderQuotes();
+          showToast('Enquiry deleted.', 'success');
+        } catch { showToast('Failed to delete.', 'error'); }
+      });
       tbody.appendChild(dr);
     }
   });
@@ -1649,6 +1663,10 @@ function buildDetail(q) {
         <button class="btn-send-email" data-quote-id="${q.id}" style="margin-top:0.75rem;width:100%">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Send Email
+        </button>
+        <button class="btn-delete-enquiry btn-sm btn-danger" data-quote-id="${q.id}" style="margin-top:0.5rem;width:100%;justify-content:center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Delete Enquiry
         </button>
       </div>
       <div class="detail-section">
@@ -1975,7 +1993,7 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
 
   // Load signatures into select
   const sigSel = document.getElementById('compose-sig-select');
-  sigSel.innerHTML = '<option value="">— No signature —</option>';
+  sigSel.innerHTML = '<option value="">— Select a signature —</option>';
   savedSignatures.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
@@ -1983,6 +2001,7 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
     if (s.is_default) opt.selected = true;
     sigSel.appendChild(opt);
   });
+  updateComposeSigPreview();
 
   // If Outlook not connected, show warning in compose
   const sendBtn = document.getElementById('btn-send-compose');
@@ -1999,6 +2018,18 @@ function closeComposeModal() {
   document.getElementById('compose-modal').classList.remove('open');
   composeMsgId = null;
 }
+
+// Signature preview in compose modal
+function updateComposeSigPreview() {
+  const sigId = document.getElementById('compose-sig-select').value;
+  const previewEl = document.getElementById('compose-sig-preview');
+  if (!sigId) { previewEl.style.display = 'none'; return; }
+  const sig = savedSignatures.find(s => String(s.id) === String(sigId));
+  if (!sig) { previewEl.style.display = 'none'; return; }
+  previewEl.style.display = '';
+  previewEl.innerHTML = buildSigHTML(sig.fields || {});
+}
+document.getElementById('compose-sig-select').addEventListener('change', updateComposeSigPreview);
 
 // Apply template
 document.getElementById('btn-apply-template').addEventListener('click', () => {
@@ -2049,16 +2080,21 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
     showToast('Please connect your Outlook account in the Email section first.', 'error');
     return;
   }
+  const sigId = document.getElementById('compose-sig-select').value;
+  if (!sigId) {
+    showToast('Please select a signature before sending.', 'error');
+    document.getElementById('compose-sig-select').focus();
+    return;
+  }
   const to_email = document.getElementById('compose-to').value.trim();
   const subject  = interpolateTemplate(document.getElementById('compose-subject').value.trim());
   const rawBody  = interpolateTemplate(document.getElementById('compose-body').innerHTML.trim());
   const to_name  = document.getElementById('compose-to-name').value.trim();
 
-  // Append selected signature
-  const sigId = document.getElementById('compose-sig-select').value;
-  const sigObj = sigId ? savedSignatures.find(s => s.id === sigId) : null;
+  // Append selected signature (sigId already validated above)
+  const sigObj = savedSignatures.find(s => String(s.id) === String(sigId));
   const sigHtml = sigObj ? buildSigHTML(sigObj.fields || {}) : '';
-  const body = sigHtml ? rawBody + '<br/><br/>' + sigHtml : rawBody;
+  const body = rawBody + (sigHtml ? '<br/><br/>' + sigHtml : '');
 
   if (!to_email || !subject) { showToast('To and Subject are required.', 'error'); return; }
 
@@ -2530,16 +2566,19 @@ let _catalogItems = [];
 async function openCatalogPicker() {
   document.getElementById('catalog-picker-modal').classList.add('open');
   document.getElementById('catalog-picker-search').value = '';
-  if (_catalogItems.length === 0) {
-    try {
-      const r = await fetch('/api/catalog');
-      const data = await r.json();
-      // Flatten sections → items
-      _catalogItems = (data.sections || []).flatMap(s =>
-        (s.items || []).map(it => ({ ...it, _section: s.name || '' }))
-      );
-    } catch { _catalogItems = []; }
-  }
+  // Always refresh catalog so new items appear
+  try {
+    const r = await fetch('/api/catalog');
+    const data = await r.json();
+    // Catalog is { cat_id: { name, items: { item_id: { name, price, ... } } } }
+    _catalogItems = Object.entries(data).flatMap(([catId, cat]) =>
+      Object.entries(cat.items || {}).map(([itemId, it]) => ({
+        ...it,
+        id: itemId,
+        _section: cat.name || catId,
+      }))
+    );
+  } catch { _catalogItems = []; }
   renderCatalogPickerList('');
 }
 

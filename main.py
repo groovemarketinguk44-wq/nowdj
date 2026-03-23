@@ -18,7 +18,7 @@ from catalog_store import (
 )
 from database import (
     init_db, migrate_null_tenant_ids,
-    get_all_quotes, get_quote_by_id, save_quote, update_quote_status,
+    get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
     seed_templates_for_tenant,
     get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user,
@@ -438,6 +438,19 @@ async def get_quote(
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
     return q
+
+
+@app.delete("/quotes/{quote_id}")
+async def delete_quote_route(
+    quote_id: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    deleted = delete_quote(quote_id, tenant["id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    return {"success": True}
 
 
 @app.patch("/quotes/{quote_id}/status")

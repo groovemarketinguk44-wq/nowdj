@@ -445,6 +445,20 @@ def update_quote_status(quote_id: int, status: str, tenant_id: int) -> None:
         conn.close()
 
 
+def delete_quote(quote_id: int, tenant_id: int) -> bool:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM quotes WHERE id = %s AND tenant_id = %s",
+                    (quote_id, tenant_id),
+                )
+                return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Email templates
 # ---------------------------------------------------------------------------
@@ -931,20 +945,22 @@ def _parse_document(row: dict) -> dict:
 
 
 def next_doc_number(tenant_id: int, doc_type: str) -> str:
-    """Generate next sequential doc number: QT-2026-001 or INV-2026-001."""
+    """Generate next sequential doc number: MAR-2026-001 (resets each month)."""
     import datetime
-    year = datetime.datetime.utcnow().year
-    prefix = "QT" if doc_type == "quote" else "INV"
+    now = datetime.datetime.utcnow()
+    month_abbr = now.strftime("%b").upper()   # e.g. MAR
+    year = now.year
+    month_start = f"{year}-{now.month:02d}-01"
     conn = _conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT COUNT(*) AS cnt FROM documents WHERE tenant_id = %s AND doc_type = %s AND created_at >= %s",
-                (tenant_id, doc_type, f"{year}-01-01"),
+                (tenant_id, doc_type, month_start),
             )
             row = cur.fetchone()
             count = row["cnt"] if row else 0
-        return f"{prefix}-{year}-{count + 1:03d}"
+        return f"{month_abbr}-{year}-{count + 1:03d}"
     finally:
         conn.close()
 
