@@ -2240,19 +2240,43 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   transition: background var(--transition);
 }
 .var-chip:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
-.wysiwyg-body {
-  background: var(--bg-input);
+/* Shared frame that wraps editable body + inline sig */
+.compose-email-frame {
   border: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-input);
+  transition: border-color var(--transition);
+}
+.compose-email-frame:focus-within { border-color: var(--accent); }
+
+.wysiwyg-body {
+  background: transparent;
+  border: none;
+  border-radius: 0;
   color: var(--text);
   font-size: 0.875rem;
   line-height: 1.65;
-  min-height: 200px;
+  min-height: 160px;
   outline: none;
   padding: 0.75rem 1rem;
+}
+/* Body outside the frame (template editor etc.) keeps its own border */
+.wysiwyg-body:not(.compose-body-area) {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
   transition: border-color var(--transition);
 }
-.wysiwyg-body:focus { border-color: var(--accent); }
+.wysiwyg-body:not(.compose-body-area):focus { border-color: var(--accent); }
+
+.compose-sig-inline {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  background: transparent;
+  font-size: 0.85rem;
+  pointer-events: none;
+  user-select: none;
+}
 .wysiwyg-body:empty:before {
   content: attr(data-placeholder);
   color: var(--text-muted);

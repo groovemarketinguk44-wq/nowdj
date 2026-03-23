@@ -865,7 +865,6 @@
         <select id="compose-sig-select">
           <option value="">— Select a signature —</option>
         </select>
-        <div id="compose-sig-preview" style="margin-top:0.5rem;padding:0.75rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);display:none;overflow:auto"></div>
       </div>
       <div class="modal-field" id="compose-vars-row" style="display:none">
         <label>Fill Variables</label>
@@ -885,7 +884,10 @@
           <button type="button" class="wysiwyg-btn" title="Bullet list" onclick="document.execCommand('insertUnorderedList')">&#8226;&#8212;</button>
           <button type="button" class="wysiwyg-btn" title="Add link" id="btn-compose-link">&#128279;</button>
         </div>
-        <div id="compose-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Your message here…" style="min-height:180px"></div>
+        <div class="compose-email-frame">
+          <div id="compose-body" contenteditable="true" class="wysiwyg-body compose-body-area" data-placeholder="Your message here…"></div>
+          <div id="compose-sig-inline" class="compose-sig-inline" style="display:none"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2091,16 +2093,18 @@ function closeComposeModal() {
 }
 
 // Signature preview in compose modal
-function updateComposeSigPreview() {
-  const sigId = document.getElementById('compose-sig-select').value;
-  const previewEl = document.getElementById('compose-sig-preview');
-  if (!sigId) { previewEl.style.display = 'none'; return; }
+function updateComposeSigInline() {
+  const sigId   = document.getElementById('compose-sig-select').value;
+  const inlineEl = document.getElementById('compose-sig-inline');
+  if (!sigId) { inlineEl.style.display = 'none'; inlineEl.innerHTML = ''; return; }
   const sig = savedSignatures.find(s => String(s.id) === String(sigId));
-  if (!sig) { previewEl.style.display = 'none'; return; }
-  previewEl.style.display = '';
-  previewEl.innerHTML = buildSigHTML(sig.fields || {});
+  if (!sig) { inlineEl.style.display = 'none'; inlineEl.innerHTML = ''; return; }
+  inlineEl.style.display = '';
+  inlineEl.innerHTML = buildSigHTML(sig.fields || {});
 }
-document.getElementById('compose-sig-select').addEventListener('change', updateComposeSigPreview);
+// keep old name as alias so any other callers still work
+const updateComposeSigPreview = updateComposeSigInline;
+document.getElementById('compose-sig-select').addEventListener('change', updateComposeSigInline);
 
 // Apply template
 document.getElementById('btn-apply-template').addEventListener('click', () => {
