@@ -679,6 +679,13 @@
               <option value="">— Use global doc settings —</option>
             </select>
           </div>
+          <div id="doc-from-preview" style="display:none;margin-top:0.6rem;padding:0.65rem 0.75rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8rem;display:none">
+            <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.4rem">
+              <img id="doc-from-logo" src="" alt="" style="max-height:36px;max-width:80px;object-fit:contain;border-radius:4px;display:none" onerror="this.style.display='none'" />
+              <strong id="doc-from-name" style="color:var(--text-primary);font-size:0.85rem"></strong>
+            </div>
+            <div id="doc-from-details" style="color:var(--text-muted);line-height:1.6;white-space:pre-line"></div>
+          </div>
         </div>
 
         <div class="sig-form-section">
@@ -2520,7 +2527,7 @@ document.getElementById('close-doc-modal').addEventListener('click',  closeDocMo
 document.getElementById('cancel-doc-modal').addEventListener('click', closeDocModal);
 document.getElementById('doc-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDocModal(); });
 
-function openDocEditor(doc, type = 'quote') {
+async function openDocEditor(doc, type = 'quote') {
   docLineItems = doc ? JSON.parse(doc.line_items || '[]') : [
     { description: '', qty: '1', price: '£' },
   ];
@@ -2545,6 +2552,8 @@ function openDocEditor(doc, type = 'quote') {
     ? `<option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option>`
     : `<option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option>`;
   sel.value = doc?.status || 'draft';
+  // Ensure signatures are loaded (may not be if visiting from enquiry tracker)
+  if (savedSignatures.length === 0) await loadSignatures();
   // Populate From selector from signatures
   const fromSel = document.getElementById('doc-from-sig');
   fromSel.innerHTML = '<option value="">— Use global doc settings —</option>';
@@ -2559,14 +2568,39 @@ function openDocEditor(doc, type = 'quote') {
   if (doc?.sender && doc.sender.name) {
     const match = savedSignatures.find(s => (s.fields?.company || s.label) === doc.sender.name);
     fromSel.value = match ? String(match.id) : '';
+  } else if (savedSignatures.length > 0) {
+    // Default to first signature for new docs
+    const def = savedSignatures.find(s => s.is_default) || savedSignatures[0];
+    fromSel.value = String(def.id);
   } else {
     fromSel.value = '';
   }
+  updateDocFromPreview();
   renderDocLineItems();
   document.getElementById('doc-editor-modal').classList.add('open');
 }
 
 function closeDocModal() { document.getElementById('doc-editor-modal').classList.remove('open'); }
+
+function updateDocFromPreview() {
+  const sigId   = document.getElementById('doc-from-sig').value;
+  const preview = document.getElementById('doc-from-preview');
+  if (!sigId) { preview.style.display = 'none'; return; }
+  const sig = savedSignatures.find(s => String(s.id) === sigId);
+  if (!sig) { preview.style.display = 'none'; return; }
+  const f = sig.fields || {};
+  const logo   = document.getElementById('doc-from-logo');
+  const name   = document.getElementById('doc-from-name');
+  const detail = document.getElementById('doc-from-details');
+  if (f.logo) { logo.src = f.logo; logo.style.display = ''; }
+  else        { logo.style.display = 'none'; }
+  name.textContent = f.company || f.display_name || sig.label || '';
+  const parts = [f.address, f.phone, f.email, f.website].filter(Boolean);
+  detail.textContent = parts.join('\n');
+  preview.style.display = '';
+}
+
+document.getElementById('doc-from-sig').addEventListener('change', updateDocFromPreview);
 
 document.getElementById('btn-save-doc').addEventListener('click', async () => {
   const id     = document.getElementById('doc-edit-id').value;
