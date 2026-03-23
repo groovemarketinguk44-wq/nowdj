@@ -2121,11 +2121,10 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
         const varMatches = [...new Set([...tmplText.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]))];
         if (varMatches.length) {
           document.getElementById('compose-vars-row').style.display = '';
-          varsDiv.innerHTML = varMatches.map(v => `
-            <div class="compose-var-field">
-              <label>{{${v}}}</label>
-              <input id="var-${v}" type="text" value="${escHtml(quoteVars[v] || '')}" placeholder="${v}" />
-            </div>`).join('');
+          varsDiv.innerHTML = varMatches.map(v =>
+            '<div class="compose-var-field"><label>{{' + v + '}}</label>' +
+            '<input id="var-' + v + '" type="text" value="' + escHtml(quoteVars[v] || '') + '" placeholder="' + v + '" /></div>'
+          ).join('');
         }
       }
     }
