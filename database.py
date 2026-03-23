@@ -945,12 +945,11 @@ def _parse_document(row: dict) -> dict:
 
 
 def next_doc_number(tenant_id: int, doc_type: str) -> str:
-    """Generate next sequential doc number: MAR-2026-001 (resets each month)."""
+    """Generate next sequential doc number: MMYYNNN e.g. 0326001 (resets each month)."""
     import datetime
     now = datetime.datetime.utcnow()
-    month_abbr = now.strftime("%b").upper()   # e.g. MAR
-    year = now.year
-    month_start = f"{year}-{now.month:02d}-01"
+    month_start = f"{now.year}-{now.month:02d}-01"
+    prefix = f"{now.month:02d}{str(now.year)[2:]}"  # e.g. 0326
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -960,7 +959,7 @@ def next_doc_number(tenant_id: int, doc_type: str) -> str:
             )
             row = cur.fetchone()
             count = row["cnt"] if row else 0
-        return f"{month_abbr}-{year}-{count + 1:03d}"
+        return f"{prefix}{count + 1:03d}"
     finally:
         conn.close()
 
