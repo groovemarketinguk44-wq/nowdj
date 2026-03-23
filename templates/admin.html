@@ -691,6 +691,7 @@
       <div class="doc-items-col">
         <div class="doc-items-toolbar">
           <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">Line Items</span>
+          <button class="btn-secondary btn-sm" id="btn-add-from-catalog" style="font-size:0.7rem">&#128722; From Catalog</button>
           <button class="btn-secondary btn-sm" id="btn-add-line-item">+ Add Row</button>
         </div>
         <!-- Column headers -->
@@ -765,6 +766,26 @@
         <input type="text" id="enquiry-picker-search" placeholder="Search by name or email…" />
       </div>
       <div id="enquiry-picker-list" style="max-height:320px;overflow-y:auto;margin-top:0.75rem"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     CATALOG PICKER MODAL (for doc line items)
+     ====================================================================== -->
+<div class="modal-overlay" id="catalog-picker-modal">
+  <div class="modal-card" style="max-width:560px">
+    <div class="modal-header">
+      <h3>Add from Catalog</h3>
+      <button class="btn-close-modal" id="close-catalog-picker">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <input type="text" id="catalog-picker-search" placeholder="Search catalog items…" />
+      </div>
+      <div id="catalog-picker-list" style="max-height:360px;overflow-y:auto;margin-top:0.5rem"></div>
     </div>
   </div>
 </div>
@@ -850,9 +871,26 @@
         <input type="text" id="template-edit-subject" placeholder="Email subject with {{variables}}" />
       </div>
       <div class="modal-field">
-        <label>Body (HTML)</label>
-        {% raw %}<textarea id="template-edit-body" style="min-height:220px" placeholder="<p>Hi {{name}},</p>&#10;<p>Your message…</p>"></textarea>
-        <div class="field-hint">Available variables: {{name}} {{email}} {{phone}} {{event_date}} {{event_type}} {{location}} {{total}} {{quote_id}}</div>{% endraw %}
+        <label>Body</label>
+        <div class="wysiwyg-toolbar" id="tmpl-toolbar">
+          <button type="button" class="wysiwyg-btn" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
+          <button type="button" class="wysiwyg-btn" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
+          <button type="button" class="wysiwyg-btn" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
+          <span class="wysiwyg-sep"></span>
+          <button type="button" class="wysiwyg-btn" title="Bullet list" onclick="document.execCommand('insertUnorderedList')">&#8226;&#8212;</button>
+          <button type="button" class="wysiwyg-btn" title="Add link" id="btn-tmpl-link">&#128279;</button>
+          <span class="wysiwyg-sep"></span>
+          <span class="wysiwyg-label">Insert:</span>
+          {% raw %}<button type="button" class="var-chip" data-var="{{name}}">name</button>
+          <button type="button" class="var-chip" data-var="{{email}}">email</button>
+          <button type="button" class="var-chip" data-var="{{phone}}">phone</button>
+          <button type="button" class="var-chip" data-var="{{event_date}}">event date</button>
+          <button type="button" class="var-chip" data-var="{{event_type}}">event type</button>
+          <button type="button" class="var-chip" data-var="{{location}}">location</button>
+          <button type="button" class="var-chip" data-var="{{total}}">total</button>
+          <button type="button" class="var-chip" data-var="{{quote_id}}">quote id</button>{% endraw %}
+        </div>
+        <div id="template-edit-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Hi {{name}}, thanks for your enquiry…"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1002,7 +1040,7 @@ function showToast(msg, type = 'success') {
   window.fetch = function (url, opts) {
     opts = opts || {};
     const token = localStorage.getItem('ndj_admin_token');
-    if (token && typeof url === 'string' && url.startsWith('/api/')) {
+    if (token && typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('/quotes'))) {
       opts = Object.assign({}, opts, {
         headers: Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token }),
       });
@@ -2089,13 +2127,37 @@ document.getElementById('close-template-modal').addEventListener('click', closeT
 document.getElementById('cancel-template-modal').addEventListener('click', closeTemplateModal);
 document.getElementById('template-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTemplateModal(); });
 
+// WYSIWYG toolbar: link button
+document.getElementById('btn-tmpl-link').addEventListener('click', () => {
+  const sel = window.getSelection();
+  const selectedText = sel && sel.toString().trim();
+  const url = prompt('Enter URL:', 'https://');
+  if (url) {
+    document.getElementById('template-edit-body').focus();
+    document.execCommand('createLink', false, url);
+    // Make links open in new tab
+    document.getElementById('template-edit-body').querySelectorAll('a').forEach(a => a.target = '_blank');
+  }
+});
+
+// WYSIWYG toolbar: variable chips
+document.getElementById('tmpl-toolbar').addEventListener('click', (e) => {
+  const chip = e.target.closest('.var-chip');
+  if (!chip) return;
+  const bodyEl = document.getElementById('template-edit-body');
+  bodyEl.focus();
+  document.execCommand('insertText', false, chip.dataset.var);
+});
+
 function openTemplateEditor(t) {
   document.getElementById('template-edit-id').value      = t ? t.id : '';
   document.getElementById('template-edit-name').value    = t ? t.name : '';
   document.getElementById('template-edit-subject').value = t ? t.subject : '';
-  document.getElementById('template-edit-body').value    = t ? t.body : '';
+  const bodyEl = document.getElementById('template-edit-body');
+  bodyEl.innerHTML = t && t.body ? t.body : '';
   document.getElementById('template-editor-title').textContent = t ? 'Edit Template' : 'New Template';
   document.getElementById('template-editor-modal').classList.add('open');
+  setTimeout(() => bodyEl.focus(), 100);
 }
 
 function closeTemplateModal() {
@@ -2106,7 +2168,7 @@ document.getElementById('btn-save-template').addEventListener('click', async () 
   const id      = document.getElementById('template-edit-id').value;
   const name    = document.getElementById('template-edit-name').value.trim();
   const subject = document.getElementById('template-edit-subject').value.trim();
-  const body    = document.getElementById('template-edit-body').value.trim();
+  const body    = document.getElementById('template-edit-body').innerHTML.trim();
   if (!name) { showToast('Template name is required.', 'error'); return; }
   const btn = document.getElementById('btn-save-template');
   btn.disabled = true;
@@ -2425,6 +2487,69 @@ function renderEnquiryList(list) {
       }
       document.getElementById('enquiry-picker-modal').classList.remove('open');
       showToast('Client info pulled from enquiry.', 'success');
+    });
+  });
+}
+
+// ── Catalog picker (for doc line items) ───────────────────────────────────
+
+document.getElementById('btn-add-from-catalog').addEventListener('click', openCatalogPicker);
+document.getElementById('close-catalog-picker').addEventListener('click', () => document.getElementById('catalog-picker-modal').classList.remove('open'));
+document.getElementById('catalog-picker-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+document.getElementById('catalog-picker-search').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  renderCatalogPickerList(q);
+});
+
+let _catalogItems = [];
+
+async function openCatalogPicker() {
+  document.getElementById('catalog-picker-modal').classList.add('open');
+  document.getElementById('catalog-picker-search').value = '';
+  if (_catalogItems.length === 0) {
+    try {
+      const r = await fetch('/api/catalog');
+      const data = await r.json();
+      // Flatten sections → items
+      _catalogItems = (data.sections || []).flatMap(s =>
+        (s.items || []).map(it => ({ ...it, _section: s.name || '' }))
+      );
+    } catch { _catalogItems = []; }
+  }
+  renderCatalogPickerList('');
+}
+
+function renderCatalogPickerList(query) {
+  const el = document.getElementById('catalog-picker-list');
+  const filtered = query
+    ? _catalogItems.filter(it => (it.name || '').toLowerCase().includes(query))
+    : _catalogItems;
+  if (!filtered.length) {
+    el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted)">No items found.</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(it => {
+    const pt = it.pricing_type || 'fixed';
+    const priceLabel = pt === 'tbc' ? 'TBC' : pt === 'daily' ? `£${it.price}/day` : pt === 'hourly' ? `£${it.price}/hr` : `£${it.price}`;
+    return `<div class="enquiry-picker-row" data-cat-id="${escHtml(it.id)}" style="padding:0.6rem 0.75rem;border-radius:var(--radius-sm);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:0.875rem">${escHtml(it.name || it.id || '')}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">${escHtml(it._section)} · ${priceLabel}</div>
+      </div>
+      <button class="btn-secondary btn-sm" style="flex-shrink:0">Add</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.enquiry-picker-row').forEach(row => {
+    row.querySelector('button').addEventListener('click', () => {
+      const it = filtered.find(i => i.id == row.dataset.catId);
+      if (!it) return;
+      const pt = it.pricing_type || 'fixed';
+      const unitPrice = pt === 'tbc' ? '' : `£${parseFloat(it.price || 0).toFixed(2)}`;
+      const qtyLabel  = pt === 'daily' ? '1 day' : pt === 'hourly' ? '1 hr' : '1';
+      docLineItems.push({ description: it.name || it.id, qty: qtyLabel, price: unitPrice });
+      renderDocLineItems();
+      document.getElementById('catalog-picker-modal').classList.remove('open');
+      showToast(`"${it.name || it.id}" added.`, 'success');
     });
   });
 }

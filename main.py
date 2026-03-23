@@ -40,6 +40,7 @@ from auth import (
     hash_password, verify_password, create_token, decode_token,
     require_customer, require_staff, require_tenant_admin, require_super_admin,
 )
+import datetime
 import json
 import os
 import uuid
@@ -1347,20 +1348,21 @@ async def docs_print(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Load doc settings
+    # Load doc settings, merging branding accent color as fallback
     raw_settings = get_setting("doc_settings", tenant_id=tenant["id"])
     try:
         settings = json.loads(raw_settings) if raw_settings else {}
     except Exception:
         settings = {}
+    if not settings.get("accent"):
+        branding = load_branding_config(tenant["id"])
+        settings["accent"] = branding.get("accent_color", "#fa854f")
 
     # Parse line items and compute totals
     try:
         raw_items = json.loads(doc.get("line_items") or "[]")
     except Exception:
         raw_items = []
-
-    import datetime
 
     def _parse_price(price_str: str):
         p = (price_str or "").strip()

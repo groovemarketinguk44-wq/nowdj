@@ -2166,6 +2166,65 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 /* Compose modal */
 .compose-modal-card { max-width: 640px; }
 
+/* WYSIWYG email template editor */
+.wysiwyg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.wysiwyg-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 3px 7px;
+  line-height: 1.4;
+  transition: background var(--transition), border-color var(--transition);
+}
+.wysiwyg-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+.wysiwyg-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.wysiwyg-label { font-size: 0.72rem; color: var(--text-muted); margin-left: 2px; white-space: nowrap; }
+.var-chip {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 100px;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  transition: background var(--transition);
+}
+.var-chip:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.wysiwyg-body {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  min-height: 200px;
+  outline: none;
+  padding: 0.75rem 1rem;
+  transition: border-color var(--transition);
+}
+.wysiwyg-body:focus { border-color: var(--accent); }
+.wysiwyg-body:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.wysiwyg-body a { color: var(--accent); }
+.wysiwyg-body ul { margin: 0.25rem 0 0.25rem 1.25rem; }
+
 .compose-template-bar { display: flex; gap: 8px; }
 
 .compose-template-bar select {

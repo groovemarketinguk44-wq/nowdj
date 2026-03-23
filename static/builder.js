@@ -5,7 +5,10 @@
 // pricingType values: "fixed" | "hourly" | "daily" | "tbc"
 
 const state = {
-  // id → { id, name, basePrice, price, pricingType, qty }
+  // id → { id, name, basePrice, price, pricingType, qty, days, allowQty }
+  // qty  = number of units (used when allowQty or fixed)
+  // days = number of hours/days (used when pricingType hourly/daily)
+  // price = basePrice × qty × days
   selected: new Map(),
 };
 
@@ -69,10 +72,15 @@ function renderPackage() {
   itemList.innerHTML = '';
   items.forEach(item => {
     let priceLabel;
+    const isTimeBased = item.pricingType === 'hourly' || item.pricingType === 'daily';
     if (item.pricingType === 'tbc') {
       priceLabel = `<span class="pkg-tbc-badge">TBC</span>`;
-    } else if ((item.pricingType === 'hourly' || item.pricingType === 'daily') && !item.allowQty) {
-      priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(${item.qty} ${unitLabel(item.pricingType, item.qty)})</span>`;
+    } else if (isTimeBased && item.allowQty) {
+      // e.g. "£300 (×2, 3 days)"
+      const unitPart = `${item.days} ${unitLabel(item.pricingType, item.days)}`;
+      priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(×${item.qty}, ${unitPart})</span>`;
+    } else if (isTimeBased) {
+      priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(${item.days} ${unitLabel(item.pricingType, item.days)})</span>`;
     } else if (item.qty > 1) {
       priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(×${item.qty})</span>`;
     } else {
@@ -111,19 +119,34 @@ function qtyLabel(pricingType, qty, allowQty) {
   return `×${qty}`;
 }
 
-function updateQty(id, delta) {
+// field: 'qty' (units) or 'days' (hours/days)
+function updateQty(id, delta, field) {
   const item = state.selected.get(id);
   if (!item) return;
-  const isVariable = item.pricingType === 'hourly' || item.pricingType === 'daily' || item.allowQty;
-  if (!isVariable) return;
-  const newQty = Math.max(1, item.qty + delta);
-  item.qty   = newQty;
-  item.price = item.basePrice * newQty;
+  const isTimeBased = item.pricingType === 'hourly' || item.pricingType === 'daily';
+
+  if (field === 'days' && isTimeBased) {
+    item.days = Math.max(1, item.days + delta);
+  } else if (field === 'qty' && item.allowQty) {
+    item.qty = Math.max(1, item.qty + delta);
+  } else {
+    // Legacy single-stepper: time-based → days, fixed+allowQty → qty
+    if (isTimeBased) item.days = Math.max(1, item.days + delta);
+    else item.qty = Math.max(1, item.qty + delta);
+  }
+
+  item.price = item.pricingType === 'tbc' ? 0 : item.basePrice * item.qty * item.days;
 
   const card = document.querySelector(`.item-card[data-id="${id}"]`);
   if (card) {
-    const display = card.querySelector('.qty-display');
-    if (display) display.textContent = qtyLabel(item.pricingType, newQty, item.allowQty);
+    const daysDisplay = card.querySelector('.qty-display-days');
+    const qtyDisplay  = card.querySelector('.qty-display-qty');
+    const display     = card.querySelector('.qty-display'); // legacy single stepper
+    if (daysDisplay) daysDisplay.textContent = `${item.days} ${unitLabel(item.pricingType, item.days)}`;
+    if (qtyDisplay)  qtyDisplay.textContent  = `×${item.qty}`;
+    if (display)     display.textContent     = isTimeBased
+      ? `${item.days} ${unitLabel(item.pricingType, item.days)}`
+      : `×${item.qty}`;
   }
 
   renderPackage();
@@ -132,34 +155,36 @@ function updateQty(id, delta) {
 /* ── Select / deselect ── */
 
 function selectItem(id, name, basePrice, pricingType, allowQty) {
-  const qty   = 1;
-  const price = pricingType === 'tbc' ? 0 : basePrice * qty;
-  state.selected.set(id, { id, name, basePrice, price, pricingType, qty, allowQty: !!allowQty });
+  const qty  = 1;
+  const days = 1;
+  const price = pricingType === 'tbc' ? 0 : basePrice * qty * days;
+  state.selected.set(id, { id, name, basePrice, price, pricingType, qty, days, allowQty: !!allowQty });
 
   const card = document.querySelector(`.item-card[data-id="${id}"]`);
   if (card) {
     card.classList.add('selected');
     card.setAttribute('aria-checked', 'true');
-    if (pricingType === 'hourly' || pricingType === 'daily' || allowQty) {
-      card.querySelector('.qty-stepper')?.style.setProperty('display', 'flex');
-    }
+    card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'flex');
   }
   renderPackage();
   updateSectionStates();
 }
 
 function deselectItem(id) {
-  const item = state.selected.get(id);
   state.selected.delete(id);
 
   const card = document.querySelector(`.item-card[data-id="${id}"]`);
   if (card) {
     card.classList.remove('selected');
     card.setAttribute('aria-checked', 'false');
-    const stepper = card.querySelector('.qty-stepper');
-    if (stepper) stepper.style.display = 'none';
-    const display = card.querySelector('.qty-display');
-    if (display && item) display.textContent = qtyLabel(item.pricingType, 1, item.allowQty);
+    card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
+    const daysDisplay = card.querySelector('.qty-display-days');
+    const qtyDisplay  = card.querySelector('.qty-display-qty');
+    const display     = card.querySelector('.qty-display');
+    const pt = card.dataset.pricingType || 'fixed';
+    if (daysDisplay) daysDisplay.textContent = `1 ${unitLabel(pt, 1)}`;
+    if (qtyDisplay)  qtyDisplay.textContent  = '×1';
+    if (display)     display.textContent     = qtyLabel(pt, 1, card.dataset.allowQuantity === 'true');
   }
   renderPackage();
   updateSectionStates();
@@ -194,29 +219,41 @@ function initCards() {
       if (priceEl) priceEl.textContent = `£${basePrice}/day`;
     }
 
-    // Inject quantity stepper for hourly / daily / allow_quantity items
-    if (pricingType === 'hourly' || pricingType === 'daily' || allowQty) {
-      const defaultLabel = qtyLabel(pricingType, 1, allowQty);
-      const stepper = document.createElement('div');
-      stepper.className = 'qty-stepper';
-      stepper.style.display = 'none';
-      stepper.innerHTML = `
+    // Inject quantity stepper(s) for hourly / daily / allow_quantity items
+    const isTimeBased = pricingType === 'hourly' || pricingType === 'daily';
+    const makeStepper = (labelHtml, decCb, incCb) => {
+      const s = document.createElement('div');
+      s.className = 'qty-stepper';
+      s.style.display = 'none';
+      s.innerHTML = `
         <button class="hours-btn" data-action="dec" aria-label="Less">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <span class="qty-display">${defaultLabel}</span>
+        ${labelHtml}
         <button class="hours-btn" data-action="inc" aria-label="More">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>`;
+      s.querySelector('[data-action="dec"]').addEventListener('click', (e) => { e.stopPropagation(); decCb(); });
+      s.querySelector('[data-action="inc"]').addEventListener('click', (e) => { e.stopPropagation(); incCb(); });
+      return s;
+    };
 
-      stepper.querySelector('[data-action="dec"]').addEventListener('click', (e) => {
-        e.stopPropagation(); updateQty(id, -1);
-      });
-      stepper.querySelector('[data-action="inc"]').addEventListener('click', (e) => {
-        e.stopPropagation(); updateQty(id, +1);
-      });
-
-      card.appendChild(stepper);
+    if (isTimeBased && allowQty) {
+      // Two steppers: qty (units) + days/hours
+      const qtyS  = makeStepper(`<span class="qty-display-qty">×1</span>`,
+        () => updateQty(id, -1, 'qty'), () => updateQty(id, +1, 'qty'));
+      const daysS = makeStepper(`<span class="qty-display-days">1 ${unitLabel(pricingType, 1)}</span>`,
+        () => updateQty(id, -1, 'days'), () => updateQty(id, +1, 'days'));
+      card.appendChild(qtyS);
+      card.appendChild(daysS);
+    } else if (isTimeBased || allowQty) {
+      // Single stepper
+      const label = isTimeBased
+        ? `<span class="qty-display">1 ${unitLabel(pricingType, 1)}</span>`
+        : `<span class="qty-display">×1</span>`;
+      const s = makeStepper(label,
+        () => updateQty(id, -1, null), () => updateQty(id, +1, null));
+      card.appendChild(s);
     }
 
     card.setAttribute('tabindex', '0');
@@ -274,14 +311,15 @@ function resetAll() {
   document.querySelectorAll('.item-card.selected').forEach(c => {
     c.classList.remove('selected');
     c.setAttribute('aria-checked', 'false');
-    const stepper = c.querySelector('.qty-stepper');
-    if (stepper) stepper.style.display = 'none';
-    const display = c.querySelector('.qty-display');
-    if (display) {
-      const pt = c.dataset.pricingType;
-      const aq = c.dataset.allowQuantity === 'true';
-      display.textContent = qtyLabel(pt, 1, aq);
-    }
+    c.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
+    const pt = c.dataset.pricingType || 'fixed';
+    const aq = c.dataset.allowQuantity === 'true';
+    const d = c.querySelector('.qty-display');
+    if (d) d.textContent = qtyLabel(pt, 1, aq);
+    const dd = c.querySelector('.qty-display-days');
+    if (dd) dd.textContent = `1 ${unitLabel(pt, 1)}`;
+    const dq = c.querySelector('.qty-display-qty');
+    if (dq) dq.textContent = '×1';
   });
   renderPackage();
   updateSectionStates();
@@ -311,10 +349,16 @@ async function handleSubmit(e) {
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> Sending…`;
 
-  // Build item_quantities map for hourly/daily items
+  // Build item_quantities map: for time-based items store days; for allowQty store qty
+  // For items with both (daily+allowQty), encode as "qty:days"
   const item_quantities = {};
   state.selected.forEach((item, id) => {
-    if (item.pricingType === 'hourly' || item.pricingType === 'daily') {
+    const isTimeBased = item.pricingType === 'hourly' || item.pricingType === 'daily';
+    if (isTimeBased && item.allowQty) {
+      item_quantities[id] = `${item.qty}:${item.days}`;
+    } else if (isTimeBased) {
+      item_quantities[id] = item.days;
+    } else if (item.allowQty && item.qty > 1) {
       item_quantities[id] = item.qty;
     }
   });
