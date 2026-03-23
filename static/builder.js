@@ -164,7 +164,10 @@ function selectItem(id, name, basePrice, pricingType, allowQty) {
   if (card) {
     card.classList.add('selected');
     card.setAttribute('aria-checked', 'true');
-    card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'flex');
+    // Show pair wrapper or individual steppers
+    const pair = card.querySelector('.qty-stepper-pair');
+    if (pair) pair.style.display = 'flex';
+    else card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'flex');
   }
   renderPackage();
   updateSectionStates();
@@ -177,11 +180,13 @@ function deselectItem(id) {
   if (card) {
     card.classList.remove('selected');
     card.setAttribute('aria-checked', 'false');
-    card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
+    const pair = card.querySelector('.qty-stepper-pair');
+    if (pair) pair.style.display = 'none';
+    else card.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
+    const pt = card.dataset.pricingType || 'fixed';
     const daysDisplay = card.querySelector('.qty-display-days');
     const qtyDisplay  = card.querySelector('.qty-display-qty');
     const display     = card.querySelector('.qty-display');
-    const pt = card.dataset.pricingType || 'fixed';
     if (daysDisplay) daysDisplay.textContent = `1 ${unitLabel(pt, 1)}`;
     if (qtyDisplay)  qtyDisplay.textContent  = '×1';
     if (display)     display.textContent     = qtyLabel(pt, 1, card.dataset.allowQuantity === 'true');
@@ -238,14 +243,26 @@ function initCards() {
       return s;
     };
 
-    if (isTimeBased) {
-      // Always show two steppers for time-based items: qty (units) + days/hours
+    if (isTimeBased && allowQty) {
+      // Two steppers side by side: qty (units) + days/hours
       const qtyS  = makeStepper(`<span class="qty-display-qty">×1</span>`,
         () => updateQty(id, -1, 'qty'), () => updateQty(id, +1, 'qty'));
       const daysS = makeStepper(`<span class="qty-display-days">1 ${unitLabel(pricingType, 1)}</span>`,
         () => updateQty(id, -1, 'days'), () => updateQty(id, +1, 'days'));
-      card.appendChild(qtyS);
-      card.appendChild(daysS);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'qty-stepper-pair';
+      wrapper.style.display = 'none';
+      wrapper.appendChild(qtyS);
+      wrapper.appendChild(daysS);
+      // Show/hide wrapper instead of individual steppers
+      qtyS.style.display  = 'flex';
+      daysS.style.display = 'flex';
+      card.appendChild(wrapper);
+    } else if (isTimeBased) {
+      // Single days stepper for daily/hourly without qty
+      const s = makeStepper(`<span class="qty-display">1 ${unitLabel(pricingType, 1)}</span>`,
+        () => updateQty(id, -1, null), () => updateQty(id, +1, null));
+      card.appendChild(s);
     } else if (allowQty) {
       // Fixed-price with allow_quantity: single qty stepper
       const s = makeStepper(`<span class="qty-display">×1</span>`,
@@ -308,7 +325,9 @@ function resetAll() {
   document.querySelectorAll('.item-card.selected').forEach(c => {
     c.classList.remove('selected');
     c.setAttribute('aria-checked', 'false');
-    c.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
+    const pair = c.querySelector('.qty-stepper-pair');
+    if (pair) pair.style.display = 'none';
+    else c.querySelectorAll('.qty-stepper').forEach(s => s.style.display = 'none');
     const pt = c.dataset.pricingType || 'fixed';
     const aq = c.dataset.allowQuantity === 'true';
     const d = c.querySelector('.qty-display');

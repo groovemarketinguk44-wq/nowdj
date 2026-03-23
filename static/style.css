@@ -389,6 +389,28 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   animation: slideIn 0.18s ease;
 }
 
+/* Side-by-side wrapper for dual steppers (qty + days) */
+.qty-stepper-pair {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(250, 133, 79, 0.2);
+  animation: slideIn 0.18s ease;
+}
+.qty-stepper-pair .qty-stepper {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  flex: 1;
+}
+.qty-stepper-pair .qty-stepper + .qty-stepper {
+  border-left: 1px solid rgba(250, 133, 79, 0.2);
+  padding-left: 12px;
+  margin-left: 4px;
+}
+
 .hours-btn {
   width: 28px;
   height: 28px;
@@ -415,11 +437,13 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
 .hours-btn:active { transform: scale(0.96); }
 
 .hours-display,
-.qty-display {
+.qty-display,
+.qty-display-qty,
+.qty-display-days {
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--accent);
-  min-width: 48px;
+  min-width: 40px;
   text-align: center;
 }
 
