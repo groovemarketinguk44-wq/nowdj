@@ -16,7 +16,7 @@ Date: {{event_date}}<br>
 Type: {{event_type}}<br>
 Location: {{location}}</p>
 <p>In the meantime, if you have any questions feel free to reply to this email.</p>
-<p>Speak soon,<br>The NowDJ Team</p>""",
+<p>Speak soon,<br>The Team</p>""",
     },
     {
         "name": "Booking Confirmed",
@@ -29,7 +29,7 @@ Date: {{event_date}}<br>
 Location: {{location}}<br>
 Total: {{total}}</p>
 <p>We'll be in touch closer to the date to go over any final details.</p>
-<p>Thanks again,<br>The NowDJ Team</p>""",
+<p>Thanks again,<br>The Team</p>""",
     },
     {
         "name": "Following Up",
@@ -38,7 +38,25 @@ Total: {{total}}</p>
 <p>We sent over a quote a little while ago and just wanted to check in to see if you have any questions or if there's anything we can help with.</p>
 <p>We'd love to be part of your {{event_type}} and are happy to chat through any details.</p>
 <p>Just reply to this email or give us a call.</p>
-<p>Thanks,<br>The NowDJ Team</p>""",
+<p>Thanks,<br>The Team</p>""",
+    },
+    {
+        "name": "Thank You",
+        "subject": "Thank you for booking with us, {{name}}!",
+        "body": """<p>Hi {{name}},</p>
+<p>Thank you so much for choosing us for your {{event_type}} — we're really excited to be part of your event!</p>
+<p>If you have any questions in the lead up to the day, please don't hesitate to get in touch.</p>
+<p>We'll be in touch closer to {{event_date}} to go over any final details.</p>
+<p>Thanks again,<br>The Team</p>""",
+    },
+    {
+        "name": "Review Request",
+        "subject": "How did we do, {{name}}? 🌟",
+        "body": """<p>Hi {{name}},</p>
+<p>We hope your {{event_type}} went brilliantly!</p>
+<p>We'd really appreciate it if you could take a moment to leave us a review — it helps us enormously and means the world to the team.</p>
+<p>It only takes a minute and your feedback makes a huge difference.</p>
+<p>Thanks so much,<br>The Team</p>""",
     },
 ]
 
@@ -409,14 +427,15 @@ def update_quote_status(quote_id: int, status: str, tenant_id: int) -> None:
 # ---------------------------------------------------------------------------
 
 def seed_templates_for_tenant(tenant_id: int) -> None:
-    """Insert default email templates for a newly created tenant."""
+    """Insert default email templates if they don't already exist (checks by name)."""
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) AS c FROM email_templates WHERE tenant_id = %s", (tenant_id,))
-                if cur.fetchone()["c"] == 0:
-                    for t in DEFAULT_TEMPLATES:
+                cur.execute("SELECT name FROM email_templates WHERE tenant_id = %s", (tenant_id,))
+                existing_names = {row["name"] for row in cur.fetchall()}
+                for t in DEFAULT_TEMPLATES:
+                    if t["name"] not in existing_names:
                         cur.execute(
                             "INSERT INTO email_templates (tenant_id, name, subject, body) VALUES (%s, %s, %s, %s)",
                             (tenant_id, t["name"], t["subject"], t["body"]),

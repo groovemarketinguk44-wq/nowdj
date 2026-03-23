@@ -226,110 +226,114 @@
            ================================================================ -->
       <div class="admin-section" id="section-email">
 
-        <!-- Not configured / not connected panel -->
-        <div id="email-setup-panel" style="display:none">
-          <div class="section-page-header">
-            <div>
-              <h1>Email <span class="gradient-text">Management</span></h1>
-              <p>Connect your Outlook account to send emails and manage your inbox.</p>
-            </div>
+        <div class="section-page-header">
+          <div>
+            <h1>Email <span class="gradient-text">Management</span></h1>
+            <p id="email-account-label">Manage templates and send emails to your enquiries.</p>
           </div>
-
-          <div class="email-setup-card" id="email-connect-card">
-            <div class="setup-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            </div>
-            <h3>Connect your Outlook account</h3>
-            <p>Integrate your Microsoft 365 / Outlook account to access your inbox and send emails directly from NowDJ.</p>
-
-            <div id="setup-step1" class="setup-step">
-              <div class="setup-step-num">1</div>
-              <div class="setup-step-content">
-                <strong>Azure App Credentials</strong>
-                <p>Enter your Azure AD app registration details below.</p>
-                <div class="setup-fields">
-                  <div class="setup-field">
-                    <label>Client ID</label>
-                    <input type="text" id="cfg-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
-                  </div>
-                  <div class="setup-field">
-                    <label>Client Secret</label>
-                    <input type="password" id="cfg-client-secret" placeholder="Enter client secret" autocomplete="off" />
-                  </div>
-                  <div class="setup-field">
-                    <label>Tenant ID</label>
-                    <input type="text" id="cfg-tenant-id" placeholder="common" />
-                    <span class="field-hint">Use "common" for personal/multi-tenant or paste your Directory (tenant) ID</span>
-                  </div>
-                </div>
-                <button class="btn-primary" id="btn-save-email-config">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                  Save Credentials
-                </button>
-              </div>
-            </div>
-
-            <div id="setup-step2" class="setup-step" style="display:none">
-              <div class="setup-step-num">2</div>
-              <div class="setup-step-content">
-                <strong>Sign in to Microsoft</strong>
-                <p>Click below to authorise NowDJ to access your Outlook mailbox. A popup will open for Microsoft sign-in.</p>
-                <button class="btn-primary" id="btn-connect-outlook">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Connect Outlook Account
-                </button>
-              </div>
-            </div>
-
-            <div class="setup-help">
-              <strong>Setup guide:</strong> Go to <em>portal.azure.com → Azure Active Directory → App registrations → New registration</em>.
-              Set the Redirect URI to <code>http://localhost:8000/api/email/auth/callback</code> and add permissions:
-              Mail.Read, Mail.Send, Mail.ReadWrite, User.Read, offline_access.
-            </div>
+          <div class="header-actions" id="email-header-actions">
+            <button class="btn-secondary" id="btn-compose-new" style="display:none">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Email
+            </button>
+            <button class="btn-secondary" id="btn-refresh-inbox" style="display:none">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+              Refresh
+            </button>
+            <button class="btn-secondary" id="btn-disconnect-outlook" style="display:none">
+              Disconnect
+            </button>
           </div>
         </div>
 
-        <!-- Connected inbox shell -->
-        <div id="email-main-panel" style="display:none">
-          <div class="section-page-header">
-            <div>
-              <h1>Email <span class="gradient-text">Management</span></h1>
-              <p id="email-account-label">Connected</p>
-            </div>
-            <div class="header-actions">
-              <button class="btn-secondary" id="btn-compose-new">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                New Email
-              </button>
-              <button class="btn-secondary" id="btn-refresh-inbox">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
-                Refresh
-              </button>
-              <button class="btn-secondary" id="btn-disconnect-outlook">
-                Disconnect
-              </button>
-            </div>
-          </div>
+        <!-- Email tabs — Templates always accessible, Inbox/Sent require Outlook -->
+        <div class="email-tabs">
+          <button class="email-tab active" data-etab="templates">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Templates
+          </button>
+          <button class="email-tab" data-etab="inbox">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+            Inbox
+            <span class="tab-badge" id="tab-unread-badge" style="display:none">0</span>
+          </button>
+          <button class="email-tab" data-etab="sent">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Sent
+          </button>
+        </div>
 
-          <!-- Email tabs -->
-          <div class="email-tabs">
-            <button class="email-tab active" data-etab="inbox">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-              Inbox
-              <span class="tab-badge" id="tab-unread-badge" style="display:none">0</span>
-            </button>
-            <button class="email-tab" data-etab="sent">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Sent
-            </button>
-            <button class="email-tab" data-etab="templates">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              Templates
+        <!-- Templates pane — always accessible -->
+        <div class="email-pane active" id="etab-templates">
+          <div class="templates-toolbar">
+            <h3>Email Templates</h3>
+            <p>Create reusable templates to send to enquiries. Use variables like <code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>.</p>
+            <button class="btn-primary" id="btn-new-template">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Template
             </button>
           </div>
+          <div class="templates-grid" id="templates-grid">
+            <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
+          </div>
+        </div>
 
-          <!-- Inbox / Sent pane -->
-          <div class="email-pane active" id="etab-inbox">
+        <!-- Inbox pane — shows connect card when not authenticated -->
+        <div class="email-pane" id="etab-inbox">
+          <!-- Connect prompt (shown when not authenticated) -->
+          <div id="inbox-connect-prompt" style="display:none">
+            <div class="email-setup-card" id="email-connect-card">
+              <div class="setup-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <h3>Connect your Outlook account</h3>
+              <p>Integrate your Microsoft 365 / Outlook account to access your inbox and send emails directly.</p>
+              <div id="setup-step1" class="setup-step">
+                <div class="setup-step-num">1</div>
+                <div class="setup-step-content">
+                  <strong>Azure App Credentials</strong>
+                  <p>Enter your Azure AD app registration details below.</p>
+                  <div class="setup-fields">
+                    <div class="setup-field">
+                      <label>Client ID</label>
+                      <input type="text" id="cfg-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+                    </div>
+                    <div class="setup-field">
+                      <label>Client Secret</label>
+                      <input type="password" id="cfg-client-secret" placeholder="Enter client secret" autocomplete="off" />
+                    </div>
+                    <div class="setup-field">
+                      <label>Tenant ID</label>
+                      <input type="text" id="cfg-tenant-id" placeholder="common" />
+                      <span class="field-hint">Use "common" for personal/multi-tenant or paste your Directory (tenant) ID</span>
+                    </div>
+                  </div>
+                  <button class="btn-primary" id="btn-save-email-config">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save Credentials
+                  </button>
+                </div>
+              </div>
+              <div id="setup-step2" class="setup-step" style="display:none">
+                <div class="setup-step-num">2</div>
+                <div class="setup-step-content">
+                  <strong>Sign in to Microsoft</strong>
+                  <p>Click below to authorise access to your Outlook mailbox.</p>
+                  <button class="btn-primary" id="btn-connect-outlook">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Connect Outlook Account
+                  </button>
+                </div>
+              </div>
+              <div class="setup-help">
+                <strong>Setup guide:</strong> Go to <em>portal.azure.com → Azure Active Directory → App registrations → New registration</em>.
+                Set the Redirect URI to your app URL + <code>/api/email/auth/callback</code> and add permissions:
+                Mail.Read, Mail.Send, Mail.ReadWrite, User.Read, offline_access.
+              </div>
+            </div>
+          </div>
+          <!-- Inbox content (shown when authenticated) -->
+          <div id="inbox-content" style="display:none">
             <div class="email-shell">
               <div class="email-list-col" id="email-list">
                 <div class="email-list-loading"><span class="spinner"></span> Loading…</div>
@@ -342,9 +346,21 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Sent pane -->
-          <div class="email-pane" id="etab-sent">
+        <!-- Sent pane -->
+        <div class="email-pane" id="etab-sent">
+          <div id="sent-connect-prompt" style="display:none">
+            <div class="email-setup-card">
+              <div class="setup-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </div>
+              <h3>Connect Outlook to view sent emails</h3>
+              <p>Switch to the Inbox tab to set up your Outlook connection.</p>
+              <button class="btn-primary" onclick="switchEmailTab('inbox')">Set Up Connection</button>
+            </div>
+          </div>
+          <div id="sent-content" style="display:none">
             <div class="email-shell">
               <div class="email-list-col" id="sent-list">
                 <div class="email-list-loading"><span class="spinner"></span> Loading…</div>
@@ -355,21 +371,6 @@
                   <p>Select a sent email to view it</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Templates pane -->
-          <div class="email-pane" id="etab-templates">
-            <div class="templates-toolbar">
-              <h3>Email Templates</h3>
-              <p>Create reusable email templates with variables like <code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>.</p>
-              <button class="btn-primary" id="btn-new-template">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                New Template
-              </button>
-            </div>
-            <div class="templates-grid" id="templates-grid">
-              <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
             </div>
           </div>
         </div>
@@ -844,7 +845,7 @@ function switchSection(id) {
   document.getElementById(`section-${id}`)?.classList.add('active');
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
-  if (id === 'email')    { checkEmailStatus(); if (emailTemplates.length === 0) loadEmailTemplates(); }
+  if (id === 'email')    { checkEmailStatus(); loadEmailTemplates(); }
   if (id === 'bookings') loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
@@ -1258,6 +1259,23 @@ function renderQuotes() {
       dr.querySelector('.status-select')?.addEventListener('change', async (e) => {
         await patchStatus(q.id, e.target.value);
       });
+      dr.querySelector('.btn-send-email')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openComposeModal({
+          to_email: q.email || '',
+          to_name:  q.name  || '',
+          quoteVars: {
+            name:       q.name       || '',
+            email:      q.email      || '',
+            phone:      q.phone      || '',
+            event_date: q.event_date || '',
+            event_type: q.event_type || '',
+            location:   q.location   || '',
+            total:      q.total_price ? '£' + parseFloat(q.total_price).toFixed(2) : '',
+            quote_id:   String(q.id),
+          },
+        });
+      });
       tbody.appendChild(dr);
     }
   });
@@ -1291,6 +1309,10 @@ function buildDetail(q) {
             <option value="declined"  ${q.status==='declined'?'selected':''}>Declined</option>
           </select>
         </div>
+        <button class="btn-send-email" data-quote-id="${q.id}" style="margin-top:0.75rem;width:100%">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send Email
+        </button>
       </div>
       <div class="detail-section">
         <h4>Package Items</h4>
@@ -1384,7 +1406,8 @@ let composeMsgId   = null; // set when replying
 function switchEmailTab(tab) {
   document.querySelectorAll('.email-tab').forEach(t => t.classList.toggle('active', t.dataset.etab === tab));
   document.querySelectorAll('.email-pane').forEach(p => p.classList.toggle('active', p.id === `etab-${tab}`));
-  if (tab === 'sent' && sentMessages.length === 0) loadSent();
+  if (tab === 'inbox' && emailStatus.authenticated && inboxMessages.length === 0) loadInbox();
+  if (tab === 'sent'  && emailStatus.authenticated && sentMessages.length === 0) loadSent();
   if (tab === 'templates') loadEmailTemplates();
 }
 
@@ -1402,24 +1425,39 @@ async function checkEmailStatus() {
 }
 
 function renderEmailSetup() {
-  const setup = document.getElementById('email-setup-panel');
-  const main  = document.getElementById('email-main-panel');
   const step1 = document.getElementById('setup-step1');
   const step2 = document.getElementById('setup-step2');
+  const inboxPrompt   = document.getElementById('inbox-connect-prompt');
+  const inboxContent  = document.getElementById('inbox-content');
+  const sentPrompt    = document.getElementById('sent-connect-prompt');
+  const sentContent   = document.getElementById('sent-content');
+  const btnCompose    = document.getElementById('btn-compose-new');
+  const btnRefresh    = document.getElementById('btn-refresh-inbox');
+  const btnDisconnect = document.getElementById('btn-disconnect-outlook');
 
   if (emailStatus.authenticated) {
-    setup.style.display = 'none';
-    main.style.display  = '';
+    inboxPrompt.style.display  = 'none';
+    inboxContent.style.display = '';
+    sentPrompt.style.display   = 'none';
+    sentContent.style.display  = '';
+    btnCompose.style.display    = '';
+    btnRefresh.style.display    = '';
+    btnDisconnect.style.display = '';
     const label = emailStatus.user?.mail || emailStatus.user?.userPrincipalName || 'Connected';
     document.getElementById('email-account-label').textContent = `Connected: ${label}`;
     if (inboxMessages.length === 0) loadInbox();
   } else {
-    setup.style.display = '';
-    main.style.display  = 'none';
+    inboxPrompt.style.display  = '';
+    inboxContent.style.display = 'none';
+    sentPrompt.style.display   = '';
+    sentContent.style.display  = 'none';
+    btnCompose.style.display    = 'none';
+    btnRefresh.style.display    = 'none';
+    btnDisconnect.style.display = 'none';
+    document.getElementById('email-account-label').textContent = 'Manage templates and send emails to your enquiries.';
     if (emailStatus.configured) {
       step1.style.display = 'none';
       step2.style.display = '';
-      // Load config into fields
       loadEmailConfig();
     } else {
       step1.style.display = '';
@@ -1608,8 +1646,11 @@ document.getElementById('close-compose-modal').addEventListener('click', closeCo
 document.getElementById('cancel-compose-modal').addEventListener('click', closeComposeModal);
 document.getElementById('compose-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeComposeModal(); });
 
-function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {} } = {}) {
+let _composeQuoteVars = {};
+
+function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {} } = {}) {
   composeMsgId = null;
+  _composeQuoteVars = quoteVars;
   document.getElementById('compose-to').value      = to_email;
   document.getElementById('compose-to-name').value = to_name;
   document.getElementById('compose-subject').value = prefill.subject || '';
@@ -1627,6 +1668,9 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
     document.getElementById('compose-modal-title').textContent = 'New Email';
   }
 
+  // Ensure templates are loaded
+  if (emailTemplates.length === 0) loadEmailTemplates();
+
   // Load templates into select
   const sel = document.getElementById('compose-template-select');
   sel.innerHTML = '<option value="">— Choose a template —</option>';
@@ -1635,6 +1679,14 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
     opt.value = t.id; opt.textContent = t.name;
     sel.appendChild(opt);
   });
+
+  // If Outlook not connected, show warning in compose
+  const sendBtn = document.getElementById('btn-send-compose');
+  if (!emailStatus.authenticated) {
+    sendBtn.title = 'Connect Outlook in the Email section to send emails';
+  } else {
+    sendBtn.title = '';
+  }
 
   document.getElementById('compose-modal').classList.add('open');
 }
@@ -1665,16 +1717,20 @@ document.getElementById('btn-apply-template').addEventListener('click', () => {
       vDiv.className = 'compose-var-field';
       vDiv.innerHTML = '<label>{{' + v + '}}</label><input type="text" id="var-' + v + '" placeholder="' + v + '" />';
       varsDiv.appendChild(vDiv);
+      // Pre-fill from quote vars if available
+      const pre = _composeQuoteVars[v];
+      if (pre) document.getElementById('var-' + v).value = pre;
     });
     varsRow.style.display = '';
   } else {
     varsRow.style.display = 'none';
   }
-  // Pre-fill from subject — will be interpolated on send
+  // Pre-fill subject/body — will be interpolated on send
   document.getElementById('compose-subject').value = tmpl.subject;
   document.getElementById('compose-body').value    = tmpl.body;
-  // Focus first var field
-  varsDiv.querySelector('input')?.focus();
+  // Focus first empty var field
+  const firstEmpty = varsDiv.querySelector('input:not([value])') || varsDiv.querySelector('input');
+  firstEmpty?.focus();
 });
 
 function interpolateTemplate(text) {
@@ -1685,6 +1741,10 @@ function interpolateTemplate(text) {
 }
 
 document.getElementById('btn-send-compose').addEventListener('click', async () => {
+  if (!emailStatus.authenticated) {
+    showToast('Please connect your Outlook account in the Email section first.', 'error');
+    return;
+  }
   const to_email = document.getElementById('compose-to').value.trim();
   const subject  = interpolateTemplate(document.getElementById('compose-subject').value.trim());
   const body     = interpolateTemplate(document.getElementById('compose-body').value.trim());

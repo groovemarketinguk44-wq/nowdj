@@ -655,6 +655,7 @@ async def list_email_templates(
     _admin: Annotated[dict, Depends(require_tenant_admin)],
 ):
     tenant = _get_tenant_or_404(request)
+    seed_templates_for_tenant(tenant["id"])
     return get_all_templates(tenant["id"])
 
 
