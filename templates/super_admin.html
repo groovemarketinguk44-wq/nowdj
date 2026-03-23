@@ -20,8 +20,8 @@
     }
     .sidebar-brand {
       display: flex; align-items: center; gap: 0.5rem;
-      font-size: 1.15rem; font-weight: 800; letter-spacing: -0.03em;
-      color: var(--text-primary); margin-bottom: 2rem;
+      font-size: 1rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text-primary); margin-bottom: 2rem; white-space: nowrap;
     }
     .sidebar-brand .dot { color: #fa854f; }
     .sidebar-label {
@@ -37,34 +37,29 @@
     }
     .btn-logout-side:hover { border-color: var(--danger); color: var(--danger); }
 
-    .main { flex: 1; padding: 2.5rem; max-width: 960px; }
+    .main { flex: 1; padding: 2.5rem; min-width: 0; }
     .page-header { margin-bottom: 2rem; }
     .page-header h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.25rem; }
     .page-header p  { color: var(--text-secondary); font-size: 0.875rem; }
     .accent { color: #fa854f; }
 
     /* Tenant table */
-    .tenants-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; table-layout: fixed; }
+    .tenants-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; }
     .tenants-table th {
       text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.05em; color: var(--text-muted);
-      padding: 0 0.75rem 0.6rem; border-bottom: 1px solid var(--border-default);
+      padding: 0.5rem 0.75rem 0.6rem; border-bottom: 1px solid var(--border-default); white-space: nowrap;
     }
     .tenants-table td {
-      padding: 0.75rem; border-bottom: 1px solid var(--border-default);
-      font-size: 0.875rem; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-default);
+      font-size: 0.875rem; vertical-align: middle; white-space: nowrap;
     }
     .tenants-table tr:last-child td { border-bottom: none; }
-    .tenants-table col.col-name    { width: 18%; }
-    .tenants-table col.col-slug    { width: 13%; }
-    .tenants-table col.col-email   { width: 22%; }
-    .tenants-table col.col-domain  { width: 20%; }
-    .tenants-table col.col-plan    { width: 9%; }
-    .tenants-table col.col-created { width: 10%; }
-    .tenants-table col.col-action  { width: 10%; }
-    .tenants-table col.col-del     { width: 3%; }
-    .tenants-table td.col-action,
-    .tenants-table td.col-del { white-space: nowrap; overflow: visible; }
+    .tenants-table td.col-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+    .tenants-table td.col-email { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+    .tenants-table td.col-domain { width: 220px; }
+    .tenants-table td.col-action { white-space: nowrap; }
+    .tenants-table td.col-del { white-space: nowrap; }
     .custom-domain-cell { display: flex; align-items: center; gap: 0.4rem; }
     .custom-domain-input {
       flex: 1; background: var(--bg-input); border: 1px solid var(--border-hover);
@@ -99,9 +94,10 @@
     .btn-preview {
       font-size: 0.78rem; font-weight: 500; color: var(--text-secondary); text-decoration: none;
       border: 1px solid var(--border-hover); border-radius: var(--radius-sm);
-      padding: 0.3rem 0.65rem; transition: background 0.15s; margin-left: 0.35rem;
+      padding: 0.3rem 0.65rem; transition: background 0.15s; display: inline-block; margin-top: 0.3rem;
     }
     .btn-preview:hover { border-color: var(--text-secondary); background: var(--bg-input); }
+    .action-links { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; }
     .btn-del {
       background: transparent; border: 1px solid transparent;
       border-radius: var(--radius-sm); padding: 0.3rem 0.6rem;
@@ -274,18 +270,17 @@ function renderTenants(tenants) {
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
       <td class="col-action">
-        <a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Admin ↗</a>
-        <a class="btn-preview" href="${t.custom_domain ? 'https://' + esc(t.custom_domain) : '/' + esc(t.slug) + '/'}" target="_blank">Preview ↗</a>
+        <div class="action-links">
+          <a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Admin ↗</a>
+          <a class="btn-preview" href="${t.custom_domain ? 'https://' + esc(t.custom_domain) : '/' + esc(t.slug) + '/'}" target="_blank">Preview ↗</a>
+        </div>
       </td>
       <td class="col-del"><button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button></td>
     </tr>
   `).join('');
   wrap.innerHTML = `
     <table class="tenants-table">
-      <colgroup>
-        <col class="col-name"><col class="col-slug"><col class="col-email">
-        <col class="col-domain"><col class="col-plan"><col class="col-created"><col class="col-action"><col class="col-del">
-      </colgroup>
+
       <thead>
         <tr>
           <th>Name</th><th>Slug</th><th>Email</th><th>Custom Domain</th><th>Plan</th><th>Created</th><th>Links</th><th></th>
