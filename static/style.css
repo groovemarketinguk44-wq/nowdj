@@ -1611,6 +1611,8 @@ tr[draggable].drag-over td {
 .status-declined::before { background: #ef4444; }
 .status-attended  { background: rgba(251,146,60,0.12); color: #fdba74; border: 1px solid rgba(251,146,60,0.25); }
 .status-attended::before { background: #fb923c; }
+.status-paid      { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
+.status-paid::before { background: #22c55e; }
 
 /* Booking statuses */
 .status-confirmed  { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }

@@ -185,30 +185,30 @@
             <div class="stat-value" id="stat-month">—</div>
             <div class="stat-sub" id="stat-month-sub">New enquiries</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-label">Booked</div>
+            <div class="stat-value" id="stat-booked">—</div>
+            <div class="stat-sub">Confirmed</div>
+          </div>
           <div class="stat-card stat-red">
             <div class="stat-label">Pipeline Value</div>
             <div class="stat-value" id="stat-value">—</div>
             <div class="stat-sub">New + contacted</div>
-          </div>
-          <div class="stat-card stat-orange">
-            <div class="stat-label">Past Events Due</div>
-            <div class="stat-value" id="stat-attended-value">—</div>
-            <div class="stat-sub">Attended, unpaid</div>
           </div>
           <div class="stat-card stat-blue">
             <div class="stat-label">Confirmed Value</div>
             <div class="stat-value" id="stat-confirmed-value">—</div>
             <div class="stat-sub">Booked events</div>
           </div>
+          <div class="stat-card stat-orange">
+            <div class="stat-label">Past Events Due</div>
+            <div class="stat-value" id="stat-attended-value">—</div>
+            <div class="stat-sub">Attended, unpaid</div>
+          </div>
           <div class="stat-card stat-green">
             <div class="stat-label">Past Events Paid</div>
             <div class="stat-value" id="stat-paid-value">—</div>
-            <div class="stat-sub">Invoices paid</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Booked</div>
-            <div class="stat-value" id="stat-booked">—</div>
-            <div class="stat-sub">Confirmed</div>
+            <div class="stat-sub">Marked as paid</div>
           </div>
         </div>
 
@@ -224,6 +224,7 @@
             <button class="filter-pill" data-filter="contacted">Contacted</button>
             <button class="filter-pill" data-filter="booked">Booked</button>
             <button class="filter-pill" data-filter="attended">Attended</button>
+            <button class="filter-pill" data-filter="paid">Paid</button>
             <button class="filter-pill" data-filter="declined">Declined</button>
           </div>
           <button class="btn-export" id="btn-export">
@@ -1574,19 +1575,8 @@ function updateStats(quotes) {
   // Past Events Due = attended quotes (event happened, payment outstanding)
   const attended = quotes.filter(q => q.status==='attended').reduce((s,q)=>s+(q.total_price||0),0);
   document.getElementById('stat-attended-value').textContent = fmtK(attended);
-  // Past Events Paid = paid invoices from allDocs
-  const paidTotal = allDocs
-    .filter(d => d.doc_type === 'invoice' && d.status === 'paid')
-    .reduce((s, d) => {
-      try {
-        const items = JSON.parse(d.line_items || '[]');
-        return s + items.reduce((t, it) => {
-          const p = parseFloat(String(it.price || '').replace(/[^0-9.]/g, '')) || 0;
-          const q2 = parseFloat(String(it.qty || '1').replace(/[^0-9.]/g, '')) || 1;
-          return t + p * q2;
-        }, 0);
-      } catch { return s; }
-    }, 0);
+  // Past Events Paid = quotes marked as paid
+  const paidTotal = quotes.filter(q => q.status === 'paid').reduce((s, q) => s + (q.total_price || 0), 0);
   document.getElementById('stat-paid-value').textContent = fmtK(paidTotal);
   // This month + % change
   const thisMonth = quotes.filter(q => new Date(q.created_at) >= monthStart).length;
@@ -1609,7 +1599,7 @@ function updateStats(quotes) {
 }
 
 function statusBadge(s) {
-  const labels = { new:'New', contacted:'Contacted', booked:'Booked', attended:'Attended', declined:'Declined' };
+  const labels = { new:'New', contacted:'Contacted', booked:'Booked', attended:'Attended', paid:'Paid', declined:'Declined' };
   return `<span class="status-badge status-${s}">${labels[s]||s}</span>`;
 }
 
@@ -1723,6 +1713,7 @@ function buildDetail(q) {
             <option value="contacted" ${q.status==='contacted'?'selected':''}>Contacted</option>
             <option value="booked"    ${q.status==='booked'?'selected':''}>Booked</option>
             <option value="attended"  ${q.status==='attended'?'selected':''}>Attended</option>
+            <option value="paid"      ${q.status==='paid'?'selected':''}>Paid</option>
             <option value="declined"  ${q.status==='declined'?'selected':''}>Declined</option>
           </select>
         </div>
