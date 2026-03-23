@@ -55,15 +55,30 @@
       font-size: 0.875rem; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .tenants-table tr:last-child td { border-bottom: none; }
-    .tenants-table col.col-name    { width: 22%; }
-    .tenants-table col.col-slug    { width: 16%; }
-    .tenants-table col.col-email   { width: 28%; }
-    .tenants-table col.col-plan    { width: 10%; }
-    .tenants-table col.col-created { width: 12%; }
-    .tenants-table col.col-action  { width: 7%; }
-    .tenants-table col.col-del     { width: 5%; }
+    .tenants-table col.col-name    { width: 18%; }
+    .tenants-table col.col-slug    { width: 13%; }
+    .tenants-table col.col-email   { width: 22%; }
+    .tenants-table col.col-domain  { width: 20%; }
+    .tenants-table col.col-plan    { width: 9%; }
+    .tenants-table col.col-created { width: 10%; }
+    .tenants-table col.col-action  { width: 5%; }
+    .tenants-table col.col-del     { width: 3%; }
     .tenants-table td.col-action,
     .tenants-table td.col-del { white-space: nowrap; overflow: visible; }
+    .custom-domain-cell { display: flex; align-items: center; gap: 0.4rem; }
+    .custom-domain-input {
+      flex: 1; background: var(--bg-input); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 0.25rem 0.5rem;
+      color: var(--text-primary); font-size: 0.78rem; font-family: monospace;
+      outline: none; min-width: 0;
+    }
+    .custom-domain-input:focus { border-color: #fa854f; }
+    .btn-save-domain {
+      background: #fa854f; color: #fff; border: none; border-radius: var(--radius-sm);
+      padding: 0.25rem 0.55rem; font-size: 0.72rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+    .btn-save-domain:hover { opacity: 0.85; }
     .tenant-name { font-weight: 600; color: var(--text-primary); }
     .tenant-slug {
       font-size: 0.78rem; font-family: monospace;
@@ -243,6 +258,13 @@ function renderTenants(tenants) {
       <td><span class="tenant-name">${esc(t.name)}</span></td>
       <td><span class="tenant-slug">${esc(t.slug)}</span></td>
       <td>${esc(t.email)}</td>
+      <td class="col-domain">
+        <div class="custom-domain-cell">
+          <input class="custom-domain-input" type="text" placeholder="e.g. bookings.theirdomain.com"
+            value="${esc(t.custom_domain || '')}" data-id="${t.id}" data-original="${esc(t.custom_domain || '')}" />
+          <button class="btn-save-domain" onclick="saveDomain(${t.id}, this)">Save</button>
+        </div>
+      </td>
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
       <td class="col-action"><a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Open ↗</a></td>
@@ -253,11 +275,11 @@ function renderTenants(tenants) {
     <table class="tenants-table">
       <colgroup>
         <col class="col-name"><col class="col-slug"><col class="col-email">
-        <col class="col-plan"><col class="col-created"><col class="col-action"><col class="col-del">
+        <col class="col-domain"><col class="col-plan"><col class="col-created"><col class="col-action"><col class="col-del">
       </colgroup>
       <thead>
         <tr>
-          <th>Name</th><th>Slug</th><th>Email</th><th>Plan</th><th>Created</th><th></th><th></th>
+          <th>Name</th><th>Slug</th><th>Email</th><th>Custom Domain</th><th>Plan</th><th>Created</th><th></th><th></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -273,6 +295,28 @@ async function deleteTenant(id, name) {
     loadTenants();
   } catch {
     alert('Failed to delete workspace.');
+  }
+}
+
+// ── Custom domain ────────────────────────────────────────────────────────────
+
+async function saveDomain(id, btn) {
+  const input = btn.previousElementSibling;
+  const domain = input.value.trim().toLowerCase().replace(/^https?:\/\//, '');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await saFetch(`/api/super/tenants/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ custom_domain: domain || null }),
+    });
+    if (!r.ok) throw new Error();
+    input.value = domain;
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+  } catch {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
   }
 }
 

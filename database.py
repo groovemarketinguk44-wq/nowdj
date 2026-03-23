@@ -61,9 +61,11 @@ def init_db() -> None:
                         email         TEXT UNIQUE NOT NULL,
                         password_hash TEXT NOT NULL,
                         plan          TEXT NOT NULL DEFAULT 'starter',
+                        custom_domain TEXT UNIQUE DEFAULT NULL,
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS custom_domain TEXT UNIQUE DEFAULT NULL")
 
                 # ── Quotes
                 cur.execute("""
@@ -243,7 +245,7 @@ def get_tenant_by_id(tid: int) -> dict | None:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, slug, email, plan, created_at FROM tenants WHERE id = %s", (tid,))
+            cur.execute("SELECT id, name, slug, email, plan, custom_domain, created_at FROM tenants WHERE id = %s", (tid,))
             row = cur.fetchone()
             if not row:
                 return None
@@ -266,11 +268,22 @@ def get_tenant_by_email(email: str) -> dict | None:
         conn.close()
 
 
+def get_tenant_by_custom_domain(domain: str) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM tenants WHERE lower(custom_domain) = %s", (domain.lower(),))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def get_all_tenants() -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, slug, email, plan, created_at FROM tenants ORDER BY created_at ASC")
+            cur.execute("SELECT id, name, slug, email, plan, custom_domain, created_at FROM tenants ORDER BY created_at ASC")
             result = []
             for row in cur.fetchall():
                 r = dict(row)
@@ -282,21 +295,23 @@ def get_all_tenants() -> list[dict]:
         conn.close()
 
 
-def update_tenant(tid: int, name: str, email: str, plan: str, password_hash: str | None = None) -> None:
+def update_tenant(tid: int, name: str, email: str, plan: str, password_hash: str | None = None, custom_domain: str | None = ...) -> None:
     conn = _conn()
     try:
         with conn:
             with conn.cursor() as cur:
-                if password_hash:
-                    cur.execute(
-                        "UPDATE tenants SET name=%s, email=%s, plan=%s, password_hash=%s WHERE id=%s",
-                        (name, email, plan, password_hash, tid),
-                    )
+                # custom_domain=... (Ellipsis) means "don't touch it"; None means clear it
+                if custom_domain is ...:
+                    if password_hash:
+                        cur.execute("UPDATE tenants SET name=%s, email=%s, plan=%s, password_hash=%s WHERE id=%s", (name, email, plan, password_hash, tid))
+                    else:
+                        cur.execute("UPDATE tenants SET name=%s, email=%s, plan=%s WHERE id=%s", (name, email, plan, tid))
                 else:
-                    cur.execute(
-                        "UPDATE tenants SET name=%s, email=%s, plan=%s WHERE id=%s",
-                        (name, email, plan, tid),
-                    )
+                    cd = custom_domain.strip().lower() if custom_domain else None
+                    if password_hash:
+                        cur.execute("UPDATE tenants SET name=%s, email=%s, plan=%s, password_hash=%s, custom_domain=%s WHERE id=%s", (name, email, plan, password_hash, cd, tid))
+                    else:
+                        cur.execute("UPDATE tenants SET name=%s, email=%s, plan=%s, custom_domain=%s WHERE id=%s", (name, email, plan, cd, tid))
     finally:
         conn.close()
 

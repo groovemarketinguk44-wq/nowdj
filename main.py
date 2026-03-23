@@ -31,6 +31,7 @@ from database import (
     create_tenant, get_tenant_by_slug, get_tenant_by_id, get_tenant_by_email,
     get_all_tenants, update_tenant, delete_tenant,
     find_staff_globally, find_user_globally,
+    get_tenant_by_custom_domain,
 )
 from models import QuoteRequest, StatusUpdate
 from auth import (
@@ -138,6 +139,14 @@ async def tenant_middleware(request: Request, call_next):
     request.state.subdomain = subdomain
     request.state.tenant = None
     request.state.is_admin_domain = subdomain in ("admin", None)
+
+    # Custom domain: if the host matches a tenant's custom domain, load that tenant directly
+    bare_host = host.split(":")[0].lower()
+    tenant_by_domain = get_tenant_by_custom_domain(bare_host)
+    if tenant_by_domain:
+        request.state.tenant = tenant_by_domain
+        request.state.is_admin_domain = False
+        return await call_next(request)
 
     # Path-based tenant routing: /{slug}/... works on any domain (no wildcard DNS needed)
     # First path segment is treated as a tenant slug if it isn't a reserved platform path.
@@ -1103,12 +1112,13 @@ async def super_update_tenant(
     tenant = get_tenant_by_id(tid)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    name     = payload.get("name", tenant["name"]).strip()
-    email    = payload.get("email", tenant["email"]).strip().lower()
-    plan     = payload.get("plan", tenant["plan"])
-    new_pw   = payload.get("password", "")
-    pw_hash  = hash_password(new_pw) if new_pw else None
-    update_tenant(tid, name, email, plan, pw_hash)
+    name          = payload.get("name", tenant["name"]).strip()
+    email         = payload.get("email", tenant["email"]).strip().lower()
+    plan          = payload.get("plan", tenant["plan"])
+    new_pw        = payload.get("password", "")
+    pw_hash       = hash_password(new_pw) if new_pw else None
+    custom_domain = payload.get("custom_domain", ...)  # Ellipsis = not provided
+    update_tenant(tid, name, email, plan, pw_hash, custom_domain)
     return {"success": True}
 
 
