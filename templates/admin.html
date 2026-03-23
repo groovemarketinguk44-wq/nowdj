@@ -784,16 +784,7 @@
       </button>
     </div>
     <div class="modal-body">
-      <!-- From Profiles -->
-      <div style="margin-bottom:1.25rem">
-        <div class="sig-form-section-title" style="margin-bottom:0.5rem">From Profiles</div>
-        <p style="font-size:0.76rem;color:var(--text-muted);margin-bottom:0.75rem">Save your companies here — choose one when creating a quote or invoice.</p>
-        <div id="dset-profiles-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem"></div>
-        <button type="button" class="btn-secondary btn-sm" id="btn-add-profile" style="width:fit-content">+ Add Company</button>
-      </div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:0 0 1.25rem" />
-      <!-- Fallback / global defaults -->
-      <div class="sig-form-section-title" style="margin-bottom:0.75rem;font-size:0.68rem">Default Fallback (used if no company selected)</div>
+      <p style="font-size:0.76rem;color:var(--text-muted);margin-bottom:1rem">Company profiles for quotes &amp; invoices are now managed in the <strong>Signatures</strong> section — each signature has a "Quotes &amp; Invoices" panel with logo upload and address.</p>
       <div class="modal-field"><label>Company Name</label><input type="text" id="dset-company-name" /></div>
       <div class="modal-field"><label>Company Address</label><textarea id="dset-company-address" rows="3" placeholder="123 High Street&#10;London, EC1A 1BB"></textarea></div>
       <div class="modal-field"><label>Banking / Payment Details</label><textarea id="dset-banking" rows="3" placeholder="Sort Code: 00-00-00&#10;Account: 12345678&#10;Reference: [Invoice Number]"></textarea></div>
@@ -1045,6 +1036,24 @@
               </select>
             </div>
           </div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Quotes &amp; Invoices <span style="color:var(--text-muted);font-weight:400;font-size:0.8rem">— From section on docs</span></div>
+          <div class="modal-field">
+            <label>Company Logo <span style="color:var(--text-muted);font-weight:400">(appears top-right on printed docs)</span></label>
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.3rem">
+              <div id="sig-doc-logo-preview" style="width:72px;height:44px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:0.6rem;color:var(--text-muted)">No logo</div>
+              <label class="btn-sm btn-secondary" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.3rem;margin:0">
+                Upload Image
+                <input type="file" id="sig-doc-logo-upload" accept="image/*" style="display:none" />
+              </label>
+              <button type="button" id="sig-doc-logo-clear" style="font-size:0.72rem;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0">Remove</button>
+            </div>
+            <input type="hidden" id="sig-doc_logo" />
+          </div>
+          <div class="modal-field"><label>Company Address</label><textarea id="sig-address" rows="2" placeholder="123 High Street&#10;London, EC1A 1BB"></textarea></div>
+          <p style="font-size:0.73rem;color:var(--text-muted);margin-top:0.25rem">Company name, phone, and email are taken from the Identity and Contact sections above.</p>
         </div>
 
         <div class="sig-form-section">
@@ -2671,23 +2680,25 @@ async function openDocEditor(doc, type = 'quote') {
     ? `<option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option>`
     : `<option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option>`;
   sel.value = doc?.status || 'draft';
-  // Populate From dropdown from saved from-profiles
+  // Populate From dropdown from saved signatures
+  if (savedSignatures.length === 0) await loadSignatures();
   const fromSel = document.getElementById('doc-from-company');
   fromSel.innerHTML = '<option value="">— Enter details manually —</option>';
-  (docSettings.from_profiles || []).forEach((p, i) => {
+  savedSignatures.forEach(s => {
     const opt = document.createElement('option');
-    opt.value = String(i);
-    opt.textContent = p.name || ('Company ' + (i + 1));
+    opt.value = String(s.id);
+    opt.textContent = s.fields?.company || s.label || 'Untitled';
     fromSel.appendChild(opt);
   });
-  // Restore From fields — from saved sender data or default to first profile
+  // Restore From fields — from saved sender data or default to first/default sig
   const sender = doc?.sender || {};
   if (sender.name) {
     _fillFromProfile(sender);
     fromSel.value = '';
-  } else if (docSettings.from_profiles?.length > 0) {
-    fromSel.value = '0';
-    _fillFromProfile(docSettings.from_profiles[0]);
+  } else if (savedSignatures.length > 0) {
+    const def = savedSignatures.find(s => s.is_default) || savedSignatures[0];
+    fromSel.value = String(def.id);
+    _fillFromSigProfile(def);
   } else {
     fromSel.value = '';
     _clearFromFields();
@@ -2721,11 +2732,22 @@ function _clearFromFields() {
     .forEach(id => { document.getElementById(id).value = ''; });
 }
 
+function _fillFromSigProfile(sig) {
+  const f = sig.fields || {};
+  _fillFromProfile({
+    logo:    f.doc_logo || f.logo || '',
+    name:    f.company  || sig.label || '',
+    address: f.address  || '',
+    phone:   f.phone    || '',
+    email:   f.email    || '',
+  });
+}
+
 document.getElementById('doc-from-company').addEventListener('change', () => {
-  const idx = document.getElementById('doc-from-company').value;
-  if (idx === '') { _clearFromFields(); return; }
-  const p = (docSettings.from_profiles || [])[parseInt(idx)];
-  if (p) _fillFromProfile(p);
+  const sigId = document.getElementById('doc-from-company').value;
+  if (!sigId) { _clearFromFields(); return; }
+  const sig = savedSignatures.find(s => String(s.id) === sigId);
+  if (sig) _fillFromSigProfile(sig);
 });
 
 // Logo upload in doc editor
@@ -2955,129 +2977,6 @@ function renderCatalogPickerList(query) {
 
 // ── Doc settings ──────────────────────────────────────────────────────────
 
-// ── From Profiles management ──────────────────────────────────────────────
-
-function renderProfilesList() {
-  const profiles = docSettings.from_profiles || [];
-  const list = document.getElementById('dset-profiles-list');
-  if (!profiles.length) {
-    list.innerHTML = '<div style="font-size:0.78rem;color:var(--text-muted)">No companies saved yet.</div>';
-    return;
-  }
-  list.innerHTML = profiles.map((p, i) =>
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0.7rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm)">' +
-      '<div style="display:flex;align-items:center;gap:0.5rem">' +
-        (p.logo ? '<img src="' + p.logo + '" style="height:22px;width:auto;max-width:60px;object-fit:contain" />' : '') +
-        '<span style="font-size:0.83rem;font-weight:500">' + escHtml(p.name || 'Unnamed') + '</span>' +
-      '</div>' +
-      '<div style="display:flex;gap:0.35rem">' +
-        '<button class="btn-sm btn-secondary" onclick="openProfileForm(' + i + ')">Edit</button>' +
-        '<button class="btn-sm btn-danger" onclick="deleteProfile(' + i + ')">Delete</button>' +
-      '</div>' +
-    '</div>'
-  ).join('');
-}
-
-function deleteProfile(idx) {
-  if (!confirm('Delete this company?')) return;
-  const profiles = docSettings.from_profiles || [];
-  profiles.splice(idx, 1);
-  docSettings.from_profiles = profiles;
-  renderProfilesList();
-}
-
-function openProfileForm(idx) {
-  const profiles = docSettings.from_profiles || [];
-  const isNew = idx == null;
-  const p = isNew ? { name: '', address: '', phone: '', email: '', logo: '' } : Object.assign({}, profiles[idx]);
-
-  const existing = document.getElementById('profile-form-modal');
-  if (existing) existing.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'profile-form-modal';
-  modal.className = 'modal-overlay active';
-  modal.style.zIndex = '9999';
-  modal.innerHTML =
-    '<div class="modal-card" style="max-width:420px">' +
-      '<div class="modal-header">' +
-        '<h3>' + (isNew ? 'Add Company' : 'Edit Company') + '</h3>' +
-        '<button class="btn-close-modal" id="close-profile-form">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
-        '</button>' +
-      '</div>' +
-      '<div class="modal-body" style="display:flex;flex-direction:column;gap:0.75rem">' +
-        '<div class="modal-field"><label>Company Name *</label><input type="text" id="pf-name" value="' + escHtml(p.name || '') + '" placeholder="e.g. Hertfordshire DJ Rental" /></div>' +
-        '<div class="modal-field">' +
-          '<label>Logo</label>' +
-          '<div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.3rem">' +
-            '<div id="pf-logo-preview" style="width:72px;height:44px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">' +
-              (p.logo ? '<img src="' + p.logo + '" style="max-width:100%;max-height:100%;object-fit:contain" />' : '<span style="font-size:0.6rem;color:var(--text-muted)">No logo</span>') +
-            '</div>' +
-            '<div style="display:flex;flex-direction:column;gap:0.35rem">' +
-              '<label class="btn-sm btn-secondary" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.3rem;margin:0">Upload<input type="file" id="pf-logo-upload" accept="image/*" style="display:none" /></label>' +
-              '<button type="button" id="pf-logo-clear" style="font-size:0.72rem;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0;text-align:left">Remove</button>' +
-            '</div>' +
-          '</div>' +
-          '<input type="hidden" id="pf-logo-data" value="' + escHtml(p.logo || '') + '" />' +
-        '</div>' +
-        '<div class="modal-field"><label>Address</label><textarea id="pf-address" rows="2" placeholder="123 High Street&#10;London, EC1A 1BB">' + escHtml(p.address || '') + '</textarea></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">' +
-          '<div class="modal-field"><label>Phone</label><input type="text" id="pf-phone" value="' + escHtml(p.phone || '') + '" /></div>' +
-          '<div class="modal-field"><label>Email</label><input type="email" id="pf-email" value="' + escHtml(p.email || '') + '" /></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="modal-footer">' +
-        '<button class="btn-secondary" id="cancel-profile-form">Cancel</button>' +
-        '<button class="btn-primary" id="btn-save-profile">' + (isNew ? 'Add Company' : 'Save Changes') + '</button>' +
-      '</div>' +
-    '</div>';
-  document.body.appendChild(modal);
-
-  const closeForm = () => modal.remove();
-  document.getElementById('close-profile-form').addEventListener('click', closeForm);
-  document.getElementById('cancel-profile-form').addEventListener('click', closeForm);
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeForm(); });
-
-  document.getElementById('pf-logo-upload').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    _resizeImageFile(file, 400, (data) => {
-      document.getElementById('pf-logo-data').value = data;
-      document.getElementById('pf-logo-preview').innerHTML = '<img src="' + data + '" style="max-width:100%;max-height:100%;object-fit:contain" />';
-    });
-    e.target.value = '';
-  });
-
-  document.getElementById('pf-logo-clear').addEventListener('click', () => {
-    document.getElementById('pf-logo-data').value = '';
-    document.getElementById('pf-logo-preview').innerHTML = '<span style="font-size:0.6rem;color:var(--text-muted)">No logo</span>';
-  });
-
-  document.getElementById('btn-save-profile').addEventListener('click', () => {
-    const name = document.getElementById('pf-name').value.trim();
-    if (!name) { showToast('Company name is required.', 'error'); return; }
-    const profile = {
-      name,
-      logo:    document.getElementById('pf-logo-data').value,
-      address: document.getElementById('pf-address').value.trim(),
-      phone:   document.getElementById('pf-phone').value.trim(),
-      email:   document.getElementById('pf-email').value.trim(),
-    };
-    if (!docSettings.from_profiles) docSettings.from_profiles = [];
-    if (isNew) {
-      docSettings.from_profiles.push(profile);
-    } else {
-      docSettings.from_profiles[idx] = profile;
-    }
-    renderProfilesList();
-    closeForm();
-    showToast(isNew ? 'Company added — save settings to keep it.' : 'Company updated — save settings to keep it.', 'success');
-  });
-}
-
-document.getElementById('btn-add-profile').addEventListener('click', () => openProfileForm(null));
-
 document.getElementById('btn-doc-settings').addEventListener('click', openDocSettings);
 document.getElementById('close-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
 document.getElementById('cancel-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
@@ -3092,7 +2991,6 @@ function openDocSettings() {
   const accent = docSettings.accent || '#6c47ff';
   document.getElementById('dset-accent').value     = accent;
   document.getElementById('dset-accent-hex').value = accent;
-  renderProfilesList();
   document.getElementById('doc-settings-modal').classList.add('open');
 }
 
@@ -3103,7 +3001,6 @@ document.getElementById('dset-accent-hex').addEventListener('input', (e) => {
 
 document.getElementById('btn-save-doc-settings').addEventListener('click', async () => {
   const payload = {
-    from_profiles:   docSettings.from_profiles || [],
     company_name:    document.getElementById('dset-company-name').value.trim(),
     company_address: document.getElementById('dset-company-address').value.trim(),
     banking:         document.getElementById('dset-banking').value.trim(),
@@ -3297,7 +3194,15 @@ document.getElementById('close-sig-modal').addEventListener('click', closeSigMod
 document.getElementById('cancel-sig-modal').addEventListener('click', closeSigModal);
 document.getElementById('sig-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSigModal(); });
 
-const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin'];
+const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address'];
+
+function _updateSigDocLogoPreview(src) {
+  const el = document.getElementById('sig-doc-logo-preview');
+  if (!el) return;
+  el.innerHTML = src
+    ? '<img src="' + src + '" style="max-width:100%;max-height:100%;object-fit:contain" />'
+    : '<span style="font-size:0.6rem;color:var(--text-muted)">No logo</span>';
+}
 
 function openSigEditor(sig) {
   const f = sig?.fields || {};
@@ -3313,6 +3218,7 @@ function openSigEditor(sig) {
   document.getElementById('sig-layout').value     = f.layout || 'split';
   document.getElementById('sig-is-default').checked = sig?.is_default || false;
   document.getElementById('sig-editor-title').textContent = sig ? 'Edit Signature' : 'New Signature';
+  _updateSigDocLogoPreview(f.doc_logo || '');
   document.getElementById('sig-editor-modal').classList.add('open');
   updateSigPreview();
 }
@@ -3354,6 +3260,21 @@ document.getElementById('sig-accent-hex').addEventListener('input', (e) => {
     document.getElementById('sig-accent').value = v;
     updateSigPreview();
   }
+});
+
+// Sig doc logo upload/clear
+document.getElementById('sig-doc-logo-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  _resizeImageFile(file, 400, (data) => {
+    document.getElementById('sig-doc_logo').value = data;
+    _updateSigDocLogoPreview(data);
+  });
+  e.target.value = '';
+});
+document.getElementById('sig-doc-logo-clear').addEventListener('click', () => {
+  document.getElementById('sig-doc_logo').value = '';
+  _updateSigDocLogoPreview('');
 });
 document.getElementById('sig-layout').addEventListener('change', updateSigPreview);
 
