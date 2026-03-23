@@ -267,7 +267,7 @@
         <div class="email-pane active" id="etab-templates">
           <div class="templates-toolbar">
             <h3>Email Templates</h3>
-            <p>Create reusable templates to send to enquiries. Use variables like <code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>.</p>
+            <p>Create reusable templates to send to enquiries. Use variables like {% raw %}<code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>{% endraw %}.</p>
             <button class="btn-primary" id="btn-new-template">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Template
@@ -678,8 +678,8 @@
       </div>
       <div class="modal-field">
         <label>Body (HTML)</label>
-        <textarea id="template-edit-body" style="min-height:220px" placeholder="<p>Hi {{name}},</p>&#10;<p>Your message…</p>"></textarea>
-        <div class="field-hint">Available variables: {{name}} {{email}} {{phone}} {{event_date}} {{event_type}} {{location}} {{total}} {{quote_id}}</div>
+        {% raw %}<textarea id="template-edit-body" style="min-height:220px" placeholder="<p>Hi {{name}},</p>&#10;<p>Your message…</p>"></textarea>
+        <div class="field-hint">Available variables: {{name}} {{email}} {{phone}} {{event_date}} {{event_type}} {{location}} {{total}} {{quote_id}}</div>{% endraw %}
       </div>
     </div>
     <div class="modal-footer">
