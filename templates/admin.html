@@ -457,7 +457,7 @@
         <div class="content-card" style="max-width:460px">
           <div class="field-group">
             <label class="field-label">Email address</label>
-            <input class="field-input" type="email" id="adm-email" placeholder="ben@groovemarketing.co.uk" />
+            <input class="field-input" type="email" id="adm-email" placeholder="your@email.com" />
           </div>
           <div class="field-group" style="margin-top:0.75rem">
             <label class="field-label">New password <span style="color:var(--text-muted);font-weight:400">(leave blank to keep current)</span></label>
@@ -818,6 +818,14 @@ function initDashboard() {
   initNav();
   loadCatalog();
   loadQuotes();
+  // Pre-fill account email from JWT
+  try {
+    const tok = localStorage.getItem('ndj_admin_token');
+    if (tok) {
+      const payload = JSON.parse(atob(tok.split('.')[1]));
+      if (payload.email) document.getElementById('adm-email').value = payload.email;
+    }
+  } catch {}
 }
 
 /* ======================================================================
