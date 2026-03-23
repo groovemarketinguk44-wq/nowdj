@@ -668,6 +668,7 @@
       <div class="doc-form-col">
         <input type="hidden" id="doc-edit-id" />
         <input type="hidden" id="doc-edit-type" value="quote" />
+        <input type="hidden" id="doc-source-quote-id" />
 
         <div class="sig-form-section">
           <div class="sig-form-section-title">From</div>
@@ -1674,6 +1675,10 @@ function renderQuotes() {
           },
         });
       });
+      dr.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDocEditorFromEnquiry(q);
+      });
       dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!confirm(`Delete enquiry from ${q.name || 'this person'}? This cannot be undone.`)) return;
@@ -1721,10 +1726,16 @@ function buildDetail(q) {
             <option value="declined"  ${q.status==='declined'?'selected':''}>Declined</option>
           </select>
         </div>
-        <button class="btn-send-email" data-quote-id="${q.id}" style="margin-top:0.75rem;width:100%">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Send Email
-        </button>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
+          <button class="btn-send-email" data-quote-id="${q.id}" style="flex:1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Email
+          </button>
+          <button class="btn-secondary btn-create-quote" data-quote-id="${q.id}" style="flex:1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            ${allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote') ? 'Edit Quote' : 'Create Quote'}
+          </button>
+        </div>
         <button class="btn-delete-enquiry btn-sm btn-danger" data-quote-id="${q.id}" style="margin-top:0.5rem;width:100%;justify-content:center">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Delete Enquiry
@@ -2020,7 +2031,7 @@ document.getElementById('compose-modal').addEventListener('click', (e) => { if (
 
 let _composeQuoteVars = {};
 
-function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {} } = {}) {
+async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {} } = {}) {
   composeMsgId = null;
   _composeQuoteVars = quoteVars;
   document.getElementById('compose-to').value      = to_email;
@@ -2040,8 +2051,9 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
     document.getElementById('compose-modal-title').textContent = 'New Email';
   }
 
-  // Ensure templates are loaded
-  if (emailTemplates.length === 0) loadEmailTemplates();
+  // Ensure templates + signatures are loaded (await so selects populate correctly)
+  if (emailTemplates.length === 0) await loadEmailTemplates();
+  if (savedSignatures.length === 0) await loadSignatures();
 
   // Load templates into select
   const sel = document.getElementById('compose-template-select');
@@ -2443,6 +2455,48 @@ function renderDocLineItems() {
   recalcDocTotal();
 }
 
+// ── Open doc editor pre-filled from an enquiry ───────────────────────────
+function openDocEditorFromEnquiry(q) {
+  // Find existing quote doc linked to this enquiry
+  const existing = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === 'quote');
+
+  if (existing) {
+    openDocEditor(existing);
+    return;
+  }
+
+  // Build line items from enquiry selected_items
+  const enquiryItems = Array.isArray(q.selected_items) ? q.selected_items : [];
+  const lineItems = enquiryItems.length
+    ? enquiryItems.map(it => ({
+        description: it.name || '',
+        qty: String(it.qty || 1),
+        price: `£${(it.price || 0).toFixed(2)}`,
+      }))
+    : [{ description: '', qty: '1', price: '£' }];
+
+  // Construct a synthetic "doc" with enquiry data pre-filled
+  const prefilled = {
+    id:             null,
+    doc_type:       'quote',
+    doc_number:     '',
+    status:         'draft',
+    client_name:    q.name    || '',
+    client_email:   q.email   || '',
+    client_phone:   q.phone   || '',
+    client_address: '',
+    event_date:     q.event_date  || '',
+    event_type:     q.event_type  || '',
+    location:       q.location    || '',
+    notes:          q.message     || '',
+    line_items:     JSON.stringify(lineItems),
+    source_quote_id: q.id,
+    sender:         {},
+  };
+
+  openDocEditor(prefilled, 'quote');
+}
+
 function recalcDocTotal() {
   let grand = 0, currency = '£';
   docLineItems.forEach((item, i) => {
@@ -2480,8 +2534,9 @@ function openDocEditor(doc, type = 'quote') {
     { description: '', qty: '1', price: '£' },
   ];
   const resolvedType = doc?.doc_type || type;
-  document.getElementById('doc-edit-id').value         = doc?.id || '';
-  document.getElementById('doc-edit-type').value       = resolvedType;
+  document.getElementById('doc-edit-id').value             = doc?.id || '';
+  document.getElementById('doc-edit-type').value           = resolvedType;
+  document.getElementById('doc-source-quote-id').value     = doc?.source_quote_id || '';
   document.getElementById('doc-editor-title').textContent = doc
     ? `Edit ${resolvedType === 'invoice' ? 'Invoice' : 'Quote'} — ${doc.doc_number}`
     : `New ${type === 'invoice' ? 'Invoice' : 'Quote'}`;
@@ -2539,6 +2594,7 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     notes:           document.getElementById('doc-notes').value.trim(),
     status:          document.getElementById('doc-status').value,
     line_items:      JSON.stringify(docLineItems),
+    source_quote_id: document.getElementById('doc-source-quote-id').value || null,
     sender:          (() => {
       const sigId = document.getElementById('doc-from-sig').value;
       if (!sigId) return '{}';
@@ -2565,6 +2621,9 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     showToast('Saved!', 'success');
     closeDocModal();
     loadDocs();
+    // If linked to an enquiry, refresh quotes so tracker stats update
+    const srcQId = document.getElementById('doc-source-quote-id').value;
+    if (srcQId) loadQuotes();
     // Auto-open preview for new docs
     if (!id && data.id) {
       const token = localStorage.getItem('ndj_admin_token') || '';

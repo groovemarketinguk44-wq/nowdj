@@ -450,6 +450,19 @@ def update_quote_status(quote_id: int, status: str, tenant_id: int) -> None:
         conn.close()
 
 
+def update_quote_total(quote_id: int, total_price: float, tenant_id: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE quotes SET total_price = %s WHERE id = %s AND tenant_id = %s",
+                    (total_price, quote_id, tenant_id),
+                )
+    finally:
+        conn.close()
+
+
 def delete_quote(quote_id: int, tenant_id: int) -> bool:
     conn = _conn()
     try:

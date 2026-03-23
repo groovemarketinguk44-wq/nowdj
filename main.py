@@ -18,7 +18,7 @@ from catalog_store import (
 )
 from database import (
     init_db, migrate_null_tenant_ids,
-    get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote,
+    get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote, update_quote_total,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
     seed_templates_for_tenant,
     get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user,
@@ -1273,6 +1273,29 @@ async def docs_list(
     return list_documents(tenant["id"], doc_type=type)
 
 
+def _doc_grand_total(line_items_json: str) -> float:
+    """Compute grand total from a line_items JSON string."""
+    try:
+        items = json.loads(line_items_json or "[]")
+    except Exception:
+        return 0.0
+    total = 0.0
+    for item in items:
+        p = str(item.get("price", "")).strip()
+        if p and p[0] in "£$€":
+            p = p[1:]
+        try:
+            unit = float(p.replace(",", ""))
+        except ValueError:
+            continue
+        try:
+            qty = float(str(item.get("qty", "1")).replace(",", ""))
+        except ValueError:
+            qty = 1.0
+        total += unit * qty
+    return total
+
+
 @app.post("/api/docs")
 async def docs_create(
     payload: dict,
@@ -1288,6 +1311,14 @@ async def docs_create(
         raise HTTPException(status_code=400, detail="client_name is required")
     doc_number = next_doc_number(tid, doc_type)
     doc_id = create_document(tid, doc_type, doc_number, payload)
+    # Sync total back to linked enquiry if present
+    src = payload.get("source_quote_id")
+    if src:
+        try:
+            total = _doc_grand_total(payload.get("line_items", "[]"))
+            update_quote_total(int(src), total, tid)
+        except Exception:
+            pass
     return {"success": True, "id": doc_id, "doc_number": doc_number}
 
 
@@ -1312,10 +1343,19 @@ async def docs_update(
     _admin: Annotated[dict, Depends(require_tenant_admin)],
 ):
     tenant = _get_tenant_or_404(request)
-    doc = get_document(doc_id, tenant["id"])
+    tid = tenant["id"]
+    doc = get_document(doc_id, tid)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    update_document(doc_id, tenant["id"], payload)
+    update_document(doc_id, tid, payload)
+    # Sync total back to linked enquiry if line_items changed
+    src = payload.get("source_quote_id") or doc.get("source_quote_id")
+    if src and "line_items" in payload:
+        try:
+            total = _doc_grand_total(payload["line_items"])
+            update_quote_total(int(src), total, tid)
+        except Exception:
+            pass
     return {"success": True}
 
 
