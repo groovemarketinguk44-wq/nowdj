@@ -108,10 +108,12 @@
       letter-spacing: 0.04em;
     }
     .doc-header-logo img {
-      max-height: 52px;
-      max-width: 160px;
+      max-height: 56px;
+      max-width: 170px;
       object-fit: contain;
-      filter: brightness(0) invert(1);
+      background: rgba(255,255,255,0.95);
+      border-radius: 6px;
+      padding: 5px 10px;
     }
     .doc-header-logo .company-name-text {
       font-size: 1.15rem;
@@ -352,20 +354,12 @@
     </div>
     <div class="doc-meta-col">
       <div class="doc-meta-label">From</div>
-      {% if doc.sender and doc.sender.name %}
-        <div class="doc-meta-name">{{ doc.sender.name }}</div>
-        <div class="doc-meta-detail">{% if doc.sender.phone %}{{ doc.sender.phone }}
-{% endif %}{% if doc.sender.email %}{{ doc.sender.email }}
-{% endif %}{% if doc.sender.address %}{{ doc.sender.address }}{% endif %}{% if doc.doc_type == 'invoice' and settings.banking %}
-
-{{ settings.banking }}{% endif %}</div>
-      {% else %}
-        {% if settings.company_name %}
-          <div class="doc-meta-name">{{ settings.company_name }}</div>
-        {% endif %}
-        <div class="doc-meta-detail">{% if settings.company_address %}{{ settings.company_address }}{% endif %}{% if doc.doc_type == 'invoice' and settings.banking %}
-
-{{ settings.banking }}{% endif %}</div>
+      {% set from_address = (doc.sender.address if doc.sender else None) or settings.company_address %}
+      {% if from_address %}
+        <div class="doc-meta-detail">{{ from_address }}</div>
+      {% endif %}
+      {% if doc.doc_type == 'invoice' and settings.banking %}
+        <div class="doc-meta-detail" style="margin-top:0.75rem">{{ settings.banking }}</div>
       {% endif %}
     </div>
   </div>
