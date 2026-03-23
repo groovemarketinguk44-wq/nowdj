@@ -34,7 +34,7 @@ from database import (
 )
 from models import QuoteRequest, StatusUpdate
 from auth import (
-    hash_password, verify_password, create_token,
+    hash_password, verify_password, create_token, decode_token,
     require_customer, require_staff, require_tenant_admin, require_super_admin,
 )
 import os
@@ -155,6 +155,15 @@ async def tenant_middleware(request: Request, call_next):
     elif subdomain and subdomain not in _RESERVED:
         tenant = get_tenant_by_slug(subdomain)
         request.state.tenant = tenant   # None if slug not found
+
+    # Last resort: infer tenant from the Bearer JWT so JS API calls from
+    # /t/{slug} pages work without needing to prefix every fetch URL
+    if not request.state.tenant and not request.state.is_admin_domain:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            tok = decode_token(auth_header[7:])
+            if tok and tok.get("tenant_id") and tok.get("role") != "super_admin":
+                request.state.tenant = get_tenant_by_id(tok["tenant_id"])
 
     return await call_next(request)
 
