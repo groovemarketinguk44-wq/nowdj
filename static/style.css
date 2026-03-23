@@ -2686,14 +2686,14 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 .doc-type-invoice { background: color-mix(in srgb, #22c55e 15%, transparent); color: #22c55e; border: 1px solid color-mix(in srgb, #22c55e 30%, transparent); }
 
 .doc-editor-card {
-  width: min(1000px, 96vw);
+  width: min(1080px, 96vw);
   max-height: 92vh;
   display: flex;
   flex-direction: column;
 }
 .doc-editor-body {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: minmax(260px, 340px) 1fr;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -2778,7 +2778,9 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   font-size: 1.2rem;
   color: var(--accent);
 }
-@media (max-width: 768px) {
-  .doc-editor-body { grid-template-columns: 1fr; }
-  .doc-form-col { border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
+@media (max-width: 860px) {
+  .doc-editor-card { width: 96vw; }
+  .doc-editor-body { grid-template-columns: 1fr; overflow-y: auto; }
+  .doc-form-col { border-right: none; border-bottom: 1px solid var(--border); max-height: none; overflow-y: visible; }
+  .doc-items-col { min-height: 300px; }
 }

@@ -127,7 +127,7 @@ function updateQty(id, delta, field) {
 
   if (field === 'days' && isTimeBased) {
     item.days = Math.max(1, item.days + delta);
-  } else if (field === 'qty' && item.allowQty) {
+  } else if (field === 'qty') {
     item.qty = Math.max(1, item.qty + delta);
   } else {
     // Legacy single-stepper: time-based → days, fixed+allowQty → qty
@@ -238,20 +238,17 @@ function initCards() {
       return s;
     };
 
-    if (isTimeBased && allowQty) {
-      // Two steppers: qty (units) + days/hours
+    if (isTimeBased) {
+      // Always show two steppers for time-based items: qty (units) + days/hours
       const qtyS  = makeStepper(`<span class="qty-display-qty">×1</span>`,
         () => updateQty(id, -1, 'qty'), () => updateQty(id, +1, 'qty'));
       const daysS = makeStepper(`<span class="qty-display-days">1 ${unitLabel(pricingType, 1)}</span>`,
         () => updateQty(id, -1, 'days'), () => updateQty(id, +1, 'days'));
       card.appendChild(qtyS);
       card.appendChild(daysS);
-    } else if (isTimeBased || allowQty) {
-      // Single stepper
-      const label = isTimeBased
-        ? `<span class="qty-display">1 ${unitLabel(pricingType, 1)}</span>`
-        : `<span class="qty-display">×1</span>`;
-      const s = makeStepper(label,
+    } else if (allowQty) {
+      // Fixed-price with allow_quantity: single qty stepper
+      const s = makeStepper(`<span class="qty-display">×1</span>`,
         () => updateQty(id, -1, null), () => updateQty(id, +1, null));
       card.appendChild(s);
     }

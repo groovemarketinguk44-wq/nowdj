@@ -185,6 +185,11 @@
             <div class="stat-value" id="stat-value">—</div>
             <div class="stat-sub">New + contacted</div>
           </div>
+          <div class="stat-card highlight">
+            <div class="stat-label">Confirmed Value</div>
+            <div class="stat-value" id="stat-confirmed-value">—</div>
+            <div class="stat-sub">Booked events</div>
+          </div>
           <div class="stat-card">
             <div class="stat-label">Booked</div>
             <div class="stat-value" id="stat-booked">—</div>
@@ -835,8 +840,16 @@
         <input type="text" id="compose-subject" placeholder="Email subject…" />
       </div>
       <div class="modal-field">
-        <label>Body (HTML)</label>
-        <textarea id="compose-body" style="min-height:180px" placeholder="<p>Your message here…</p>"></textarea>
+        <label>Body</label>
+        <div class="wysiwyg-toolbar" id="compose-toolbar">
+          <button type="button" class="wysiwyg-btn" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
+          <button type="button" class="wysiwyg-btn" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
+          <button type="button" class="wysiwyg-btn" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
+          <span class="wysiwyg-sep"></span>
+          <button type="button" class="wysiwyg-btn" title="Bullet list" onclick="document.execCommand('insertUnorderedList')">&#8226;&#8212;</button>
+          <button type="button" class="wysiwyg-btn" title="Add link" id="btn-compose-link">&#128279;</button>
+        </div>
+        <div id="compose-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Your message here…" style="min-height:180px"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1523,6 +1536,8 @@ function updateStats(quotes) {
   document.getElementById('stat-week').textContent   = quotes.filter(q => new Date(q.created_at) > week).length;
   const pipeline = quotes.filter(q => q.status==='new'||q.status==='contacted').reduce((s,q)=>s+(q.total_price||0),0);
   document.getElementById('stat-value').textContent  = fmtK(pipeline);
+  const confirmed = quotes.filter(q => q.status==='booked').reduce((s,q)=>s+(q.total_price||0),0);
+  document.getElementById('stat-confirmed-value').textContent = fmtK(confirmed);
   document.getElementById('stat-booked').textContent = quotes.filter(q=>q.status==='booked').length;
 
   const newCount = quotes.filter(q=>q.status==='new').length;
@@ -1932,7 +1947,7 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
   document.getElementById('compose-to').value      = to_email;
   document.getElementById('compose-to-name').value = to_name;
   document.getElementById('compose-subject').value = prefill.subject || '';
-  document.getElementById('compose-body').value    = prefill.body    || '';
+  document.getElementById('compose-body').innerHTML = prefill.body || '';
   document.getElementById('compose-vars-row').style.display = 'none';
 
   if (replyTo) {
@@ -2016,7 +2031,7 @@ document.getElementById('btn-apply-template').addEventListener('click', () => {
   }
   // Pre-fill subject/body — will be interpolated on send
   document.getElementById('compose-subject').value = tmpl.subject;
-  document.getElementById('compose-body').value    = tmpl.body;
+  document.getElementById('compose-body').innerHTML = tmpl.body || '';
   // Focus first empty var field
   const firstEmpty = varsDiv.querySelector('input:not([value])') || varsDiv.querySelector('input');
   firstEmpty?.focus();
@@ -2036,7 +2051,7 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
   }
   const to_email = document.getElementById('compose-to').value.trim();
   const subject  = interpolateTemplate(document.getElementById('compose-subject').value.trim());
-  const rawBody  = interpolateTemplate(document.getElementById('compose-body').value.trim());
+  const rawBody  = interpolateTemplate(document.getElementById('compose-body').innerHTML.trim());
   const to_name  = document.getElementById('compose-to-name').value.trim();
 
   // Append selected signature
@@ -2128,6 +2143,15 @@ document.getElementById('cancel-template-modal').addEventListener('click', close
 document.getElementById('template-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTemplateModal(); });
 
 // WYSIWYG toolbar: link button
+document.getElementById('btn-compose-link').addEventListener('click', () => {
+  const url = prompt('Enter URL:', 'https://');
+  if (url) {
+    document.getElementById('compose-body').focus();
+    document.execCommand('createLink', false, url);
+    document.getElementById('compose-body').querySelectorAll('a').forEach(a => a.target = '_blank');
+  }
+});
+
 document.getElementById('btn-tmpl-link').addEventListener('click', () => {
   const sel = window.getSelection();
   const selectedText = sel && sel.toString().trim();
