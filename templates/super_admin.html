@@ -11,46 +11,6 @@
   <style>
     body { min-height: 100vh; background: var(--bg-base); font-family: 'Inter', sans-serif; }
 
-    /* ── Login ── */
-    .login-wrap {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
-    }
-    .login-card {
-      background: var(--bg-card); border: 1px solid var(--border-hover);
-      border-radius: var(--radius-xl); padding: 2.5rem; width: 100%; max-width: 380px;
-      box-shadow: var(--shadow-card);
-    }
-    .login-brand {
-      display: flex; align-items: center; gap: 0.6rem;
-      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em;
-      color: var(--text-primary); margin-bottom: 1.8rem;
-    }
-    .login-brand .dot { color: #fa854f; }
-    .login-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .login-card p  { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem; }
-    .field { margin-bottom: 0.9rem; }
-    .field label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.35rem; }
-    .field input {
-      width: 100%; background: var(--bg-input); border: 1px solid var(--border-hover);
-      border-radius: var(--radius-sm); padding: 0.6rem 0.9rem;
-      color: var(--text-primary); font-size: 0.9rem; outline: none; font-family: inherit;
-      transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box;
-    }
-    .field input:focus { border-color: #fa854f; box-shadow: 0 0 0 3px rgba(250,133,79,0.14); }
-    .btn-primary {
-      width: 100%; background: #fa854f; color: #fff; border: none;
-      border-radius: var(--radius-sm); padding: 0.7rem; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; font-family: inherit; transition: opacity 0.15s; margin-top: 0.25rem;
-    }
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .login-err {
-      color: var(--danger); font-size: 0.82rem; margin-top: 0.75rem;
-      background: rgba(239,68,68,0.08); border-radius: var(--radius-sm);
-      padding: 0.5rem 0.75rem; display: none;
-    }
-    .login-err.show { display: block; }
-
     /* ── Dashboard ── */
     .shell { display: flex; min-height: 100vh; }
     .sidebar {
@@ -162,24 +122,9 @@
 <body>
 
 <!-- ======================================================================
-     LOGIN
-     ====================================================================== -->
-<div id="login-wrap" class="login-wrap">
-  <div class="login-card">
-    <div class="login-brand">🎧 NowDJ <span class="dot">·</span> Super Admin</div>
-    <h2>Sign In</h2>
-    <p>Platform administration access</p>
-    <div class="field"><label>Email</label><input type="email" id="sa-email" placeholder="ben@groovemarketing.co.uk" autocomplete="email" /></div>
-    <div class="field"><label>Password</label><input type="password" id="sa-pw" placeholder="••••••" autocomplete="current-password" /></div>
-    <button class="btn-primary" id="sa-btn-login">Sign In</button>
-    <div class="login-err" id="sa-err"></div>
-  </div>
-</div>
-
-<!-- ======================================================================
      DASHBOARD
      ====================================================================== -->
-<div id="dashboard" style="display:none">
+<div id="dashboard" style="display:none;">
   <div class="shell">
     <aside class="sidebar">
       <div class="sidebar-brand">🎧 NowDJ <span class="dot">·</span> Admin</div>
@@ -252,52 +197,17 @@ function saFetch(url, opts) {
   return fetch(url, opts);
 }
 
-function isLoggedIn() { return !!localStorage.getItem('ndj_super_token'); }
-
-document.getElementById('sa-btn-login').addEventListener('click', doLogin);
-document.getElementById('sa-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('sa-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sa-pw').focus(); });
-
-async function doLogin() {
-  const btn   = document.getElementById('sa-btn-login');
-  const errEl = document.getElementById('sa-err');
-  const email = document.getElementById('sa-email').value.trim();
-  const pw    = document.getElementById('sa-pw').value;
-  errEl.classList.remove('show');
-  if (!email || !pw) { errEl.textContent = 'Enter your email and password.'; errEl.classList.add('show'); return; }
-  btn.disabled = true; btn.textContent = 'Signing in\u2026';
-  try {
-    const r = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pw }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Login failed');
-    if (d.role !== 'super_admin') throw new Error('Not a super admin account.');
-    localStorage.setItem('ndj_super_token', d.token);
-    showDashboard();
-  } catch (e) {
-    errEl.textContent = e.message || 'Incorrect credentials.';
-    errEl.classList.add('show');
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
-}
-
 document.getElementById('sa-btn-logout').addEventListener('click', () => {
   localStorage.removeItem('ndj_super_token');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('login-wrap').style.display = 'flex';
+  location.href = '/login';
 });
 
-function showDashboard() {
-  document.getElementById('login-wrap').style.display = 'none';
+if (localStorage.getItem('ndj_super_token')) {
   document.getElementById('dashboard').style.display = '';
   loadTenants();
+} else {
+  location.href = '/login';
 }
-
-if (isLoggedIn()) showDashboard();
-else setTimeout(() => document.getElementById('sa-email').focus(), 80);
 
 // ── Tenant list ─────────────────────────────────────────────────────────────
 
