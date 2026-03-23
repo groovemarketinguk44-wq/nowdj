@@ -1659,9 +1659,11 @@ function renderQuotes() {
       });
       dr.querySelector('.btn-send-email')?.addEventListener('click', (e) => {
         e.stopPropagation();
+        const linkedDoc = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === 'quote') || null;
         openComposeModal({
           to_email: q.email || '',
           to_name:  q.name  || '',
+          linkedDoc,
           quoteVars: {
             name:       q.name       || '',
             email:      q.email      || '',
@@ -2031,9 +2033,12 @@ document.getElementById('compose-modal').addEventListener('click', (e) => { if (
 
 let _composeQuoteVars = {};
 
-async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {} } = {}) {
+let _composeLinkedDoc = null;
+
+async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {}, linkedDoc = null } = {}) {
   composeMsgId = null;
   _composeQuoteVars = quoteVars;
+  _composeLinkedDoc = linkedDoc;
   document.getElementById('compose-to').value      = to_email;
   document.getElementById('compose-to-name').value = to_name;
   document.getElementById('compose-subject').value = prefill.subject || '';
@@ -2076,6 +2081,50 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
   });
   updateComposeSigPreview();
 
+  // If a linked quote doc exists, auto-apply Quote Reply template and append quote link
+  if (linkedDoc) {
+    const tmpl = emailTemplates.find(t => /quote\s*repl/i.test(t.name)) || emailTemplates[0];
+    if (tmpl) {
+      sel.value = tmpl.id;
+      document.getElementById('compose-subject').value = tmpl.subject || '';
+      document.getElementById('compose-body').innerHTML = tmpl.body || '';
+      // Populate variable fields from quoteVars
+      Object.entries(quoteVars).forEach(([k, v]) => {
+        const el = document.getElementById(`var-${k}`);
+        if (el) el.value = v;
+      });
+      const varsDiv = document.getElementById('compose-vars');
+      const tmplText = (tmpl.subject || '') + (tmpl.body || '');
+      const varMatches = [...new Set([...tmplText.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]))];
+      if (varMatches.length) {
+        document.getElementById('compose-vars-row').style.display = '';
+        varsDiv.innerHTML = varMatches.map(v => `
+          <div class="compose-var-field">
+            <div class="compose-var-label">+ V +</div>
+            <input id="var-${v}" type="text" value="${escHtml(quoteVars[v] || '')}" placeholder="${v}" />
+          </div>`).join('');
+      }
+    }
+    // Append quote view link to body
+    const token = localStorage.getItem('ndj_admin_token') || '';
+    const quoteUrl = `${location.origin}/api/docs/${linkedDoc.id}/print?token=${encodeURIComponent(token)}`;
+    const quoteBtn = `<br/><br/><table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${quoteUrl}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;font-family:Arial,sans-serif">&#128196; View Your Quote (${escHtml(linkedDoc.doc_number || '')})</a></td></tr></table>`;
+    document.getElementById('compose-body').innerHTML += quoteBtn;
+    // Show attachment badge
+    let badge = document.getElementById('compose-quote-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'compose-quote-badge';
+      badge.style.cssText = 'display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--accent);margin-top:0.4rem;padding:0.35rem 0.6rem;background:rgba(250,133,79,0.1);border-radius:var(--radius-sm);border:1px solid rgba(250,133,79,0.25)';
+      document.getElementById('compose-sig-select').parentElement.appendChild(badge);
+    }
+    badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> Quote ${escHtml(linkedDoc.doc_number || '')} attached`;
+    badge.style.display = 'flex';
+  } else {
+    const badge = document.getElementById('compose-quote-badge');
+    if (badge) badge.style.display = 'none';
+  }
+
   // If Outlook not connected, show warning in compose
   const sendBtn = document.getElementById('btn-send-compose');
   if (!emailStatus.authenticated) {
@@ -2090,6 +2139,9 @@ async function openComposeModal({ replyTo = null, to_email = '', to_name = '', p
 function closeComposeModal() {
   document.getElementById('compose-modal').classList.remove('open');
   composeMsgId = null;
+  _composeLinkedDoc = null;
+  const badge = document.getElementById('compose-quote-badge');
+  if (badge) badge.style.display = 'none';
 }
 
 // Signature preview in compose modal

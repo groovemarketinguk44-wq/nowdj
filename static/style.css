@@ -1449,7 +1449,7 @@ tr[draggable].drag-over td {
 }
 
 .stat-card:hover { border-color: var(--border-hover); }
-.stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.stat-label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
 .stat-sub { font-size: 0.78rem; color: var(--text-muted); }
 .stat-card.highlight { border-color: rgba(250, 133, 79, 0.28); }
