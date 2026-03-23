@@ -73,6 +73,8 @@ function renderPackage() {
       priceLabel = `<span class="pkg-tbc-badge">TBC</span>`;
     } else if (item.pricingType === 'hourly' || item.pricingType === 'daily') {
       priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(${item.qty} ${unitLabel(item.pricingType, item.qty)})</span>`;
+    } else if (item.allowQty && item.qty > 1) {
+      priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(×${item.qty})</span>`;
     } else {
       priceLabel = fmt(item.price);
     }

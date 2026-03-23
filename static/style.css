@@ -454,13 +454,27 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   color: var(--accent);
 }
 
-.qty-toggle {
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  cursor: pointer; font-size: 0.75rem; color: var(--text-muted);
-  user-select: none;
+/* Category multi-qty pill toggle */
+.cat-multiqty-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  cursor: pointer; user-select: none; margin-left: auto; margin-right: 0.5rem;
 }
-.qty-toggle input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
-.qty-toggle input[type="checkbox"]:checked + .qty-toggle-label { color: var(--accent); }
+.cat-multiqty-toggle .cat-multiqty-cb { display: none; }
+.cat-toggle-track {
+  position: relative; width: 32px; height: 18px;
+  background: var(--border-hover); border-radius: 100px;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+.cat-toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--text-muted); transition: left var(--transition), background var(--transition);
+}
+.cat-multiqty-toggle:has(.cat-multiqty-cb:checked) .cat-toggle-track { background: var(--accent-dim); border: 1px solid rgba(250,133,79,0.4); }
+.cat-multiqty-toggle:has(.cat-multiqty-cb:checked) .cat-toggle-thumb { left: 15px; background: var(--accent); }
+.cat-toggle-label { font-size: 0.75rem; color: var(--text-muted); transition: color var(--transition); white-space: nowrap; }
+.cat-multiqty-toggle:has(.cat-multiqty-cb:checked) .cat-toggle-label { color: var(--accent); }
 
 /* ========================================================================
    SIDEBAR (Package Panel)
