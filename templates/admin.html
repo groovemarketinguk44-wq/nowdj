@@ -701,6 +701,7 @@
             <div class="modal-field"><label>Email</label><input type="email" id="doc-from-email-input" /></div>
           </div>
           <input type="hidden" id="doc-from-banking-input" />
+          <input type="hidden" id="doc-from-accent-input" />
         </div>
 
         <div class="sig-form-section">
@@ -1052,6 +1053,13 @@
               <button type="button" id="sig-doc-logo-clear" style="font-size:0.72rem;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0">Remove</button>
             </div>
             <input type="hidden" id="sig-doc_logo" />
+          </div>
+          <div class="modal-field">
+            <label>Accent Colour <span style="color:var(--text-muted);font-weight:400">(header, totals &amp; table on printed docs)</span></label>
+            <div style="display:flex;gap:0.6rem;align-items:center;margin-top:0.3rem">
+              <input type="color" id="sig-doc_accent" value="#6c47ff" style="width:44px;height:36px;border:none;background:none;cursor:pointer;padding:0;border-radius:6px;flex-shrink:0" />
+              <input class="field-input" type="text" id="sig-doc-accent-hex" placeholder="#6c47ff" maxlength="7" style="font-family:monospace;width:90px" />
+            </div>
           </div>
           <div class="modal-field"><label>Company Address</label><textarea id="sig-address" rows="2" placeholder="Hertfordshire DJ Rental&#10;123 High Street&#10;London, EC1A 1BB"></textarea></div>
           <div class="modal-field"><label>Bank Details <span style="color:var(--text-muted);font-weight:400">(invoices only)</span></label><textarea id="sig-doc_banking" rows="3" placeholder="Sort Code: 00-00-00&#10;Account: 12345678&#10;Reference: Invoice number"></textarea></div>
@@ -2751,11 +2759,12 @@ function _fillFromProfile(p) {
   document.getElementById('doc-from-phone-input').value   = p.phone   || '';
   document.getElementById('doc-from-email-input').value   = p.email   || '';
   document.getElementById('doc-from-banking-input').value = p.banking || '';
+  document.getElementById('doc-from-accent-input').value  = p.accent  || '';
 }
 
 function _clearFromFields() {
   _updateLogoPreview('');
-  ['doc-from-logo-input','doc-from-name-input','doc-from-address-input','doc-from-phone-input','doc-from-email-input','doc-from-banking-input']
+  ['doc-from-logo-input','doc-from-name-input','doc-from-address-input','doc-from-phone-input','doc-from-email-input','doc-from-banking-input','doc-from-accent-input']
     .forEach(id => { document.getElementById(id).value = ''; });
 }
 
@@ -2765,6 +2774,7 @@ function _fillFromSigProfile(sig) {
     logo:    f.doc_logo || f.logo || '',
     name:    f.company  || sig.label || '',
     address: f.address  || '',
+    accent:  f.doc_accent || '',
     phone:   f.phone    || '',
     email:   f.email    || '',
     banking: f.doc_banking || '',
@@ -2844,6 +2854,7 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
       phone:   document.getElementById('doc-from-phone-input').value.trim(),
       email:   document.getElementById('doc-from-email-input').value.trim(),
       banking: document.getElementById('doc-from-banking-input').value.trim(),
+      accent:  document.getElementById('doc-from-accent-input').value.trim(),
     }),
   };
   const btn = document.getElementById('btn-save-doc');
@@ -3223,7 +3234,7 @@ document.getElementById('close-sig-modal').addEventListener('click', closeSigMod
 document.getElementById('cancel-sig-modal').addEventListener('click', closeSigModal);
 document.getElementById('sig-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSigModal(); });
 
-const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address','doc_banking'];
+const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address','doc_banking','doc_accent'];
 
 function _updateSigDocLogoPreview(src) {
   const el = document.getElementById('sig-doc-logo-preview');
@@ -3248,6 +3259,9 @@ function openSigEditor(sig) {
   document.getElementById('sig-is-default').checked = sig?.is_default || false;
   document.getElementById('sig-editor-title').textContent = sig ? 'Edit Signature' : 'New Signature';
   _updateSigDocLogoPreview(f.doc_logo || '');
+  const accentVal = f.doc_accent || '#6c47ff';
+  document.getElementById('sig-doc_accent').value = accentVal;
+  document.getElementById('sig-doc-accent-hex').value = accentVal;
   document.getElementById('sig-editor-modal').classList.add('open');
   updateSigPreview();
 }
@@ -3304,6 +3318,15 @@ document.getElementById('sig-doc-logo-upload').addEventListener('change', (e) =>
 document.getElementById('sig-doc-logo-clear').addEventListener('click', () => {
   document.getElementById('sig-doc_logo').value = '';
   _updateSigDocLogoPreview('');
+});
+
+// Accent colour picker ↔ hex text sync
+document.getElementById('sig-doc_accent').addEventListener('input', (e) => {
+  document.getElementById('sig-doc-accent-hex').value = e.target.value;
+});
+document.getElementById('sig-doc-accent-hex').addEventListener('input', (e) => {
+  const v = e.target.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('sig-doc_accent').value = v;
 });
 document.getElementById('sig-layout').addEventListener('change', updateSigPreview);
 
