@@ -454,6 +454,14 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   color: var(--accent);
 }
 
+.qty-toggle {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  cursor: pointer; font-size: 0.75rem; color: var(--text-muted);
+  user-select: none;
+}
+.qty-toggle input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.qty-toggle input[type="checkbox"]:checked + .qty-toggle-label { color: var(--accent); }
+
 /* ========================================================================
    SIDEBAR (Package Panel)
    ======================================================================== */

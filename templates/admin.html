@@ -913,9 +913,10 @@ function buildCategoryCard(catId, cat) {
           <tr>
             <th style="width:22px"></th>
             <th style="width:20%">Name</th>
-            <th style="width:38%">Description</th>
+            <th style="width:34%">Description</th>
             <th style="width:10%">Price</th>
             <th style="width:17%;text-align:center">Pricing Type</th>
+            <th style="width:7%;text-align:center">Multi-qty</th>
             <th style="width:5%"></th>
           </tr>
         </thead>
@@ -1003,6 +1004,12 @@ function buildItemRow(catId, itemId, item) {
         <button class="pt-btn ${pt==='tbc'    ?'active':''}" data-pt="tbc">TBC</button>
       </div>
     </td>
+    <td style="text-align:center">
+      <label class="qty-toggle" title="Allow customer to add multiple quantities">
+        <input type="checkbox" class="qty-checkbox" ${item.allow_quantity ? 'checked' : ''} />
+        <span class="qty-toggle-label">Multi</span>
+      </label>
+    </td>
     <td>
       <button class="btn-icon danger btn-del-item" title="Remove item">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1024,6 +1031,10 @@ function buildItemRow(catId, itemId, item) {
       catalogData[catId].items[itemId].pricing_type = chosen;
       tr.querySelectorAll('.pt-btn').forEach(b => b.classList.toggle('active', b === btn));
     });
+  });
+
+  tr.querySelector('.qty-checkbox').addEventListener('change', (e) => {
+    catalogData[catId].items[itemId].allow_quantity = e.target.checked;
   });
 
   tr.querySelector('.btn-del-item').addEventListener('click', () => {
