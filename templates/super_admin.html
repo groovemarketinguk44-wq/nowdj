@@ -245,7 +245,7 @@ function renderTenants(tenants) {
       <td>${esc(t.email)}</td>
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
-      <td class="col-action"><a class="btn-visit" href="/t/${esc(t.slug)}/admin" target="_blank">Open ↗</a></td>
+      <td class="col-action"><a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Open ↗</a></td>
       <td class="col-del"><button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button></td>
     </tr>
   `).join('');

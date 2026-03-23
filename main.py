@@ -139,19 +139,19 @@ async def tenant_middleware(request: Request, call_next):
     request.state.tenant = None
     request.state.is_admin_domain = subdomain in ("admin", None)
 
-    # Path-based tenant routing: /t/{slug}/... works on any domain (no wildcard DNS needed)
-    if path.startswith("/t/"):
-        remainder = path[3:]  # strip "/t/"
-        slash = remainder.find("/")
-        slug = remainder[:slash] if slash != -1 else remainder
-        rest = remainder[slash:] if slash != -1 else "/"
-        if slug and slug not in _RESERVED:
-            tenant = get_tenant_by_slug(slug)
-            if tenant:
-                request.state.tenant = tenant
-                request.state.is_admin_domain = False
-                request.scope["path"] = rest or "/"
-                request.scope["raw_path"] = (rest or "/").encode()
+    # Path-based tenant routing: /{slug}/... works on any domain (no wildcard DNS needed)
+    # First path segment is treated as a tenant slug if it isn't a reserved platform path.
+    _PATH_RESERVED = _RESERVED | {"login", "portal", "staff-portal"}
+    parts = path.split("/", 2)  # ['', first_segment, rest...]
+    first_segment = parts[1] if len(parts) > 1 else ""
+    if first_segment and first_segment not in _PATH_RESERVED:
+        tenant = get_tenant_by_slug(first_segment)
+        if tenant:
+            rest = "/" + parts[2] if len(parts) > 2 else "/"
+            request.state.tenant = tenant
+            request.state.is_admin_domain = False
+            request.scope["path"] = rest
+            request.scope["raw_path"] = rest.encode()
     elif subdomain and subdomain not in _RESERVED:
         tenant = get_tenant_by_slug(subdomain)
         request.state.tenant = tenant   # None if slug not found
