@@ -2595,11 +2595,18 @@ function openDocEditorFromEnquiry(q, docType = 'quote') {
   // Build line items from enquiry selected_items
   const enquiryItems = Array.isArray(q.selected_items) ? q.selected_items : [];
   const lineItems = enquiryItems.length
-    ? enquiryItems.map(it => ({
-        description: it.name || '',
-        qty: String(it.qty || 1),
-        price: `£${(it.price || 0).toFixed(2)}`,
-      }))
+    ? enquiryItems.map(it => {
+        // it.price is the total line price; derive unit price to avoid double-multiplying in calcLineTotal
+        const unitPrice = it.base_price != null
+          ? it.base_price
+          : (it.qty ? (it.price || 0) / it.qty : (it.price || 0));
+        const qtyStr = it.unit ? `${it.qty || 1} ${it.unit}` : String(it.qty || 1);
+        return {
+          description: it.name || '',
+          qty: qtyStr,
+          price: `£${unitPrice.toFixed(2)}`,
+        };
+      })
     : [{ description: '', qty: '1', price: '£' }];
 
   // Construct a synthetic "doc" with enquiry data pre-filled
