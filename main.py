@@ -186,7 +186,7 @@ async def builder_page(request: Request):
         return RedirectResponse("/admin")
     tenant = _get_tenant_or_404(request)
     tid = tenant["id"]
-    branding = load_branding_config(tid)
+    branding = load_branding_config(tid, tenant["name"])
     return templates.TemplateResponse("builder.html", {
         "request": request,
         "catalog": load_catalog(tid),
@@ -201,7 +201,7 @@ async def admin_page(request: Request):
     if getattr(request.state, "is_admin_domain", False):
         return templates.TemplateResponse("super_admin.html", {"request": request})
     tenant = _get_tenant_or_404(request)
-    branding = load_branding_config(tenant["id"])
+    branding = load_branding_config(tenant["id"], tenant["name"])
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "branding": branding,
@@ -212,7 +212,7 @@ async def admin_page(request: Request):
 @app.get("/portal", response_class=HTMLResponse)
 async def portal_page(request: Request):
     tenant = _get_tenant_or_404(request)
-    branding = load_branding_config(tenant["id"])
+    branding = load_branding_config(tenant["id"], tenant["name"])
     return templates.TemplateResponse("portal.html", {
         "request": request,
         "branding": branding,
@@ -223,7 +223,7 @@ async def portal_page(request: Request):
 @app.get("/staff-portal", response_class=HTMLResponse)
 async def staff_portal_page(request: Request):
     tenant = _get_tenant_or_404(request)
-    branding = load_branding_config(tenant["id"])
+    branding = load_branding_config(tenant["id"], tenant["name"])
     return templates.TemplateResponse("staff.html", {
         "request": request,
         "branding": branding,
@@ -233,7 +233,6 @@ async def staff_portal_page(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # Allow login on both tenant subdomains and the admin domain
     if getattr(request.state, "is_admin_domain", False):
         return templates.TemplateResponse("login.html", {
             "request": request,
@@ -241,7 +240,7 @@ async def login_page(request: Request):
             "branding_style": "",
         })
     tenant = _get_tenant_or_404(request)
-    branding = load_branding_config(tenant["id"])
+    branding = load_branding_config(tenant["id"], tenant["name"])
     return templates.TemplateResponse("login.html", {
         "request": request,
         "branding": branding,
@@ -301,7 +300,7 @@ async def api_save_site_config(
 @app.get("/api/branding")
 async def api_get_branding(request: Request):
     tenant = _get_tenant_or_404(request)
-    return load_branding_config(tenant["id"])
+    return load_branding_config(tenant["id"], tenant["name"])
 
 
 @app.post("/api/branding")

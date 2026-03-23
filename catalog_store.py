@@ -93,15 +93,17 @@ def build_branding_style(branding: dict) -> str:
     )
 
 
-def load_branding_config(tenant_id: int) -> dict:
+def load_branding_config(tenant_id: int, tenant_name: str = "") -> dict:
     raw = get_setting("branding_config", tenant_id=tenant_id)
+    base = DEFAULT_BRANDING_CONFIG.copy()
+    if tenant_name:
+        base["company_name"] = tenant_name
     if raw:
         try:
-            saved = json.loads(raw)
-            return {**DEFAULT_BRANDING_CONFIG, **saved}
+            return {**base, **json.loads(raw)}
         except Exception:
             pass
-    return DEFAULT_BRANDING_CONFIG.copy()
+    return base
 
 
 def save_branding_config(config: dict, tenant_id: int) -> None:
