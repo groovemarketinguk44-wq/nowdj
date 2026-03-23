@@ -300,17 +300,17 @@ async def delete_message(msg_id: str, tenant_id: int) -> bool:
     return await _delete(f"/me/messages/{msg_id}", tenant_id) == 204
 
 
-async def send_email(to_email: str, to_name: str, subject: str, body_html: str, tenant_id: int) -> bool:
-    status, _ = await _post("/me/sendMail", {
-        "message": {
-            "subject": subject,
-            "body": {"contentType": "HTML", "content": body_html},
-            "toRecipients": [
-                {"emailAddress": {"address": to_email, "name": to_name or to_email}}
-            ],
-        },
-        "saveToSentItems": True,
-    }, tenant_id)
+async def send_email(to_email: str, to_name: str, subject: str, body_html: str, tenant_id: int, attachments: list | None = None) -> bool:
+    message: dict = {
+        "subject": subject,
+        "body": {"contentType": "HTML", "content": body_html},
+        "toRecipients": [
+            {"emailAddress": {"address": to_email, "name": to_name or to_email}}
+        ],
+    }
+    if attachments:
+        message["attachments"] = attachments
+    status, _ = await _post("/me/sendMail", {"message": message, "saveToSentItems": True}, tenant_id)
     return status == 202
 
 

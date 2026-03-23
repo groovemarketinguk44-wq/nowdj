@@ -808,6 +808,28 @@
 </div>
 
 <!-- ======================================================================
+     SIGNATURE / COMPANY PICKER MODAL (before creating a doc)
+     ====================================================================== -->
+<div class="modal-overlay" id="sig-picker-modal">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="sig-picker-title">Create Document</h3>
+      <button class="btn-close-modal" id="close-sig-picker">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:1rem">Which company is this for? This sets the branding, colour and bank details on the document.</p>
+      <div id="sig-picker-list" style="display:flex;flex-direction:column;gap:0.55rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-sig-picker">Cancel</button>
+      <button class="btn-primary" id="sig-picker-confirm">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
      ENQUIRY PICKER MODAL
      ====================================================================== -->
 <div class="modal-overlay" id="enquiry-picker-modal">
@@ -1727,11 +1749,13 @@ function renderQuotes() {
       });
       dr.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        openDocEditorFromEnquiry(q, 'quote');
+        if (savedSignatures.length > 1) openSigPickerForDoc(q, 'quote');
+        else openDocEditorFromEnquiry(q, 'quote');
       });
       dr.querySelector('.btn-create-invoice')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        openDocEditorFromEnquiry(q, 'invoice');
+        if (savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
+        else openDocEditorFromEnquiry(q, 'invoice');
       });
       dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -2213,13 +2237,10 @@ function updateAttachmentInline() {
   const inlineEl  = document.getElementById('compose-attachment-inline');
   const docId = attachSel.value;
   if (!docId) { inlineEl.style.display = 'none'; inlineEl.innerHTML = ''; return; }
-  const token = localStorage.getItem('ndj_admin_token') || '';
-  const url = `${location.origin}/api/docs/${docId}/print?token=${encodeURIComponent(token)}`;
-  // Find the doc to get its label
   const opt = attachSel.options[attachSel.selectedIndex];
   const label = opt ? opt.textContent : 'Document';
   inlineEl.style.display = '';
-  inlineEl.innerHTML = `<table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${url}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:8px 18px;border-radius:6px;font-weight:600;font-size:13px;font-family:Arial,sans-serif">&#128196; View ${escHtml(label)}</a></td></tr></table>`;
+  inlineEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--text-muted)">&#128206; <strong style="color:var(--text)">${escHtml(label)}.pdf</strong> will be attached</div>`;
 }
 document.getElementById('compose-attachment-select').addEventListener('change', updateAttachmentInline);
 
@@ -2292,17 +2313,8 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
   // Append selected signature (sigId already validated above)
   const sigObj = savedSignatures.find(s => String(s.id) === String(sigId));
   const sigHtml = sigObj ? buildSigHTML(sigObj.fields || {}) : '';
-  // Append attachment link if one is selected
   const attachDocId = document.getElementById('compose-attachment-select').value;
-  let attachHtml = '';
-  if (attachDocId) {
-    const token = localStorage.getItem('ndj_admin_token') || '';
-    const url = `${location.origin}/api/docs/${attachDocId}/print?token=${encodeURIComponent(token)}`;
-    const opt = document.getElementById('compose-attachment-select').options[document.getElementById('compose-attachment-select').selectedIndex];
-    const label = opt ? opt.textContent : 'Document';
-    attachHtml = `<br/><br/><table width="100%" cellpadding="0" cellspacing="0"><tr><td><a href="${url}" style="display:inline-block;background:#fa854f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;font-family:Arial,sans-serif">&#128196; View ${label}</a></td></tr></table>`;
-  }
-  const body = rawBody + attachHtml + (sigHtml ? '<br/><br/>' + sigHtml : '');
+  const body = rawBody + (sigHtml ? '<br/><br/>' + sigHtml : '');
 
   if (!to_email || !subject) { showToast('To and Subject are required.', 'error'); return; }
 
@@ -2317,8 +2329,10 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }),
       });
     } else {
+      const sendPayload = { to_email, to_name, subject, body };
+      if (attachDocId) sendPayload.doc_id = parseInt(attachDocId);
       res = await fetch('/api/email/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to_email, to_name, subject, body }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sendPayload),
       });
     }
     const data = await res.json();
@@ -2609,7 +2623,7 @@ function renderDocLineItems() {
 }
 
 // ── Open doc editor pre-filled from an enquiry ───────────────────────────
-function openDocEditorFromEnquiry(q, docType = 'quote') {
+function openDocEditorFromEnquiry(q, docType = 'quote', preferSigId = null) {
   // Find existing doc of this type linked to this enquiry
   const existing = allDocs.find(d => d.source_quote_id == q.id && d.doc_type === docType);
 
@@ -2654,7 +2668,7 @@ function openDocEditorFromEnquiry(q, docType = 'quote') {
     sender:         {},
   };
 
-  openDocEditor(prefilled, docType);
+  openDocEditor(prefilled, docType, preferSigId);
 }
 
 function recalcDocTotal() {
@@ -2689,7 +2703,7 @@ document.getElementById('close-doc-modal').addEventListener('click',  closeDocMo
 document.getElementById('cancel-doc-modal').addEventListener('click', closeDocModal);
 document.getElementById('doc-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDocModal(); });
 
-async function openDocEditor(doc, type = 'quote') {
+async function openDocEditor(doc, type = 'quote', preferSigId = null) {
   docLineItems = doc ? JSON.parse(doc.line_items || '[]') : [
     { description: '', qty: '1', price: '£' },
   ];
@@ -2730,7 +2744,8 @@ async function openDocEditor(doc, type = 'quote') {
     _fillFromProfile(sender);
     fromSel.value = '';
   } else if (savedSignatures.length > 0) {
-    const def = savedSignatures.find(s => s.is_default) || savedSignatures[0];
+    const preferred = preferSigId ? savedSignatures.find(s => s.id === preferSigId) : null;
+    const def = preferred || savedSignatures.find(s => s.is_default) || savedSignatures[0];
     fromSel.value = String(def.id);
     _fillFromSigProfile(def);
   } else {
@@ -2885,6 +2900,64 @@ document.getElementById('btn-doc-preview').addEventListener('click', () => {
   if (!id) { showToast('Save the document first to preview.', 'error'); return; }
   const token = localStorage.getItem('ndj_admin_token') || '';
   window.open(`/api/docs/${id}/print?token=${encodeURIComponent(token)}`, '_blank');
+});
+
+// ── Sig / company picker (before creating a doc) ──────────────────────────
+
+let _pendingDocCreate = null;
+
+function openSigPickerForDoc(q, docType) {
+  _pendingDocCreate = { q, docType };
+  document.getElementById('sig-picker-title').textContent = 'Create ' + (docType === 'invoice' ? 'Invoice' : 'Quote');
+  const list = document.getElementById('sig-picker-list');
+  list.innerHTML = '';
+  const defaultId = (savedSignatures.find(s => s.is_default) || savedSignatures[0])?.id;
+  savedSignatures.forEach(sig => {
+    const f = sig.fields || {};
+    const accent = f.doc_accent || 'var(--accent)';
+    const card = document.createElement('div');
+    card.dataset.id = sig.id;
+    card.style.cssText = 'border:2px solid var(--border);border-radius:10px;padding:0.75rem 1rem;cursor:pointer;display:flex;align-items:center;gap:0.85rem;transition:border-color 0.15s,background 0.15s';
+    const logoHtml = f.doc_logo
+      ? `<img src="${escHtml(f.doc_logo)}" style="max-height:36px;max-width:72px;object-fit:contain;flex-shrink:0">`
+      : `<div style="width:36px;height:36px;border-radius:8px;background:${escHtml(accent)};flex-shrink:0"></div>`;
+    const addrLine = f.address ? `<div style="font-size:0.73rem;color:var(--text-muted);margin-top:0.1rem">${escHtml(f.address.split('\n')[0])}</div>` : '';
+    card.innerHTML = `${logoHtml}<div><div style="font-weight:600;font-size:0.88rem;color:var(--text)">${escHtml(f.company || sig.label || 'Untitled')}</div>${addrLine}</div>`;
+    const isDefault = sig.id === defaultId;
+    if (isDefault) { card.style.borderColor = accent; card.dataset.selected = '1'; }
+    card.addEventListener('click', () => {
+      list.querySelectorAll('[data-id]').forEach(c => { c.style.borderColor = 'var(--border)'; delete c.dataset.selected; });
+      card.style.borderColor = f.doc_accent || 'var(--accent)';
+      card.dataset.selected = '1';
+    });
+    list.appendChild(card);
+  });
+  if (!list.querySelector('[data-selected]') && list.firstElementChild) {
+    const first = list.firstElementChild;
+    const firstSig = savedSignatures[0];
+    first.style.borderColor = firstSig?.fields?.doc_accent || 'var(--accent)';
+    first.dataset.selected = '1';
+  }
+  document.getElementById('sig-picker-modal').classList.add('open');
+}
+
+document.getElementById('sig-picker-confirm').addEventListener('click', () => {
+  const selectedCard = document.getElementById('sig-picker-list').querySelector('[data-selected]');
+  const sigId = selectedCard ? parseInt(selectedCard.dataset.id) : null;
+  document.getElementById('sig-picker-modal').classList.remove('open');
+  if (!_pendingDocCreate) return;
+  const { q, docType } = _pendingDocCreate;
+  _pendingDocCreate = null;
+  openDocEditorFromEnquiry(q, docType, sigId);
+});
+['cancel-sig-picker','close-sig-picker'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    document.getElementById('sig-picker-modal').classList.remove('open');
+    _pendingDocCreate = null;
+  });
+});
+document.getElementById('sig-picker-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) { e.currentTarget.classList.remove('open'); _pendingDocCreate = null; }
 });
 
 // ── Enquiry picker ────────────────────────────────────────────────────────

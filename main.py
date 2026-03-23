@@ -1,3 +1,4 @@
+import base64
 import re
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -653,10 +654,29 @@ async def email_send(
     to_name  = payload.get("to_name", "")
     subject  = payload.get("subject", "")
     body     = payload.get("body", "")
+    doc_id   = payload.get("doc_id")
     if not to_email or not subject:
         raise HTTPException(status_code=400, detail="to_email and subject are required")
+
+    attachments = None
+    if doc_id:
+        doc = get_document(int(doc_id), tenant["id"])
+        if doc:
+            try:
+                pdf_bytes = _render_doc_pdf_bytes(doc, tenant["id"])
+                filename = f"{doc.get('doc_number', f'document-{doc_id}')}.pdf"
+                attachments = [{
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": filename,
+                    "contentType": "application/pdf",
+                    "contentBytes": base64.b64encode(pdf_bytes).decode(),
+                }]
+            except Exception as pdf_err:
+                # Don't block sending if PDF generation fails
+                pass
+
     try:
-        ok = await em.send_email(to_email, to_name, subject, body, tenant["id"])
+        ok = await em.send_email(to_email, to_name, subject, body, tenant["id"], attachments)
         return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -1404,6 +1424,71 @@ async def docs_delete(
     return {"success": True}
 
 
+def _build_doc_render_context(doc: dict, tenant_id: int) -> dict:
+    """Build the Jinja2 template context for a document (shared by print + PDF)."""
+    raw_settings = get_setting("doc_settings", tenant_id=tenant_id)
+    try:
+        settings = json.loads(raw_settings) if raw_settings else {}
+    except Exception:
+        settings = {}
+    if not settings.get("accent"):
+        branding = load_branding_config(tenant_id)
+        settings["accent"] = branding.get("accent_color", "#fa854f")
+
+    try:
+        raw_items = json.loads(doc.get("line_items") or "[]")
+    except Exception:
+        raw_items = []
+
+    def _parse_price(price_str: str):
+        p = (price_str or "").strip()
+        if not p or p == "—":
+            return None, "£"
+        currency = "£"
+        if p and p[0] in "£$€":
+            currency = p[0]; p = p[1:]
+        try:
+            return float(p.replace(",", "")), currency
+        except ValueError:
+            return None, currency
+
+    line_items, grand_total, grand_currency, all_numeric = [], 0.0, "£", True
+    for item in raw_items:
+        unit_val, currency = _parse_price(item.get("price", ""))
+        qty_raw = str(item.get("qty", "1"))
+        m = re.match(r"[\d.,]+", qty_raw.replace(",", ""))
+        qty = float(m.group()) if m else 1.0
+        if unit_val is not None:
+            line_total = unit_val * qty
+            grand_total += line_total
+            grand_currency = currency
+            line_items.append({**item, "line_total": f"{currency}{line_total:,.2f}",
+                                "unit_price_fmt": f"{currency}{unit_val:,.2f}", "qty_fmt": qty_raw})
+        else:
+            all_numeric = False
+            line_items.append({**item, "line_total": "—",
+                                "unit_price_fmt": item.get("price", "—"),
+                                "qty_fmt": str(item.get("qty", "1"))})
+
+    grand_total_fmt = f"{grand_currency}{grand_total:,.2f}" if all_numeric else "—"
+    created = doc.get("created_at", "")
+    try:
+        doc_date = datetime.datetime.fromisoformat(created).strftime("%-d %B %Y")
+    except Exception:
+        doc_date = created[:10] if created else ""
+    doc_type_label = "INVOICE" if doc.get("doc_type") == "invoice" else "QUOTE"
+
+    return {"settings": settings, "line_items": line_items, "grand_total": grand_total_fmt,
+            "doc_date": doc_date, "doc_type_label": doc_type_label}
+
+
+def _render_doc_pdf_bytes(doc: dict, tenant_id: int) -> bytes:
+    from weasyprint import HTML
+    ctx = _build_doc_render_context(doc, tenant_id)
+    html_str = templates.env.get_template("doc_print.html").render(doc=doc, request=None, **ctx)
+    return HTML(string=html_str, base_url="https://fonts.googleapis.com").write_pdf()
+
+
 @app.get("/api/docs/{doc_id}/print", response_class=HTMLResponse)
 async def docs_print(
     doc_id: int,
@@ -1442,81 +1527,5 @@ async def docs_print(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Load doc settings, merging branding accent color as fallback
-    raw_settings = get_setting("doc_settings", tenant_id=tenant["id"])
-    try:
-        settings = json.loads(raw_settings) if raw_settings else {}
-    except Exception:
-        settings = {}
-    if not settings.get("accent"):
-        branding = load_branding_config(tenant["id"])
-        settings["accent"] = branding.get("accent_color", "#fa854f")
-
-    # Parse line items and compute totals
-    try:
-        raw_items = json.loads(doc.get("line_items") or "[]")
-    except Exception:
-        raw_items = []
-
-    def _parse_price(price_str: str):
-        p = (price_str or "").strip()
-        if not p or p == "—":
-            return None, "£"
-        currency = "£"
-        if p and p[0] in "£$€":
-            currency = p[0]
-            p = p[1:]
-        try:
-            return float(p.replace(",", "")), currency
-        except ValueError:
-            return None, currency
-
-    line_items = []
-    grand_total = 0.0
-    grand_currency = "£"
-    all_numeric = True
-
-    for item in raw_items:
-        unit_val, currency = _parse_price(item.get("price", ""))
-        qty_raw = str(item.get("qty", "1"))
-        m = re.match(r"[\d.,]+", qty_raw.replace(",", ""))
-        qty = float(m.group()) if m else 1.0
-        if unit_val is not None:
-            line_total = unit_val * qty
-            grand_total += line_total
-            grand_currency = currency
-            line_items.append({
-                **item,
-                "line_total": f"{currency}{line_total:,.2f}",
-                "unit_price_fmt": f"{currency}{unit_val:,.2f}",
-                "qty_fmt": qty_raw,
-            })
-        else:
-            all_numeric = False
-            line_items.append({
-                **item,
-                "line_total": "—",
-                "unit_price_fmt": item.get("price", "—"),
-                "qty_fmt": str(item.get("qty", "1")),
-            })
-
-    grand_total_fmt = f"{grand_currency}{grand_total:,.2f}" if all_numeric else "—"
-
-    # Format doc date
-    created = doc.get("created_at", "")
-    try:
-        doc_date = datetime.datetime.fromisoformat(created).strftime("%-d %B %Y")
-    except Exception:
-        doc_date = created[:10] if created else ""
-
-    doc_type_label = "INVOICE" if doc.get("doc_type") == "invoice" else "QUOTE"
-
-    return templates.TemplateResponse("doc_print.html", {
-        "request": request,
-        "doc": doc,
-        "settings": settings,
-        "line_items": line_items,
-        "grand_total": grand_total_fmt,
-        "doc_date": doc_date,
-        "doc_type_label": doc_type_label,
-    })
+    ctx = _build_doc_render_context(doc, tenant["id"])
+    return templates.TemplateResponse("doc_print.html", {"request": request, "doc": doc, **ctx})
