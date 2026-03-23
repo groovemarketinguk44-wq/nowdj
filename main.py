@@ -197,12 +197,16 @@ async def builder_page(request: Request):
     tenant = _get_tenant_or_404(request)
     tid = tenant["id"]
     branding = load_branding_config(tid, tenant["name"])
+    slug = tenant["slug"]
+    custom_domain = tenant.get("custom_domain") or ""
+    login_url = "/login" if custom_domain else f"/{slug}/login"
     return templates.TemplateResponse("builder.html", {
         "request": request,
         "catalog": load_catalog(tid),
         "config": load_site_config(tid),
         "branding": branding,
         "branding_style": build_branding_style(branding),
+        "login_url": login_url,
     })
 
 
