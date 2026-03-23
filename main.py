@@ -131,13 +131,27 @@ templates = Jinja2Templates(directory="templates")
 @app.middleware("http")
 async def tenant_middleware(request: Request, call_next):
     host = request.headers.get("host", "")
+    path = request.scope["path"]
     subdomain = extract_subdomain(host)
 
     request.state.subdomain = subdomain
     request.state.tenant = None
     request.state.is_admin_domain = subdomain in ("admin", None)
 
-    if subdomain and subdomain not in _RESERVED:
+    # Path-based tenant routing: /t/{slug}/... works on any domain (no wildcard DNS needed)
+    if path.startswith("/t/"):
+        remainder = path[3:]  # strip "/t/"
+        slash = remainder.find("/")
+        slug = remainder[:slash] if slash != -1 else remainder
+        rest = remainder[slash:] if slash != -1 else "/"
+        if slug and slug not in _RESERVED:
+            tenant = get_tenant_by_slug(slug)
+            if tenant:
+                request.state.tenant = tenant
+                request.state.is_admin_domain = False
+                request.scope["path"] = rest or "/"
+                request.scope["raw_path"] = (rest or "/").encode()
+    elif subdomain and subdomain not in _RESERVED:
         tenant = get_tenant_by_slug(subdomain)
         request.state.tenant = tenant   # None if slug not found
 

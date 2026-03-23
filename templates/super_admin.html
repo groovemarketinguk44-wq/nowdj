@@ -327,7 +327,7 @@ function renderTenants(tenants) {
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
       <td>
-        <a class="btn-visit" href="http://${esc(t.slug)}.localhost:8000/admin" target="_blank">Open ↗</a>
+        <a class="btn-visit" href="/t/${esc(t.slug)}/admin" target="_blank">Open ↗</a>
       </td>
       <td>
         <button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button>
