@@ -44,7 +44,7 @@
     .accent { color: #fa854f; }
 
     /* Tenant table */
-    .tenants-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; }
+    .tenants-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; table-layout: fixed; }
     .tenants-table th {
       text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.05em; color: var(--text-muted);
@@ -52,9 +52,18 @@
     }
     .tenants-table td {
       padding: 0.75rem; border-bottom: 1px solid var(--border-default);
-      font-size: 0.875rem; vertical-align: middle;
+      font-size: 0.875rem; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .tenants-table tr:last-child td { border-bottom: none; }
+    .tenants-table col.col-name    { width: 22%; }
+    .tenants-table col.col-slug    { width: 16%; }
+    .tenants-table col.col-email   { width: 28%; }
+    .tenants-table col.col-plan    { width: 10%; }
+    .tenants-table col.col-created { width: 12%; }
+    .tenants-table col.col-action  { width: 7%; }
+    .tenants-table col.col-del     { width: 5%; }
+    .tenants-table td.col-action,
+    .tenants-table td.col-del { white-space: nowrap; overflow: visible; }
     .tenant-name { font-weight: 600; color: var(--text-primary); }
     .tenant-slug {
       font-size: 0.78rem; font-family: monospace;
@@ -236,16 +245,16 @@ function renderTenants(tenants) {
       <td>${esc(t.email)}</td>
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
-      <td>
-        <a class="btn-visit" href="/t/${esc(t.slug)}/admin" target="_blank">Open ↗</a>
-      </td>
-      <td>
-        <button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button>
-      </td>
+      <td class="col-action"><a class="btn-visit" href="/t/${esc(t.slug)}/admin" target="_blank">Open ↗</a></td>
+      <td class="col-del"><button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button></td>
     </tr>
   `).join('');
   wrap.innerHTML = `
     <table class="tenants-table">
+      <colgroup>
+        <col class="col-name"><col class="col-slug"><col class="col-email">
+        <col class="col-plan"><col class="col-created"><col class="col-action"><col class="col-del">
+      </colgroup>
       <thead>
         <tr>
           <th>Name</th><th>Slug</th><th>Email</th><th>Plan</th><th>Created</th><th></th><th></th>
