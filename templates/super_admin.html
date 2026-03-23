@@ -61,7 +61,7 @@
     .tenants-table col.col-domain  { width: 20%; }
     .tenants-table col.col-plan    { width: 9%; }
     .tenants-table col.col-created { width: 10%; }
-    .tenants-table col.col-action  { width: 5%; }
+    .tenants-table col.col-action  { width: 10%; }
     .tenants-table col.col-del     { width: 3%; }
     .tenants-table td.col-action,
     .tenants-table td.col-del { white-space: nowrap; overflow: visible; }
@@ -96,6 +96,12 @@
       padding: 0.3rem 0.65rem; transition: background 0.15s;
     }
     .btn-visit:hover { background: rgba(250,133,79,0.08); }
+    .btn-preview {
+      font-size: 0.78rem; font-weight: 500; color: var(--text-secondary); text-decoration: none;
+      border: 1px solid var(--border-hover); border-radius: var(--radius-sm);
+      padding: 0.3rem 0.65rem; transition: background 0.15s; margin-left: 0.35rem;
+    }
+    .btn-preview:hover { border-color: var(--text-secondary); background: var(--bg-input); }
     .btn-del {
       background: transparent; border: 1px solid transparent;
       border-radius: var(--radius-sm); padding: 0.3rem 0.6rem;
@@ -267,7 +273,10 @@ function renderTenants(tenants) {
       </td>
       <td><span class="plan-badge">${esc(t.plan)}</span></td>
       <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
-      <td class="col-action"><a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Open ↗</a></td>
+      <td class="col-action">
+        <a class="btn-visit" href="/${esc(t.slug)}/admin" target="_blank">Admin ↗</a>
+        <a class="btn-preview" href="${t.custom_domain ? 'https://' + esc(t.custom_domain) : '/' + esc(t.slug) + '/'}" target="_blank">Preview ↗</a>
+      </td>
       <td class="col-del"><button class="btn-del" onclick="deleteTenant(${t.id}, '${esc(t.name)}')">Delete</button></td>
     </tr>
   `).join('');
@@ -279,7 +288,7 @@ function renderTenants(tenants) {
       </colgroup>
       <thead>
         <tr>
-          <th>Name</th><th>Slug</th><th>Email</th><th>Custom Domain</th><th>Plan</th><th>Created</th><th></th><th></th>
+          <th>Name</th><th>Slug</th><th>Email</th><th>Custom Domain</th><th>Plan</th><th>Created</th><th>Links</th><th></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
