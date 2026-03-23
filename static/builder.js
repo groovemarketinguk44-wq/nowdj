@@ -71,9 +71,9 @@ function renderPackage() {
     let priceLabel;
     if (item.pricingType === 'tbc') {
       priceLabel = `<span class="pkg-tbc-badge">TBC</span>`;
-    } else if (item.pricingType === 'hourly' || item.pricingType === 'daily') {
+    } else if ((item.pricingType === 'hourly' || item.pricingType === 'daily') && !item.allowQty) {
       priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(${item.qty} ${unitLabel(item.pricingType, item.qty)})</span>`;
-    } else if (item.allowQty && item.qty > 1) {
+    } else if (item.qty > 1) {
       priceLabel = `${fmt(item.price)} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500">(×${item.qty})</span>`;
     } else {
       priceLabel = fmt(item.price);
@@ -106,8 +106,8 @@ function renderPackage() {
 
 /* ── Quantity update (hourly / daily) ── */
 
-function qtyLabel(pricingType, qty) {
-  if (pricingType === 'hourly' || pricingType === 'daily') return `${qty} ${unitLabel(pricingType, qty)}`;
+function qtyLabel(pricingType, qty, allowQty) {
+  if (!allowQty && (pricingType === 'hourly' || pricingType === 'daily')) return `${qty} ${unitLabel(pricingType, qty)}`;
   return `×${qty}`;
 }
 
@@ -123,7 +123,7 @@ function updateQty(id, delta) {
   const card = document.querySelector(`.item-card[data-id="${id}"]`);
   if (card) {
     const display = card.querySelector('.qty-display');
-    if (display) display.textContent = qtyLabel(item.pricingType, newQty);
+    if (display) display.textContent = qtyLabel(item.pricingType, newQty, item.allowQty);
   }
 
   renderPackage();
@@ -159,7 +159,7 @@ function deselectItem(id) {
     const stepper = card.querySelector('.qty-stepper');
     if (stepper) stepper.style.display = 'none';
     const display = card.querySelector('.qty-display');
-    if (display && item) display.textContent = qtyLabel(item.pricingType, 1);
+    if (display && item) display.textContent = qtyLabel(item.pricingType, 1, item.allowQty);
   }
   renderPackage();
   updateSectionStates();
@@ -194,9 +194,9 @@ function initCards() {
       if (priceEl) priceEl.textContent = `£${basePrice}/day`;
     }
 
-    // Inject quantity stepper for hourly / daily / allow_quantity fixed items
+    // Inject quantity stepper for hourly / daily / allow_quantity items
     if (pricingType === 'hourly' || pricingType === 'daily' || allowQty) {
-      const defaultLabel = (pricingType === 'hourly' || pricingType === 'daily') ? `1 ${unitLabel(pricingType, 1)}` : '×1';
+      const defaultLabel = qtyLabel(pricingType, 1, allowQty);
       const stepper = document.createElement('div');
       stepper.className = 'qty-stepper';
       stepper.style.display = 'none';
@@ -280,7 +280,7 @@ function resetAll() {
     if (display) {
       const pt = c.dataset.pricingType;
       const aq = c.dataset.allowQuantity === 'true';
-      display.textContent = (pt === 'hourly' || pt === 'daily') ? `1 ${unitLabel(pt, 1)}` : (aq ? '×1' : '');
+      display.textContent = qtyLabel(pt, 1, aq);
     }
   });
   renderPackage();
