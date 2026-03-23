@@ -475,10 +475,14 @@ async def patch_status(
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
     update_quote_status(quote_id, payload.status, tenant["id"])
-    # Auto-create a booking when marked as booked (if one doesn't already exist)
-    if payload.status == "booked":
+    # Sync to bookings table for booked/attended/paid
+    _booking_status = {"booked": "confirmed", "attended": "attended", "paid": "paid"}
+    if payload.status in _booking_status:
+        bk_status = _booking_status[payload.status]
         existing = get_booking_by_quote_id(quote_id, tenant["id"])
-        if not existing:
+        if existing:
+            update_booking(existing["id"], {**existing, "status": bk_status}, tenant["id"])
+        else:
             create_booking({
                 "quote_id":    quote_id,
                 "title":       q.get("name", ""),
@@ -486,7 +490,7 @@ async def patch_status(
                 "event_type":  q.get("event_type", ""),
                 "location":    q.get("location", ""),
                 "total_price": q.get("total_price", 0),
-                "status":      "confirmed",
+                "status":      bk_status,
             }, tenant["id"])
     return {"success": True, "quote_id": quote_id, "status": payload.status}
 
@@ -1034,7 +1038,21 @@ async def admin_list_bookings(
     _admin: Annotated[dict, Depends(require_tenant_admin)],
 ):
     tenant = _get_tenant_or_404(request)
-    return get_all_bookings(tenant["id"])
+    tid = tenant["id"]
+    # Backfill: create booking records for any booked/attended/paid enquiries that don't have one yet
+    _bk_map = {"booked": "confirmed", "attended": "attended", "paid": "paid"}
+    for q in get_all_quotes(tid):
+        if q.get("status") in _bk_map and not get_booking_by_quote_id(q["id"], tid):
+            create_booking({
+                "quote_id":    q["id"],
+                "title":       q.get("name", ""),
+                "event_date":  q.get("event_date", ""),
+                "event_type":  q.get("event_type", ""),
+                "location":    q.get("location", ""),
+                "total_price": q.get("total_price", 0),
+                "status":      _bk_map[q["status"]],
+            }, tid)
+    return get_all_bookings(tid)
 
 
 @app.post("/api/admin/bookings")

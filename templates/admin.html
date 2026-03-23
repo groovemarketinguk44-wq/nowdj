@@ -3430,8 +3430,10 @@ function renderCalendar() {
     html += '<div class="cal-cell' + (isToday ? ' today' : '') + (hasBookings ? ' has-booking' : '') + '">';
     html += '<span class="cal-day-num">' + d + '</span>';
     if (hasBookings) {
+      const _calColor = { confirmed:'#10b981', attended:'#fb923c', paid:'#22c55e', completed:'#22c55e', cancelled:'#6b7280' };
       hasBookings.slice(0,3).forEach(b => {
-        html += '<div class="cal-event">' + escHtml(b.title || b.event_type || 'Booking') + '</div>';
+        const col = _calColor[b.status] || 'var(--accent)';
+        html += '<div class="cal-event" style="background:' + col + '22;border-left:2px solid ' + col + ';color:' + col + '">' + escHtml(b.title || b.event_type || 'Booking') + '</div>';
       });
       if (hasBookings.length > 3) html += '<div class="cal-event-more">+' + (hasBookings.length-3) + ' more</div>';
     }
@@ -3483,8 +3485,12 @@ function renderAdminBookingList() {
     el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">No bookings yet. Create one from an enquiry or use + New Booking.</div>';
     return;
   }
-  el.innerHTML = adminBookings.map(b => `
-    <div class="booking-admin-row">
+  // Map booking status → enquiry-style badge class + label
+  const bkStatusMap = { confirmed:'booked', attended:'attended', paid:'paid', completed:'paid', cancelled:'declined' };
+  el.innerHTML = adminBookings.map(b => {
+    const badgeClass = bkStatusMap[b.status] || b.status;
+    const badgeLabel = b.status === 'confirmed' ? 'Booked' : (b.status.charAt(0).toUpperCase() + b.status.slice(1));
+    return `<div class="booking-admin-row">
       <div class="bar-left">
         <div class="bar-date">${b.event_date || '—'}</div>
         <div>
@@ -3498,11 +3504,12 @@ function renderAdminBookingList() {
         </div>
       </div>
       <div class="bar-right">
-        <span class="quote-status-badge status-${escHtml(b.status)}">${escHtml(b.status)}</span>
+        <span class="status-badge status-${badgeClass}">${badgeLabel}</span>
         <button class="btn-sm" onclick="openEditBooking(${b.id})">Edit</button>
         <button class="btn-sm btn-danger" onclick="deleteAdminBooking(${b.id})">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── New / Edit booking modal ──────────────────────────────────────────────
@@ -3572,7 +3579,7 @@ function openBookingModal(b) {
         <div class="field-group">
           <label class="field-label">Status</label>
           <select class="field-input" id="bm-status">
-            ${['confirmed','completed','cancelled'].map(s => '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>').join('')}
+            ${['confirmed','attended','paid','completed','cancelled'].map(s => '<option value="'+s+'"'+(b.status===s?' selected':'')+'>' + (s==='confirmed'?'Booked (Confirmed)':s.charAt(0).toUpperCase()+s.slice(1)) + '</option>').join('')}
           </select>
         </div>
         <div class="field-group">
