@@ -177,6 +177,29 @@ def init_db() -> None:
                     )
                 """)
                 cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+
+                # ── Documents (Quotes & Invoices)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS documents (
+                        id               SERIAL PRIMARY KEY,
+                        tenant_id        INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                        doc_type         TEXT NOT NULL DEFAULT 'quote',
+                        doc_number       TEXT NOT NULL DEFAULT '',
+                        status           TEXT NOT NULL DEFAULT 'draft',
+                        client_name      TEXT DEFAULT '',
+                        client_email     TEXT DEFAULT '',
+                        client_phone     TEXT DEFAULT '',
+                        client_address   TEXT DEFAULT '',
+                        event_date       TEXT DEFAULT '',
+                        event_type       TEXT DEFAULT '',
+                        location         TEXT DEFAULT '',
+                        line_items       TEXT DEFAULT '[]',
+                        notes            TEXT DEFAULT '',
+                        source_quote_id  INTEGER,
+                        created_at       TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at       TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
     finally:
         conn.close()
 
@@ -890,5 +913,141 @@ def delete_booking(bid: int, tenant_id: int) -> None:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM bookings WHERE id = %s AND tenant_id = %s", (bid, tenant_id))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Documents (Quotes & Invoices)
+# ---------------------------------------------------------------------------
+
+def _parse_document(row: dict) -> dict:
+    d = dict(row)
+    if d.get("created_at"):
+        d["created_at"] = d["created_at"].isoformat()
+    if d.get("updated_at"):
+        d["updated_at"] = d["updated_at"].isoformat()
+    return d
+
+
+def next_doc_number(tenant_id: int, doc_type: str) -> str:
+    """Generate next sequential doc number: QT-2026-001 or INV-2026-001."""
+    import datetime
+    year = datetime.datetime.utcnow().year
+    prefix = "QT" if doc_type == "quote" else "INV"
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) AS cnt FROM documents WHERE tenant_id = %s AND doc_type = %s AND created_at >= %s",
+                (tenant_id, doc_type, f"{year}-01-01"),
+            )
+            row = cur.fetchone()
+            count = row["cnt"] if row else 0
+        return f"{prefix}-{year}-{count + 1:03d}"
+    finally:
+        conn.close()
+
+
+def create_document(tenant_id: int, doc_type: str, doc_number: str, data: dict) -> int:
+    """Insert a document row. Returns new id."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO documents
+                        (tenant_id, doc_type, doc_number, status,
+                         client_name, client_email, client_phone, client_address,
+                         event_date, event_type, location, line_items, notes, source_quote_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    tenant_id,
+                    doc_type,
+                    doc_number,
+                    data.get("status", "draft"),
+                    data.get("client_name", ""),
+                    data.get("client_email", ""),
+                    data.get("client_phone", ""),
+                    data.get("client_address", ""),
+                    data.get("event_date", ""),
+                    data.get("event_type", ""),
+                    data.get("location", ""),
+                    data.get("line_items", "[]"),
+                    data.get("notes", ""),
+                    data.get("source_quote_id"),
+                ))
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def get_document(doc_id: int, tenant_id: int) -> dict | None:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM documents WHERE id = %s AND tenant_id = %s",
+                (doc_id, tenant_id),
+            )
+            row = cur.fetchone()
+            return _parse_document(row) if row else None
+    finally:
+        conn.close()
+
+
+def list_documents(tenant_id: int, doc_type: str | None = None) -> list:
+    """Return all docs for tenant, newest first. Optionally filter by doc_type."""
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            if doc_type:
+                cur.execute(
+                    "SELECT * FROM documents WHERE tenant_id = %s AND doc_type = %s ORDER BY created_at DESC",
+                    (tenant_id, doc_type),
+                )
+            else:
+                cur.execute(
+                    "SELECT * FROM documents WHERE tenant_id = %s ORDER BY created_at DESC",
+                    (tenant_id,),
+                )
+            return [_parse_document(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def update_document(doc_id: int, tenant_id: int, data: dict) -> None:
+    """Update any subset of columns. Also sets updated_at=NOW()."""
+    allowed = {
+        "status", "client_name", "client_email", "client_phone", "client_address",
+        "event_date", "event_type", "location", "line_items", "notes", "doc_number",
+    }
+    fields = {k: v for k, v in data.items() if k in allowed}
+    if not fields:
+        return
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                set_clause = ", ".join(f"{k} = %s" for k in fields)
+                values = list(fields.values()) + [doc_id, tenant_id]
+                cur.execute(
+                    f"UPDATE documents SET {set_clause}, updated_at = NOW() WHERE id = %s AND tenant_id = %s",
+                    values,
+                )
+    finally:
+        conn.close()
+
+
+def delete_document(doc_id: int, tenant_id: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM documents WHERE id = %s AND tenant_id = %s",
+                    (doc_id, tenant_id),
+                )
     finally:
         conn.close()

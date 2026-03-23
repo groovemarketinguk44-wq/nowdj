@@ -27,6 +27,8 @@ from database import (
     delete_staff_member, update_staff_member_info,
     get_all_bookings, get_booking_by_id, get_bookings_for_user, get_bookings_for_staff,
     create_booking, update_booking, delete_booking,
+    create_document, get_document, list_documents, update_document, delete_document,
+    next_doc_number,
     get_setting, set_setting,
     create_tenant, get_tenant_by_slug, get_tenant_by_id, get_tenant_by_email,
     get_all_tenants, update_tenant, delete_tenant,
@@ -1207,3 +1209,219 @@ async def super_delete_tenant(
         raise HTTPException(status_code=404, detail="Tenant not found")
     delete_tenant(tid)
     return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Documents — Quotes & Invoices  (tenant admin)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/docs/settings")
+async def doc_settings_get(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    raw = get_setting("doc_settings", tenant_id=tenant["id"])
+    try:
+        return json.loads(raw) if raw else {}
+    except Exception:
+        return {}
+
+
+@app.put("/api/docs/settings")
+async def doc_settings_put(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    set_setting("doc_settings", json.dumps(payload), tenant_id=tenant["id"])
+    return {"success": True}
+
+
+@app.get("/api/docs")
+async def docs_list(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+    type: str | None = None,
+):
+    tenant = _get_tenant_or_404(request)
+    return list_documents(tenant["id"], doc_type=type)
+
+
+@app.post("/api/docs")
+async def docs_create(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    doc_type = payload.get("doc_type", "quote")
+    if doc_type not in ("quote", "invoice"):
+        raise HTTPException(status_code=400, detail="doc_type must be 'quote' or 'invoice'")
+    if not payload.get("client_name", "").strip():
+        raise HTTPException(status_code=400, detail="client_name is required")
+    doc_number = next_doc_number(tid, doc_type)
+    doc_id = create_document(tid, doc_type, doc_number, payload)
+    return {"success": True, "id": doc_id, "doc_number": doc_number}
+
+
+@app.get("/api/docs/{doc_id}")
+async def docs_get(
+    doc_id: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    doc = get_document(doc_id, tenant["id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+
+@app.put("/api/docs/{doc_id}")
+async def docs_update(
+    doc_id: int,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    doc = get_document(doc_id, tenant["id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    update_document(doc_id, tenant["id"], payload)
+    return {"success": True}
+
+
+@app.delete("/api/docs/{doc_id}")
+async def docs_delete(
+    doc_id: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    doc = get_document(doc_id, tenant["id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    delete_document(doc_id, tenant["id"])
+    return {"success": True}
+
+
+@app.get("/api/docs/{doc_id}/print", response_class=HTMLResponse)
+async def docs_print(
+    doc_id: int,
+    request: Request,
+    token: str = "",
+):
+    """Serve print-optimised HTML. Auth via ?token= query param."""
+    # Resolve tenant from middleware or from the token
+    tenant = getattr(request.state, "tenant", None)
+    if not tenant and token:
+        tok = decode_token(token)
+        if tok and tok.get("tenant_id"):
+            tenant = get_tenant_by_id(tok["tenant_id"])
+    if not tenant:
+        # Last try: check token for tenant_id regardless of role
+        if token:
+            tok = decode_token(token)
+            if tok and tok.get("tenant_id"):
+                tenant = get_tenant_by_id(tok["tenant_id"])
+    if not tenant:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Validate the token belongs to an admin or staff of this tenant
+    if token:
+        tok = decode_token(token)
+        if not tok:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if tok.get("role") not in ("tenant_admin", "staff", "super_admin"):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        if tok.get("tenant_id") and tok["tenant_id"] != tenant["id"]:
+            raise HTTPException(status_code=403, detail="Token does not match tenant")
+    else:
+        raise HTTPException(status_code=401, detail="Token required for print access")
+
+    doc = get_document(doc_id, tenant["id"])
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Load doc settings
+    raw_settings = get_setting("doc_settings", tenant_id=tenant["id"])
+    try:
+        settings = json.loads(raw_settings) if raw_settings else {}
+    except Exception:
+        settings = {}
+
+    # Parse line items and compute totals
+    try:
+        raw_items = json.loads(doc.get("line_items") or "[]")
+    except Exception:
+        raw_items = []
+
+    import datetime
+
+    def _parse_price(price_str: str):
+        p = (price_str or "").strip()
+        if not p or p == "—":
+            return None, "£"
+        currency = "£"
+        if p and p[0] in "£$€":
+            currency = p[0]
+            p = p[1:]
+        try:
+            return float(p.replace(",", "")), currency
+        except ValueError:
+            return None, currency
+
+    line_items = []
+    grand_total = 0.0
+    grand_currency = "£"
+    all_numeric = True
+
+    for item in raw_items:
+        unit_val, currency = _parse_price(item.get("price", ""))
+        try:
+            qty = float(str(item.get("qty", "1")).replace(",", ""))
+        except ValueError:
+            qty = 1.0
+        if unit_val is not None:
+            line_total = unit_val * qty
+            grand_total += line_total
+            grand_currency = currency
+            line_items.append({
+                **item,
+                "line_total": f"{currency}{line_total:,.2f}",
+                "unit_price_fmt": f"{currency}{unit_val:,.2f}",
+                "qty_fmt": f"{qty:g}",
+            })
+        else:
+            all_numeric = False
+            line_items.append({
+                **item,
+                "line_total": "—",
+                "unit_price_fmt": item.get("price", "—"),
+                "qty_fmt": str(item.get("qty", "1")),
+            })
+
+    grand_total_fmt = f"{grand_currency}{grand_total:,.2f}" if all_numeric else "—"
+
+    # Format doc date
+    created = doc.get("created_at", "")
+    try:
+        doc_date = datetime.datetime.fromisoformat(created).strftime("%-d %B %Y")
+    except Exception:
+        doc_date = created[:10] if created else ""
+
+    doc_type_label = "INVOICE" if doc.get("doc_type") == "invoice" else "QUOTE"
+
+    return templates.TemplateResponse("doc_print.html", {
+        "request": request,
+        "doc": doc,
+        "settings": settings,
+        "line_items": line_items,
+        "grand_total": grand_total_fmt,
+        "doc_date": doc_date,
+        "doc_type_label": doc_type_label,
+    })

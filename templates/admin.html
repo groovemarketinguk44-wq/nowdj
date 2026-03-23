@@ -72,6 +72,11 @@
           <span class="nav-item-badge" id="sidebar-unread-count" style="display:none">0</span>
         </button>
 
+        <button class="nav-item" data-section="documents">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Quotes &amp; Invoices
+        </button>
+
         <button class="nav-item" data-section="bookings">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Bookings
@@ -359,6 +364,46 @@
       </div><!-- /section-email -->
 
       <!-- ================================================================
+           DOCUMENTS (QUOTES & INVOICES)
+           ================================================================ -->
+      <div class="admin-section" id="section-documents">
+        <div class="section-page-header">
+          <div>
+            <h1>Quotes &amp; <span class="gradient-text">Invoices</span></h1>
+            <p>Create bespoke quotes and invoices for your clients.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" id="btn-doc-settings">Settings</button>
+            <button class="btn-secondary" id="btn-new-invoice">New Invoice</button>
+            <button class="btn-primary" id="btn-new-quote">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Quote
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="email-tabs" id="doc-tabs">
+          <button class="email-tab active" data-docfilter="all">All</button>
+          <button class="email-tab" data-docfilter="quote">Quotes</button>
+          <button class="email-tab" data-docfilter="invoice">Invoices</button>
+        </div>
+
+        <!-- Docs table -->
+        <div class="table-wrap">
+          <table class="admin-table" id="docs-table">
+            <thead><tr>
+              <th>Number</th><th>Type</th><th>Client</th><th>Event Date</th>
+              <th>Total</th><th>Status</th><th>Created</th><th></th>
+            </tr></thead>
+            <tbody id="docs-tbody">
+              <tr class="loading-row"><td colspan="8"><span class="spinner"></span> Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /section-documents -->
+
+      <!-- ================================================================
            BOOKINGS
            ================================================================ -->
       <div class="admin-section" id="section-bookings">
@@ -579,6 +624,147 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Save & Publish
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     DOCUMENT EDITOR MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="doc-editor-modal">
+  <div class="modal-card doc-editor-card">
+    <div class="modal-header">
+      <h3 id="doc-editor-title">New Quote</h3>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <button class="btn-secondary btn-sm" id="btn-doc-preview">Preview / Print</button>
+        <button class="btn-close-modal" id="close-doc-modal">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="doc-editor-body">
+      <!-- Left col: client + event info -->
+      <div class="doc-form-col">
+        <input type="hidden" id="doc-edit-id" />
+        <input type="hidden" id="doc-edit-type" value="quote" />
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">
+            Client Info
+            <button class="btn-sm btn-secondary" id="btn-pull-enquiry" style="margin-left:auto;font-size:0.7rem">Pull from Enquiry</button>
+          </div>
+          <div class="modal-field"><label>Name *</label><input type="text" id="doc-client-name" /></div>
+          <div class="modal-field"><label>Email</label><input type="email" id="doc-client-email" /></div>
+          <div class="modal-field"><label>Phone</label><input type="text" id="doc-client-phone" /></div>
+          <div class="modal-field"><label>Address</label><textarea id="doc-client-address" rows="2"></textarea></div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Event Details</div>
+          <div class="doc-form-row">
+            <div class="modal-field"><label>Event Date</label><input type="date" id="doc-event-date" /></div>
+            <div class="modal-field"><label>Event Type</label><input type="text" id="doc-event-type" /></div>
+          </div>
+          <div class="modal-field"><label>Location</label><input type="text" id="doc-location" /></div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Status</div>
+          <div class="modal-field">
+            <select id="doc-status">
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="accepted">Accepted</option>
+              <option value="declined">Declined</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Notes</div>
+          <div class="modal-field"><textarea id="doc-notes" rows="3" placeholder="Any notes to include on the document…"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Right col: line items -->
+      <div class="doc-items-col">
+        <div class="doc-items-toolbar">
+          <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">Line Items</span>
+          <button class="btn-secondary btn-sm" id="btn-add-line-item">+ Add Row</button>
+        </div>
+        <!-- Column headers -->
+        <div class="doc-line-headers">
+          <span style="flex:3">Description</span>
+          <span style="flex:1;text-align:right">Qty</span>
+          <span style="flex:1;text-align:right">Unit Price</span>
+          <span style="flex:1;text-align:right">Total</span>
+          <span style="width:28px"></span>
+        </div>
+        <div id="doc-line-items-container"></div>
+        <!-- Grand total -->
+        <div class="doc-grand-total">
+          <span>Grand Total</span>
+          <strong id="doc-grand-total-value">£0.00</strong>
+        </div>
+        <div class="field-hint" style="margin-top:0.5rem">Enter prices with £ prefix (e.g. £500.00). Qty × Unit Price = Total.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-doc-modal">Cancel</button>
+      <button class="btn-primary" id="btn-save-doc">Save Document</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     DOC SETTINGS MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="doc-settings-modal">
+  <div class="modal-card" style="max-width:580px">
+    <div class="modal-header">
+      <h3>Invoice / Quote Settings</h3>
+      <button class="btn-close-modal" id="close-doc-settings-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field"><label>Company Name</label><input type="text" id="dset-company-name" /></div>
+      <div class="modal-field"><label>Company Address</label><textarea id="dset-company-address" rows="3" placeholder="123 High Street&#10;London, EC1A 1BB"></textarea></div>
+      <div class="modal-field"><label>Banking / Payment Details</label><textarea id="dset-banking" rows="3" placeholder="Sort Code: 00-00-00&#10;Account: 12345678&#10;Reference: [Invoice Number]"></textarea></div>
+      <div class="modal-field"><label>Logo URL</label><input type="text" id="dset-logo" placeholder="https://…/logo.png" /></div>
+      <div class="modal-field">
+        <label>Accent Colour</label>
+        <div class="sig-color-wrap">
+          <input type="color" id="dset-accent" value="#6c47ff" />
+          <input type="text" id="dset-accent-hex" value="#6c47ff" maxlength="7" />
+        </div>
+      </div>
+      <div class="modal-field"><label>Default Terms &amp; Conditions</label><textarea id="dset-terms" rows="4" placeholder="A 25% deposit is required to secure your booking…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-doc-settings-modal">Cancel</button>
+      <button class="btn-primary" id="btn-save-doc-settings">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     ENQUIRY PICKER MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="enquiry-picker-modal">
+  <div class="modal-card" style="max-width:560px">
+    <div class="modal-header">
+      <h3>Pull from Enquiry</h3>
+      <button class="btn-close-modal" id="close-enquiry-picker">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <input type="text" id="enquiry-picker-search" placeholder="Search by name or email…" />
+      </div>
+      <div id="enquiry-picker-list" style="max-height:320px;overflow-y:auto;margin-top:0.75rem"></div>
     </div>
   </div>
 </div>
@@ -934,8 +1120,9 @@ function switchSection(id) {
   document.getElementById(`section-${id}`)?.classList.add('active');
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
-  if (id === 'email')    { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
-  if (id === 'bookings') loadAdminBookings();
+  if (id === 'email')     { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
+  if (id === 'documents') { loadDocSettings(); loadDocs(); }
+  if (id === 'bookings')  loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
   if (id === 'branding') loadBranding();
@@ -1940,6 +2127,361 @@ document.getElementById('btn-save-template').addEventListener('click', async () 
     loadEmailTemplates();
   } catch { showToast('Failed to save template.', 'error'); }
   finally { btn.disabled = false; }
+});
+
+
+/* ======================================================================
+   QUOTES & INVOICES
+   ====================================================================== */
+
+let allDocs = [];
+let docSettings = {};
+let docLineItems = [];
+let activeDocFilter = 'all';
+
+// ── Load & render ─────────────────────────────────────────────────────────
+
+async function loadDocSettings() {
+  try {
+    const r = await fetch('/api/docs/settings');
+    docSettings = await r.json();
+  } catch { docSettings = {}; }
+}
+
+async function loadDocs() {
+  document.getElementById('docs-tbody').innerHTML = '<tr class="loading-row"><td colspan="8"><span class="spinner"></span> Loading…</td></tr>';
+  try {
+    const r = await fetch('/api/docs');
+    allDocs = await r.json();
+    renderDocsTable();
+  } catch {
+    document.getElementById('docs-tbody').innerHTML = '<tr><td colspan="8" style="color:var(--danger);padding:1.5rem">Failed to load documents.</td></tr>';
+  }
+}
+
+function renderDocsTable() {
+  const tbody = document.getElementById('docs-tbody');
+  const filtered = activeDocFilter === 'all' ? allDocs : allDocs.filter(d => d.doc_type === activeDocFilter);
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted)">No ${activeDocFilter === 'all' ? 'documents' : activeDocFilter + 's'} yet.</td></tr>`;
+    return;
+  }
+  const statusColors = { draft:'var(--text-muted)', sent:'var(--accent)', accepted:'#22c55e', paid:'#22c55e', declined:'var(--danger)' };
+  tbody.innerHTML = filtered.map(d => {
+    const total = calcDocTotal(JSON.parse(d.line_items || '[]'));
+    const color = statusColors[d.status] || 'var(--text-muted)';
+    return `<tr data-id="${d.id}">
+      <td><strong>${escHtml(d.doc_number)}</strong></td>
+      <td><span class="doc-type-badge doc-type-${d.doc_type}">${d.doc_type === 'quote' ? 'Quote' : 'Invoice'}</span></td>
+      <td>${escHtml(d.client_name)}<br><span style="font-size:0.75rem;color:var(--text-muted)">${escHtml(d.client_email)}</span></td>
+      <td>${d.event_date ? fmtDate(d.event_date) : '—'}</td>
+      <td><strong>${total}</strong></td>
+      <td><span style="color:${color};font-weight:600;text-transform:capitalize">${d.status}</span></td>
+      <td style="font-size:0.8rem;color:var(--text-muted)">${fmtDate(d.created_at)}</td>
+      <td>
+        <div style="display:flex;gap:0.4rem">
+          <button class="btn-icon" data-doc-edit="${d.id}" title="Edit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon" data-doc-print="${d.id}" title="Preview / Print">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+          <button class="btn-icon btn-icon-danger" data-doc-delete="${d.id}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('[data-doc-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openDocEditor(allDocs.find(d => d.id == btn.dataset.docEdit)));
+  });
+  tbody.querySelectorAll('[data-doc-print]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const token = localStorage.getItem('ndj_admin_token') || '';
+      window.open(`/api/docs/${btn.dataset.docPrint}/print?token=${encodeURIComponent(token)}`, '_blank');
+    });
+  });
+  tbody.querySelectorAll('[data-doc-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this document?')) return;
+      await fetch(`/api/docs/${btn.dataset.docDelete}`, { method: 'DELETE' });
+      showToast('Deleted.', 'success');
+      loadDocs();
+    });
+  });
+}
+
+// ── Line items ────────────────────────────────────────────────────────────
+
+function calcLineTotal(item) {
+  let p = (item.price || '').trim();
+  if (!p || p === '—') return { currency: '£', val: null };
+  let currency = '£';
+  if ('£$€'.includes(p[0])) { currency = p[0]; p = p.slice(1); }
+  const unit = parseFloat(p.replace(',', ''));
+  if (isNaN(unit)) return { currency, val: null };
+  const qty = parseFloat((item.qty || '1').replace(',', ''));
+  return { currency, val: isNaN(qty) ? unit : unit * qty };
+}
+
+function calcDocTotal(items) {
+  let total = 0, currency = '£';
+  for (const item of items) {
+    const { currency: cur, val } = calcLineTotal(item);
+    if (val === null) return '—';
+    if (cur) currency = cur;
+    total += val;
+  }
+  return `${currency}${total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function renderDocLineItems() {
+  const container = document.getElementById('doc-line-items-container');
+  if (!docLineItems.length) {
+    container.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:0.85rem">No items yet — click + Add Row</div>';
+    recalcDocTotal();
+    return;
+  }
+  container.innerHTML = docLineItems.map((item, i) => `
+    <div class="doc-line-row">
+      <input type="text" value="${escHtml(item.description || '')}" placeholder="Description"
+        style="flex:3" oninput="docLineItems[${i}].description=this.value" />
+      <input type="text" value="${escHtml(item.qty || '1')}" placeholder="1"
+        style="flex:1;text-align:right" oninput="docLineItems[${i}].qty=this.value;recalcDocTotal()" />
+      <input type="text" value="${escHtml(item.price || '')}" placeholder="£0.00"
+        style="flex:1;text-align:right" oninput="docLineItems[${i}].price=this.value;recalcDocTotal()" />
+      <span class="doc-line-total" id="doc-lt-${i}">—</span>
+      <button type="button" class="btn-icon btn-icon-danger" onclick="removeDocLine(${i})">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+  recalcDocTotal();
+}
+
+function recalcDocTotal() {
+  let grand = 0, currency = '£';
+  docLineItems.forEach((item, i) => {
+    const { currency: cur, val } = calcLineTotal(item);
+    if (cur) currency = cur;
+    const el = document.getElementById(`doc-lt-${i}`);
+    if (el) el.textContent = val !== null ? `${cur}${val.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })}` : '—';
+    if (val !== null) grand += val;
+  });
+  document.getElementById('doc-grand-total-value').textContent =
+    `${currency}${grand.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+}
+
+function removeDocLine(i) { docLineItems.splice(i, 1); renderDocLineItems(); }
+
+document.getElementById('btn-add-line-item').addEventListener('click', () => {
+  docLineItems.push({ description: '', qty: '1', price: '£' });
+  renderDocLineItems();
+  setTimeout(() => {
+    const rows = document.querySelectorAll('.doc-line-row');
+    rows[rows.length - 1]?.querySelector('input')?.focus();
+  }, 50);
+});
+
+// ── Editor modal ──────────────────────────────────────────────────────────
+
+document.getElementById('btn-new-quote').addEventListener('click',   () => openDocEditor(null, 'quote'));
+document.getElementById('btn-new-invoice').addEventListener('click', () => openDocEditor(null, 'invoice'));
+document.getElementById('close-doc-modal').addEventListener('click',  closeDocModal);
+document.getElementById('cancel-doc-modal').addEventListener('click', closeDocModal);
+document.getElementById('doc-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDocModal(); });
+
+function openDocEditor(doc, type = 'quote') {
+  docLineItems = doc ? JSON.parse(doc.line_items || '[]') : [
+    { description: '', qty: '1', price: '£' },
+  ];
+  const resolvedType = doc?.doc_type || type;
+  document.getElementById('doc-edit-id').value         = doc?.id || '';
+  document.getElementById('doc-edit-type').value       = resolvedType;
+  document.getElementById('doc-editor-title').textContent = doc
+    ? `Edit ${resolvedType === 'invoice' ? 'Invoice' : 'Quote'} — ${doc.doc_number}`
+    : `New ${type === 'invoice' ? 'Invoice' : 'Quote'}`;
+  document.getElementById('doc-client-name').value     = doc?.client_name    || '';
+  document.getElementById('doc-client-email').value    = doc?.client_email   || '';
+  document.getElementById('doc-client-phone').value    = doc?.client_phone   || '';
+  document.getElementById('doc-client-address').value  = doc?.client_address || '';
+  document.getElementById('doc-event-date').value      = doc?.event_date     || '';
+  document.getElementById('doc-event-type').value      = doc?.event_type     || '';
+  document.getElementById('doc-location').value        = doc?.location       || '';
+  document.getElementById('doc-notes').value           = doc?.notes          || '';
+  // Populate status options based on type
+  const sel = document.getElementById('doc-status');
+  sel.innerHTML = resolvedType === 'invoice'
+    ? `<option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option>`
+    : `<option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option>`;
+  sel.value = doc?.status || 'draft';
+  renderDocLineItems();
+  document.getElementById('doc-editor-modal').classList.add('open');
+}
+
+function closeDocModal() { document.getElementById('doc-editor-modal').classList.remove('open'); }
+
+document.getElementById('btn-save-doc').addEventListener('click', async () => {
+  const id     = document.getElementById('doc-edit-id').value;
+  const type   = document.getElementById('doc-edit-type').value;
+  const name   = document.getElementById('doc-client-name').value.trim();
+  if (!name) { showToast('Client name is required.', 'error'); return; }
+  const payload = {
+    doc_type:        type,
+    client_name:     name,
+    client_email:    document.getElementById('doc-client-email').value.trim(),
+    client_phone:    document.getElementById('doc-client-phone').value.trim(),
+    client_address:  document.getElementById('doc-client-address').value.trim(),
+    event_date:      document.getElementById('doc-event-date').value,
+    event_type:      document.getElementById('doc-event-type').value.trim(),
+    location:        document.getElementById('doc-location').value.trim(),
+    notes:           document.getElementById('doc-notes').value.trim(),
+    status:          document.getElementById('doc-status').value,
+    line_items:      JSON.stringify(docLineItems),
+  };
+  const btn = document.getElementById('btn-save-doc');
+  btn.disabled = true;
+  try {
+    const url    = id ? `/api/docs/${id}` : '/api/docs';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+    const data = await res.json();
+    showToast('Saved!', 'success');
+    closeDocModal();
+    loadDocs();
+    // Auto-open preview for new docs
+    if (!id && data.id) {
+      const token = localStorage.getItem('ndj_admin_token') || '';
+      window.open(`/api/docs/${data.id}/print?token=${encodeURIComponent(token)}`, '_blank');
+    }
+  } catch (err) { showToast(err.message || 'Failed to save.', 'error'); }
+  finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-doc-preview').addEventListener('click', () => {
+  const id = document.getElementById('doc-edit-id').value;
+  if (!id) { showToast('Save the document first to preview.', 'error'); return; }
+  const token = localStorage.getItem('ndj_admin_token') || '';
+  window.open(`/api/docs/${id}/print?token=${encodeURIComponent(token)}`, '_blank');
+});
+
+// ── Enquiry picker ────────────────────────────────────────────────────────
+
+document.getElementById('btn-pull-enquiry').addEventListener('click', openEnquiryPicker);
+document.getElementById('close-enquiry-picker').addEventListener('click', () => document.getElementById('enquiry-picker-modal').classList.remove('open'));
+document.getElementById('enquiry-picker-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+
+let _allEnquiries = [];
+
+async function openEnquiryPicker() {
+  document.getElementById('enquiry-picker-modal').classList.add('open');
+  document.getElementById('enquiry-picker-search').value = '';
+  if (_allEnquiries.length === 0) {
+    try {
+      const r = await fetch('/quotes');
+      _allEnquiries = await r.json();
+    } catch { _allEnquiries = []; }
+  }
+  renderEnquiryList(_allEnquiries);
+}
+
+document.getElementById('enquiry-picker-search').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  renderEnquiryList(q ? _allEnquiries.filter(en => en.name?.toLowerCase().includes(q) || en.email?.toLowerCase().includes(q)) : _allEnquiries);
+});
+
+function renderEnquiryList(list) {
+  const el = document.getElementById('enquiry-picker-list');
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted)">No enquiries found.</div>'; return; }
+  el.innerHTML = list.slice(0, 40).map(en => `
+    <div class="enquiry-picker-row" data-enq-id="${en.id}" style="padding:0.65rem 0.75rem;border-radius:var(--radius-sm);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:0.875rem">${escHtml(en.name)}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">${escHtml(en.email)} ${en.event_date ? '· ' + fmtDate(en.event_date) : ''} ${en.event_type ? '· ' + escHtml(en.event_type) : ''}</div>
+      </div>
+      <button class="btn-secondary btn-sm" style="flex-shrink:0">Use</button>
+    </div>`).join('');
+  el.querySelectorAll('.enquiry-picker-row').forEach(row => {
+    row.querySelector('button').addEventListener('click', () => {
+      const en = list.find(e => e.id == row.dataset.enqId);
+      if (!en) return;
+      document.getElementById('doc-client-name').value    = en.name    || '';
+      document.getElementById('doc-client-email').value   = en.email   || '';
+      document.getElementById('doc-client-phone').value   = en.phone   || '';
+      document.getElementById('doc-event-date').value     = en.event_date || '';
+      document.getElementById('doc-event-type').value     = en.event_type || '';
+      document.getElementById('doc-location').value       = en.location || '';
+      // Pre-fill line items from selected services if any
+      const items = Array.isArray(en.selected_items) ? en.selected_items : JSON.parse(en.selected_items || '[]');
+      if (items.length) {
+        docLineItems = items.map(it => ({
+          description: it.name || it.id || '',
+          qty: String(it.qty || '1'),
+          price: `£${parseFloat(it.price || 0).toFixed(2)}`,
+        }));
+        renderDocLineItems();
+      }
+      document.getElementById('enquiry-picker-modal').classList.remove('open');
+      showToast('Client info pulled from enquiry.', 'success');
+    });
+  });
+}
+
+// ── Doc settings ──────────────────────────────────────────────────────────
+
+document.getElementById('btn-doc-settings').addEventListener('click', openDocSettings);
+document.getElementById('close-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
+document.getElementById('cancel-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
+document.getElementById('doc-settings-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+
+function openDocSettings() {
+  document.getElementById('dset-company-name').value    = docSettings.company_name    || '';
+  document.getElementById('dset-company-address').value = docSettings.company_address || '';
+  document.getElementById('dset-banking').value         = docSettings.banking         || '';
+  document.getElementById('dset-logo').value            = docSettings.logo            || '';
+  document.getElementById('dset-terms').value           = docSettings.terms           || '';
+  const accent = docSettings.accent || '#6c47ff';
+  document.getElementById('dset-accent').value     = accent;
+  document.getElementById('dset-accent-hex').value = accent;
+  document.getElementById('doc-settings-modal').classList.add('open');
+}
+
+document.getElementById('dset-accent').addEventListener('input', (e) => { document.getElementById('dset-accent-hex').value = e.target.value; });
+document.getElementById('dset-accent-hex').addEventListener('input', (e) => {
+  if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) document.getElementById('dset-accent').value = e.target.value;
+});
+
+document.getElementById('btn-save-doc-settings').addEventListener('click', async () => {
+  const payload = {
+    company_name:    document.getElementById('dset-company-name').value.trim(),
+    company_address: document.getElementById('dset-company-address').value.trim(),
+    banking:         document.getElementById('dset-banking').value.trim(),
+    logo:            document.getElementById('dset-logo').value.trim(),
+    accent:          document.getElementById('dset-accent').value,
+    terms:           document.getElementById('dset-terms').value.trim(),
+  };
+  const btn = document.getElementById('btn-save-doc-settings');
+  btn.disabled = true;
+  try {
+    await fetch('/api/docs/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    docSettings = payload;
+    showToast('Settings saved!', 'success');
+    document.getElementById('doc-settings-modal').classList.remove('open');
+  } catch { showToast('Failed to save settings.', 'error'); }
+  finally { btn.disabled = false; }
+});
+
+// ── Tab filter ────────────────────────────────────────────────────────────
+
+document.querySelectorAll('[data-docfilter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-docfilter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeDocFilter = btn.dataset.docfilter;
+    renderDocsTable();
+  });
 });
 
 
