@@ -209,6 +209,34 @@
   </div>
 </main>
 
+<!-- ── Mobile basket bar + sheet (hidden on desktop) ── -->
+<div id="mobile-basket-bar" class="mobile-basket-bar" aria-hidden="true">
+  <div class="mbb-left">
+    <span class="mbb-count" id="mbb-count">0 items</span>
+    <span class="mbb-total" id="mbb-total">£0</span>
+  </div>
+  <button class="mbb-btn" id="mbb-open-btn">View Basket ↑</button>
+</div>
+
+<div class="mobile-sheet-overlay" id="mobile-sheet-overlay" aria-hidden="true"></div>
+<div class="mobile-sheet" id="mobile-sheet" aria-hidden="true">
+  <div class="mobile-sheet-handle"></div>
+  <div class="mobile-sheet-header">
+    <h3>Your Package</h3>
+    <button class="mobile-sheet-close" id="mbb-close-btn" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="mobile-sheet-items" id="mobile-sheet-items"></div>
+  <div class="mobile-sheet-footer">
+    <div class="mobile-sheet-total-row">
+      <span>Estimated Total</span>
+      <strong id="mobile-sheet-total">£0</strong>
+    </div>
+    <button class="mobile-sheet-cta" id="mbb-goto-form">Request a Quote →</button>
+  </div>
+</div>
+
 <script src="/static/builder.js"></script>
 </body>
 </html>

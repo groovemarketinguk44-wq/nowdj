@@ -101,6 +101,7 @@ function renderPackage() {
 
   const totalDisplay = hasTBC ? `${fmt(total)} + TBC` : fmt(total);
   animateValue(totalEl, totalDisplay);
+  updateMobileBar();
 }
 
 /* ── Quantity update (hourly / daily) ── */
@@ -356,6 +357,102 @@ async function handleSubmit(e) {
 function sendBtnHTML() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Request Quote`;
 }
+
+/* ── Mobile basket bar + sheet ── */
+
+const mobileBar     = document.getElementById('mobile-basket-bar');
+const mobileSheet   = document.getElementById('mobile-sheet');
+const sheetOverlay  = document.getElementById('mobile-sheet-overlay');
+
+function updateMobileBar() {
+  if (!mobileBar) return;
+  const count = state.selected.size;
+  const total = [...state.selected.values()].reduce((s, i) => s + (i.pricingType === 'tbc' ? 0 : i.price), 0);
+
+  if (count > 0) {
+    document.getElementById('mbb-count').textContent = `${count} item${count !== 1 ? 's' : ''}`;
+    document.getElementById('mbb-total').textContent = fmt(total);
+    mobileBar.classList.add('visible');
+    mobileBar.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('basket-bar-visible');
+  } else {
+    mobileBar.classList.remove('visible');
+    mobileBar.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('basket-bar-visible');
+    closeMobileSheet();
+  }
+
+  // Keep sheet in sync if open
+  if (mobileSheet?.classList.contains('open')) renderMobileSheet();
+}
+
+function renderMobileSheet() {
+  const container = document.getElementById('mobile-sheet-items');
+  const totalEl   = document.getElementById('mobile-sheet-total');
+  if (!container) return;
+
+  const items = [...state.selected.values()];
+  if (!items.length) {
+    container.innerHTML = '<div class="mobile-sheet-empty">Nothing selected yet.</div>';
+    if (totalEl) totalEl.textContent = '£0';
+    return;
+  }
+
+  let total = 0;
+  container.innerHTML = '';
+  items.forEach(item => {
+    const price = item.pricingType === 'tbc' ? 0 : item.price;
+    total += price;
+    const qtyNote = (item.pricingType === 'hourly' || item.pricingType === 'daily')
+      ? ` <span style="font-size:0.75rem;color:var(--text-muted)">(${item.qty} ${unitLabel(item.pricingType, item.qty)})</span>`
+      : (item.allowQty && item.qty > 1 ? ` <span style="font-size:0.75rem;color:var(--text-muted)">(×${item.qty})</span>` : '');
+    const priceStr = item.pricingType === 'tbc' ? 'TBC' : fmt(price);
+
+    const div = document.createElement('div');
+    div.className = 'mobile-sheet-item';
+    div.innerHTML = `
+      <span class="mobile-sheet-item-name">${item.name}${qtyNote}</span>
+      <span class="mobile-sheet-item-price">${priceStr}</span>
+      <button class="mobile-sheet-item-remove" data-remove="${item.id}" aria-label="Remove">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+    div.querySelector('[data-remove]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deselectItem(item.id);
+    });
+    container.appendChild(div);
+  });
+
+  if (totalEl) totalEl.textContent = fmt(total);
+}
+
+function openMobileSheet() {
+  if (!mobileSheet) return;
+  renderMobileSheet();
+  mobileSheet.classList.add('open');
+  sheetOverlay?.classList.add('open');
+  mobileSheet.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileSheet() {
+  if (!mobileSheet) return;
+  mobileSheet.classList.remove('open');
+  sheetOverlay?.classList.remove('open');
+  mobileSheet.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('mbb-open-btn')?.addEventListener('click', openMobileSheet);
+document.getElementById('mbb-close-btn')?.addEventListener('click', closeMobileSheet);
+sheetOverlay?.addEventListener('click', closeMobileSheet);
+
+document.getElementById('mbb-goto-form')?.addEventListener('click', () => {
+  closeMobileSheet();
+  setTimeout(() => {
+    document.querySelector('.quote-form-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 320);
+});
 
 /* ── Init ── */
 
