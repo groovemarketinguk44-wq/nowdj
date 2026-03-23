@@ -107,7 +107,7 @@ function renderPackage() {
 /* ── Quantity update (hourly / daily) ── */
 
 function qtyLabel(pricingType, qty, allowQty) {
-  if (!allowQty && (pricingType === 'hourly' || pricingType === 'daily')) return `${qty} ${unitLabel(pricingType, qty)}`;
+  if (pricingType === 'hourly' || pricingType === 'daily') return `${qty} ${unitLabel(pricingType, qty)}`;
   return `×${qty}`;
 }
 

@@ -287,49 +287,11 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               </div>
               <h3>Connect your Outlook account</h3>
-              <p>Integrate your Microsoft 365 / Outlook account to access your inbox and send emails directly.</p>
-              <div id="setup-step1" class="setup-step">
-                <div class="setup-step-num">1</div>
-                <div class="setup-step-content">
-                  <strong>Azure App Credentials</strong>
-                  <p>Enter your Azure AD app registration details below.</p>
-                  <div class="setup-fields">
-                    <div class="setup-field">
-                      <label>Client ID</label>
-                      <input type="text" id="cfg-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
-                    </div>
-                    <div class="setup-field">
-                      <label>Client Secret</label>
-                      <input type="password" id="cfg-client-secret" placeholder="Enter client secret" autocomplete="off" />
-                    </div>
-                    <div class="setup-field">
-                      <label>Tenant ID</label>
-                      <input type="text" id="cfg-tenant-id" placeholder="common" />
-                      <span class="field-hint">Use "common" for personal/multi-tenant or paste your Directory (tenant) ID</span>
-                    </div>
-                  </div>
-                  <button class="btn-primary" id="btn-save-email-config">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    Save Credentials
-                  </button>
-                </div>
-              </div>
-              <div id="setup-step2" class="setup-step" style="display:none">
-                <div class="setup-step-num">2</div>
-                <div class="setup-step-content">
-                  <strong>Sign in to Microsoft</strong>
-                  <p>Click below to authorise access to your Outlook mailbox.</p>
-                  <button class="btn-primary" id="btn-connect-outlook">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Connect Outlook Account
-                  </button>
-                </div>
-              </div>
-              <div class="setup-help">
-                <strong>Setup guide:</strong> Go to <em>portal.azure.com → Azure Active Directory → App registrations → New registration</em>.
-                Set the Redirect URI to your app URL + <code>/api/email/auth/callback</code> and add permissions:
-                Mail.Read, Mail.Send, Mail.ReadWrite, User.Read, offline_access.
-              </div>
+              <p>Sign in with your Microsoft 365 or Outlook account to access your inbox and send emails directly from the dashboard.</p>
+              <button class="btn-primary" id="btn-connect-outlook" onclick="connectOutlook()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Connect Outlook Account
+              </button>
             </div>
           </div>
           <!-- Inbox content (shown when authenticated) -->
@@ -356,8 +318,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </div>
               <h3>Connect Outlook to view sent emails</h3>
-              <p>Switch to the Inbox tab to set up your Outlook connection.</p>
-              <button class="btn-primary" onclick="switchEmailTab('inbox')">Set Up Connection</button>
+              <p>Connect your Microsoft 365 / Outlook account to access your sent emails.</p>
+              <button class="btn-primary" onclick="connectOutlook()">Connect Outlook Account</button>
             </div>
           </div>
           <div id="sent-content" style="display:none">
@@ -1433,8 +1395,6 @@ async function checkEmailStatus() {
 }
 
 function renderEmailSetup() {
-  const step1 = document.getElementById('setup-step1');
-  const step2 = document.getElementById('setup-step2');
   const inboxPrompt   = document.getElementById('inbox-connect-prompt');
   const inboxContent  = document.getElementById('inbox-content');
   const sentPrompt    = document.getElementById('sent-connect-prompt');
@@ -1463,56 +1423,13 @@ function renderEmailSetup() {
     btnRefresh.style.display    = 'none';
     btnDisconnect.style.display = 'none';
     document.getElementById('email-account-label').textContent = 'Manage templates and send emails to your enquiries.';
-    if (emailStatus.configured) {
-      step1.style.display = 'none';
-      step2.style.display = '';
-      loadEmailConfig();
-    } else {
-      step1.style.display = '';
-      step2.style.display = 'none';
-      loadEmailConfig();
-    }
   }
 }
 
-async function loadEmailConfig() {
-  try {
-    const res = await fetch('/api/email/config');
-    const cfg = await res.json();
-    document.getElementById('cfg-client-id').value    = cfg.client_id    || '';
-    document.getElementById('cfg-client-secret').value = cfg.client_secret === '***' ? '' : (cfg.client_secret || '');
-    document.getElementById('cfg-tenant-id').value    = cfg.tenant_id    || '';
-  } catch {}
+function connectOutlook() {
+  const token = localStorage.getItem('nowdj_token') || '';
+  window.location.href = '/api/email/connect?token=' + encodeURIComponent(token);
 }
-
-document.getElementById('btn-save-email-config').addEventListener('click', async () => {
-  const payload = {
-    client_id:     document.getElementById('cfg-client-id').value.trim(),
-    client_secret: document.getElementById('cfg-client-secret').value.trim() || '***',
-    tenant_id:     document.getElementById('cfg-tenant-id').value.trim() || 'common',
-  };
-  if (!payload.client_id) { showToast('Client ID is required.', 'error'); return; }
-  try {
-    await fetch('/api/email/config', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
-    showToast('Credentials saved!', 'success');
-    await checkEmailStatus();
-  } catch { showToast('Failed to save config.', 'error'); }
-});
-
-document.getElementById('btn-connect-outlook').addEventListener('click', () => {
-  const popup = window.open('/api/email/auth/connect', 'outlook_auth', 'width=520,height=640,left=400,top=100');
-  const handler = (e) => {
-    if (e.data === 'email_auth_ok') {
-      window.removeEventListener('message', handler);
-      popup?.close();
-      showToast('Outlook connected!', 'success');
-      checkEmailStatus();
-    }
-  };
-  window.addEventListener('message', handler);
-});
 
 document.getElementById('btn-disconnect-outlook').addEventListener('click', async () => {
   if (!confirm('Disconnect your Outlook account?')) return;

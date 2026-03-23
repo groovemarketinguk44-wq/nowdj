@@ -185,6 +185,17 @@ def _get_tenant_or_404(request: Request) -> dict:
     return tenant
 
 
+def _admin_url(request: Request, tenant_id: int) -> str:
+    """Return the admin URL for a tenant, using custom domain if available."""
+    t = get_tenant_by_id(tenant_id)
+    if not t:
+        return "/admin"
+    if t.get("custom_domain"):
+        return f"https://{t['custom_domain']}/admin"
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/{t['slug']}/admin"
+
+
 # ---------------------------------------------------------------------------
 # Pages
 # ---------------------------------------------------------------------------
@@ -450,67 +461,47 @@ async def email_status(
 ):
     tenant = _get_tenant_or_404(request)
     tid = tenant["id"]
-    configured   = em.is_configured(tid)
-    authenticated = em.is_authenticated(tid) if configured else False
+    connected = em.is_connected(tid)
     user: dict = {}
-    if authenticated:
+    if connected:
         try:
             user = await em.get_me(tid)
         except Exception:
-            authenticated = False
-    return {"configured": configured, "authenticated": authenticated, "user": user}
+            connected = False
+    return {"configured": True, "authenticated": connected, "connected": connected, "user": user}
 
 
-@app.get("/api/email/config")
-async def email_get_config(
-    request: Request,
-    _admin: Annotated[dict, Depends(require_tenant_admin)],
-):
-    tenant = _get_tenant_or_404(request)
-    cfg = em.load_config(tenant["id"])
-    return {k: (v if k != "client_secret" else ("***" if v else "")) for k, v in cfg.items()}
-
-
-@app.post("/api/email/config")
-async def email_save_config(
-    payload: dict,
-    request: Request,
-    _admin: Annotated[dict, Depends(require_tenant_admin)],
-):
-    tenant = _get_tenant_or_404(request)
-    tid = tenant["id"]
-    existing = em.load_config(tid)
-    if payload.get("client_secret") == "***":
-        payload["client_secret"] = existing.get("client_secret", "")
-    em.save_config({**existing, **payload}, tid)
-    return {"success": True}
-
-
-@app.get("/api/email/auth/connect")
-async def email_auth_connect(
-    request: Request,
-    _admin: Annotated[dict, Depends(require_tenant_admin)],
-):
-    tenant = _get_tenant_or_404(request)
-    tid = tenant["id"]
-    if not em.is_configured(tid):
-        raise HTTPException(status_code=400, detail="Email not configured. Add client_id and client_secret first.")
-    return RedirectResponse(em.get_auth_url(tid))
+@app.get("/api/email/connect")
+async def email_connect(request: Request, token: str = ""):
+    """Start the Outlook OAuth flow. Accepts JWT via ?token= query param for browser redirects."""
+    # Resolve tenant from query token or from request state (set by middleware)
+    tenant = getattr(request.state, "tenant", None)
+    if not tenant and token:
+        tok = decode_token(token)
+        if tok and tok.get("tenant_id") and tok.get("role") in ("tenant_admin", "staff"):
+            tenant = get_tenant_by_id(tok["tenant_id"])
+    if not tenant:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    state = em.make_state(tenant["id"])
+    return RedirectResponse(em.get_auth_url(state))
 
 
 @app.get("/api/email/auth/callback")
-async def email_auth_callback(request: Request, code: str = "", error: str = ""):
-    tenant = _get_tenant_or_404(request)
-    tid = tenant["id"]
+async def email_auth_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    # Determine tenant from the HMAC-signed state parameter
+    tid = em.verify_state(state) if state else None
     if error:
-        return HTMLResponse(f"<script>window.location='/admin#email';alert('Auth error: {error}');</script>")
+        dest = f"/{_get_tenant_or_404(request)['slug']}/admin#email" if not tid else _admin_url(request, tid)
+        return HTMLResponse(f"<script>window.location='{dest}';alert('Auth error: {error}');</script>")
+    if tid is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
     if not code:
         raise HTTPException(status_code=400, detail="No code provided")
     try:
         await em.exchange_code(code, tid)
     except Exception as exc:
-        return HTMLResponse(f"<script>window.location='/admin#email';alert('Auth failed: {exc}');</script>")
-    return HTMLResponse("<script>window.opener&&window.opener.postMessage('email_auth_ok','*');window.close();if(!window.opener)window.location='/admin#email';</script>")
+        return HTMLResponse(f"<script>window.location='{_admin_url(request, tid)}';alert('Auth failed: {exc}');</script>")
+    return RedirectResponse(_admin_url(request, tid) + "#email")
 
 
 @app.post("/api/email/auth/disconnect")
