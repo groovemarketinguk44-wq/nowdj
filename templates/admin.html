@@ -246,11 +246,15 @@
           </div>
         </div>
 
-        <!-- Email tabs — Templates always accessible, Inbox/Sent require Outlook -->
+        <!-- Email tabs — Templates/Signatures always accessible, Inbox/Sent require Outlook -->
         <div class="email-tabs">
           <button class="email-tab active" data-etab="templates">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Templates
+          </button>
+          <button class="email-tab" data-etab="signatures">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Signatures
           </button>
           <button class="email-tab" data-etab="inbox">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
@@ -274,6 +278,21 @@
             </button>
           </div>
           <div class="templates-grid" id="templates-grid">
+            <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
+          </div>
+        </div>
+
+        <!-- Signatures pane — always accessible -->
+        <div class="email-pane" id="etab-signatures">
+          <div class="templates-toolbar">
+            <h3>Email Signatures</h3>
+            <p>Design professional signatures that attach to your outgoing emails. Create different ones for different enquiry types.</p>
+            <button class="btn-primary" id="btn-new-signature">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Signature
+            </button>
+          </div>
+          <div class="sig-cards" id="sig-cards">
             <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
           </div>
         </div>
@@ -594,6 +613,12 @@
         </div>
         <div class="field-hint">Applying a template will fill in the subject and body below. Edit as needed before sending.</div>
       </div>
+      <div class="modal-field">
+        <label>Signature</label>
+        <select id="compose-sig-select">
+          <option value="">— No signature —</option>
+        </select>
+      </div>
       <div class="modal-field" id="compose-vars-row" style="display:none">
         <label>Fill Variables</label>
         <div class="compose-vars" id="compose-vars"></div>
@@ -649,6 +674,108 @@
       <button class="btn-primary" id="btn-save-template">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Save Template
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     SIGNATURE EDITOR MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="sig-editor-modal">
+  <div class="modal-card sig-editor-card">
+    <div class="modal-header">
+      <h3 id="sig-editor-title">New Signature</h3>
+      <button class="btn-close-modal" id="close-sig-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="sig-editor-body">
+
+      <!-- Left: form fields -->
+      <div class="sig-form-col">
+        <input type="hidden" id="sig-edit-id" value="" />
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Signature Name</div>
+          <div class="modal-field">
+            <input type="text" id="sig-label" placeholder="e.g. DJ Hire, Wedding Package" />
+            <div class="field-hint">Internal label — not visible in emails</div>
+          </div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Identity</div>
+          <div class="modal-field"><label>Full Name</label><input type="text" id="sig-name" placeholder="Ben Henderson" /></div>
+          <div class="modal-field"><label>Job Title</label><input type="text" id="sig-title" placeholder="Professional DJ & Events Manager" /></div>
+          <div class="modal-field"><label>Company</label><input type="text" id="sig-company" placeholder="Hertfordshire DJ Rental" /></div>
+          <div class="modal-field"><label>Tagline <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input type="text" id="sig-tagline" placeholder="Creating unforgettable events since 2015" /></div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Contact</div>
+          <div class="modal-field"><label>Phone</label><input type="text" id="sig-phone" placeholder="07700 000000" /></div>
+          <div class="modal-field"><label>Email</label><input type="email" id="sig-email" placeholder="hello@yourdomain.com" /></div>
+          <div class="modal-field"><label>Website</label><input type="text" id="sig-website" placeholder="www.hertfordshiredjrental.co.uk" /></div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Branding</div>
+          <div class="modal-field"><label>Logo / Photo URL</label><input type="text" id="sig-logo" placeholder="https://…/logo.png" /></div>
+          <div class="sig-color-row">
+            <div class="modal-field" style="flex:1">
+              <label>Accent Colour</label>
+              <div class="sig-color-wrap">
+                <input type="color" id="sig-accent" value="#6c47ff" />
+                <input type="text" id="sig-accent-hex" value="#6c47ff" maxlength="7" />
+              </div>
+            </div>
+            <div class="modal-field" style="flex:1">
+              <label>Layout</label>
+              <select id="sig-layout">
+                <option value="split">Split (logo left)</option>
+                <option value="stacked">Stacked (logo top)</option>
+                <option value="minimal">Minimal (no logo)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Social Links <span style="color:var(--text-muted);font-weight:400;font-size:0.8rem">(optional)</span></div>
+          <div class="modal-field"><label>Instagram</label><input type="text" id="sig-instagram" placeholder="https://instagram.com/yourpage" /></div>
+          <div class="modal-field"><label>Facebook</label><input type="text" id="sig-facebook" placeholder="https://facebook.com/yourpage" /></div>
+          <div class="modal-field"><label>TikTok</label><input type="text" id="sig-tiktok" placeholder="https://tiktok.com/@yourhandle" /></div>
+          <div class="modal-field"><label>YouTube</label><input type="text" id="sig-youtube" placeholder="https://youtube.com/@yourchannel" /></div>
+          <div class="modal-field"><label>LinkedIn</label><input type="text" id="sig-linkedin" placeholder="https://linkedin.com/in/yourprofile" /></div>
+        </div>
+
+        <div class="sig-form-section">
+          <div class="sig-form-section-title">Options</div>
+          <label class="sig-default-toggle">
+            <input type="checkbox" id="sig-is-default" />
+            <span>Set as default signature</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Right: live preview -->
+      <div class="sig-preview-col">
+        <div class="sig-preview-toolbar">
+          <span class="sig-preview-label">Live Preview</span>
+          <button class="btn-secondary btn-sm" id="btn-copy-sig-html" type="button">Copy HTML</button>
+        </div>
+        <div class="sig-preview-frame-wrap">
+          <iframe id="sig-preview-iframe" title="Signature Preview" sandbox="allow-same-origin"></iframe>
+        </div>
+      </div>
+
+    </div><!-- /sig-editor-body -->
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-sig-modal">Cancel</button>
+      <button class="btn-primary" id="btn-save-sig">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Signature
       </button>
     </div>
   </div>
@@ -807,7 +934,7 @@ function switchSection(id) {
   document.getElementById(`section-${id}`)?.classList.add('active');
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
   document.querySelector(`.nav-item[data-section="${id}"]`)?.classList.add('active');
-  if (id === 'email')    { checkEmailStatus(); loadEmailTemplates(); }
+  if (id === 'email')    { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
   if (id === 'bookings') loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
@@ -1376,9 +1503,10 @@ let composeMsgId   = null; // set when replying
 function switchEmailTab(tab) {
   document.querySelectorAll('.email-tab').forEach(t => t.classList.toggle('active', t.dataset.etab === tab));
   document.querySelectorAll('.email-pane').forEach(p => p.classList.toggle('active', p.id === `etab-${tab}`));
-  if (tab === 'inbox' && emailStatus.authenticated && inboxMessages.length === 0) loadInbox();
-  if (tab === 'sent'  && emailStatus.authenticated && sentMessages.length === 0) loadSent();
+  if (tab === 'inbox'      && emailStatus.authenticated && inboxMessages.length === 0) loadInbox();
+  if (tab === 'sent'       && emailStatus.authenticated && sentMessages.length === 0) loadSent();
   if (tab === 'templates') loadEmailTemplates();
+  if (tab === 'signatures') loadSignatures();
 }
 
 document.querySelectorAll('.email-tab').forEach(tab => {
@@ -1605,6 +1733,17 @@ function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill
     sel.appendChild(opt);
   });
 
+  // Load signatures into select
+  const sigSel = document.getElementById('compose-sig-select');
+  sigSel.innerHTML = '<option value="">— No signature —</option>';
+  savedSignatures.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label || s.fields?.display_name || 'Untitled';
+    if (s.is_default) opt.selected = true;
+    sigSel.appendChild(opt);
+  });
+
   // If Outlook not connected, show warning in compose
   const sendBtn = document.getElementById('btn-send-compose');
   if (!emailStatus.authenticated) {
@@ -1672,8 +1811,14 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
   }
   const to_email = document.getElementById('compose-to').value.trim();
   const subject  = interpolateTemplate(document.getElementById('compose-subject').value.trim());
-  const body     = interpolateTemplate(document.getElementById('compose-body').value.trim());
+  const rawBody  = interpolateTemplate(document.getElementById('compose-body').value.trim());
   const to_name  = document.getElementById('compose-to-name').value.trim();
+
+  // Append selected signature
+  const sigId = document.getElementById('compose-sig-select').value;
+  const sigObj = sigId ? savedSignatures.find(s => s.id === sigId) : null;
+  const sigHtml = sigObj ? buildSigHTML(sigObj.fields || {}) : '';
+  const body = sigHtml ? rawBody + '<br/><br/>' + sigHtml : rawBody;
 
   if (!to_email || !subject) { showToast('To and Subject are required.', 'error'); return; }
 
@@ -1794,6 +1939,258 @@ document.getElementById('btn-save-template').addEventListener('click', async () 
     closeTemplateModal();
     loadEmailTemplates();
   } catch { showToast('Failed to save template.', 'error'); }
+  finally { btn.disabled = false; }
+});
+
+
+/* ======================================================================
+   EMAIL SIGNATURES
+   ====================================================================== */
+
+let savedSignatures = [];
+
+async function loadSignatures() {
+  try {
+    const res = await fetch('/api/email/signatures');
+    savedSignatures = await res.json();
+    renderSigCards();
+  } catch {
+    document.getElementById('sig-cards').innerHTML = '<div style="color:var(--danger);padding:2rem">Failed to load signatures.</div>';
+  }
+}
+
+function renderSigCards() {
+  const container = document.getElementById('sig-cards');
+  if (!savedSignatures.length) {
+    container.innerHTML = `<div class="tmpl-empty">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <strong>No signatures yet</strong><p>Create a professional signature to attach to your emails.</p>
+    </div>`;
+    return;
+  }
+  container.innerHTML = '';
+  savedSignatures.forEach(sig => {
+    const f = sig.fields || {};
+    const accent = f.accent || '#6c47ff';
+    const card = document.createElement('div');
+    card.className = 'sig-card';
+    card.innerHTML = `
+      <div class="sig-card-header">
+        <span class="sig-card-name">${escHtml(sig.label || f.display_name || 'Untitled')}</span>
+        <div class="sig-card-actions">
+          ${sig.is_default ? '<span class="sig-default-badge">Default</span>' : ''}
+          <button class="btn-icon" data-edit="${sig.id}" title="Edit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon btn-icon-danger" data-delete="${sig.id}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="sig-card-preview">
+        ${buildSigPreviewMini(sig)}
+      </div>`;
+    card.querySelector('[data-edit]').addEventListener('click', () => openSigEditor(sig));
+    card.querySelector('[data-delete]').addEventListener('click', async () => {
+      if (!confirm('Delete this signature?')) return;
+      await fetch(`/api/email/signatures/${sig.id}`, { method: 'DELETE' });
+      await loadSignatures();
+      showToast('Signature deleted.', 'success');
+    });
+    container.appendChild(card);
+  });
+}
+
+function buildSigPreviewMini(sig) {
+  const f = sig.fields || {};
+  const accent = f.accent || '#6c47ff';
+  const name = escHtml(f.display_name || '');
+  const title = escHtml(f.title || '');
+  const company = escHtml(f.company || '');
+  const phone = escHtml(f.phone || '');
+  const email = escHtml(f.email || '');
+  const website = escHtml(f.website || '');
+  const logo = f.logo ? `<img src="${escHtml(f.logo)}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;display:block;" onerror="this.style.display='none'" />` : '';
+  const socials = buildSocials(f, 16);
+  const hasSplit = f.layout !== 'stacked' && f.layout !== 'minimal';
+  if (hasSplit && f.logo) {
+    return `<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;border-collapse:collapse"><tr>
+      <td style="padding-right:12px;border-right:3px solid ${accent};vertical-align:middle">${logo}</td>
+      <td style="padding-left:12px;vertical-align:middle">
+        <div style="font-size:13px;font-weight:700;color:#111">${name}</div>
+        <div style="font-size:11px;color:#666">${title}</div>
+        <div style="font-size:11px;font-weight:600;color:${accent}">${company}</div>
+        ${phone || email ? `<div style="font-size:10px;color:#555;margin-top:4px">${phone}${phone && email ? ' · ' : ''}${email}</div>` : ''}
+        ${socials ? `<div style="margin-top:4px">${socials}</div>` : ''}
+      </td></tr></table>`;
+  }
+  return `<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif"><tr><td>
+    ${logo ? `<div style="margin-bottom:6px">${logo}</div>` : ''}
+    <div style="font-size:13px;font-weight:700;color:#111">${name}</div>
+    <div style="font-size:11px;color:#666">${title}</div>
+    <div style="font-size:11px;font-weight:600;color:${accent}">${company}</div>
+    ${phone || email ? `<div style="font-size:10px;color:#555;margin-top:3px">${phone}${phone && email ? ' · ' : ''}${email}</div>` : ''}
+    ${socials ? `<div style="margin-top:4px">${socials}</div>` : ''}
+  </td></tr></table>`;
+}
+
+function buildSocials(f, size = 20) {
+  const icons = {
+    instagram: { url: f.instagram, color: '#E1306C', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>' },
+    facebook:  { url: f.facebook,  color: '#1877F2', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>' },
+    tiktok:    { url: f.tiktok,    color: '#010101', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>' },
+    youtube:   { url: f.youtube,   color: '#FF0000', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>' },
+    linkedin:  { url: f.linkedin,  color: '#0A66C2', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>' },
+  };
+  return Object.entries(icons)
+    .filter(([, v]) => v.url)
+    .map(([, v]) => `<a href="${escHtml(v.url)}" style="display:inline-block;margin-right:6px;color:${v.color};text-decoration:none" target="_blank"><span style="display:inline-block;width:${size}px;height:${size}px;stroke:${v.color}">${v.svg.replace('<svg', `<svg width="${size}" height="${size}"`)}</span></a>`)
+    .join('');
+}
+
+function buildSigHTML(f) {
+  const accent  = f.accent   || '#6c47ff';
+  const name    = f.display_name || '';
+  const title   = f.title    || '';
+  const company = f.company  || '';
+  const tagline = f.tagline  || '';
+  const phone   = f.phone    || '';
+  const email   = f.email    || '';
+  const website = f.website  || '';
+  const logo    = f.logo     || '';
+  const layout  = f.layout   || 'split';
+  const socials = buildSocials(f, 20);
+
+  const contactRows = [
+    phone   ? `<tr><td style="font-size:13px;color:#555;padding:1px 0;">📞 ${phone}</td></tr>` : '',
+    email   ? `<tr><td style="font-size:13px;color:#555;padding:1px 0;">✉️ <a href="mailto:${email}" style="color:#555;text-decoration:none;">${email}</a></td></tr>` : '',
+    website ? `<tr><td style="font-size:13px;color:#555;padding:1px 0;">🌐 <a href="${website.startsWith('http')?website:'https://'+website}" style="color:${accent};text-decoration:none;">${website}</a></td></tr>` : '',
+  ].join('');
+
+  const nameBlock = `
+    <table cellpadding="0" cellspacing="0">
+      <tr><td style="font-size:20px;font-weight:700;color:#111;line-height:1.2;padding-bottom:2px;white-space:nowrap;">${name}</td></tr>
+      ${title   ? `<tr><td style="font-size:13px;color:#666;padding-bottom:1px;">${title}</td></tr>` : ''}
+      ${company ? `<tr><td style="font-size:13px;font-weight:700;color:${accent};padding-bottom:${tagline?'2':'8'}px;">${company}</td></tr>` : ''}
+      ${tagline ? `<tr><td style="font-size:12px;font-style:italic;color:#888;padding-bottom:8px;">${tagline}</td></tr>` : ''}
+      <tr><td><table cellpadding="0" cellspacing="0">${contactRows}</table></td></tr>
+      ${socials ? `<tr><td style="padding-top:8px;">${socials}</td></tr>` : ''}
+    </table>`;
+
+  const logoImg = logo
+    ? `<img src="${logo}" alt="${company}" width="80" height="80" style="border-radius:10px;display:block;object-fit:cover;" />`
+    : '';
+
+  if (layout === 'minimal' || !logo) {
+    return `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:500px;border-collapse:collapse;border-top:3px solid ${accent};padding-top:12px;"><tr><td style="padding-top:12px;">${nameBlock}</td></tr></table>`;
+  }
+  if (layout === 'stacked') {
+    return `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:500px;border-collapse:collapse;">
+      <tr><td style="padding-bottom:12px;">${logoImg}</td></tr>
+      <tr><td style="border-top:3px solid ${accent};padding-top:12px;">${nameBlock}</td></tr>
+    </table>`;
+  }
+  // Split (default)
+  return `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:560px;border-collapse:collapse;">
+    <tr>
+      <td style="padding-right:20px;border-right:3px solid ${accent};vertical-align:middle;">${logoImg}</td>
+      <td style="padding-left:20px;vertical-align:middle;">${nameBlock}</td>
+    </tr>
+  </table>`;
+}
+
+/* Signature editor modal */
+document.getElementById('btn-new-signature').addEventListener('click', () => openSigEditor(null));
+document.getElementById('close-sig-modal').addEventListener('click', closeSigModal);
+document.getElementById('cancel-sig-modal').addEventListener('click', closeSigModal);
+document.getElementById('sig-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSigModal(); });
+
+const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin'];
+
+function openSigEditor(sig) {
+  const f = sig?.fields || {};
+  document.getElementById('sig-edit-id').value = sig?.id || '';
+  document.getElementById('sig-label').value       = sig?.label || '';
+  _sigFields.filter(k => k !== 'label').forEach(k => {
+    const el = document.getElementById('sig-' + k);
+    if (el) el.value = f[k] || '';
+  });
+  const accent = f.accent || '#6c47ff';
+  document.getElementById('sig-accent').value     = accent;
+  document.getElementById('sig-accent-hex').value = accent;
+  document.getElementById('sig-layout').value     = f.layout || 'split';
+  document.getElementById('sig-is-default').checked = sig?.is_default || false;
+  document.getElementById('sig-editor-title').textContent = sig ? 'Edit Signature' : 'New Signature';
+  document.getElementById('sig-editor-modal').classList.add('open');
+  updateSigPreview();
+}
+
+function closeSigModal() {
+  document.getElementById('sig-editor-modal').classList.remove('open');
+}
+
+function getSigFields() {
+  const f = {};
+  _sigFields.filter(k => k !== 'label').forEach(k => {
+    const el = document.getElementById('sig-' + k);
+    if (el) f[k] = el.value.trim();
+  });
+  f.accent = document.getElementById('sig-accent').value;
+  f.layout = document.getElementById('sig-layout').value;
+  return f;
+}
+
+function updateSigPreview() {
+  const f = getSigFields();
+  const html = buildSigHTML(f);
+  const iframe = document.getElementById('sig-preview-iframe');
+  iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>body{margin:24px;background:#fff;}</style></head><body>${html}</body></html>`;
+}
+
+// Live preview: wire up all inputs
+_sigFields.forEach(k => {
+  const el = document.getElementById('sig-' + k);
+  if (el) el.addEventListener('input', updateSigPreview);
+});
+document.getElementById('sig-accent').addEventListener('input', (e) => {
+  document.getElementById('sig-accent-hex').value = e.target.value;
+  updateSigPreview();
+});
+document.getElementById('sig-accent-hex').addEventListener('input', (e) => {
+  const v = e.target.value;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    document.getElementById('sig-accent').value = v;
+    updateSigPreview();
+  }
+});
+document.getElementById('sig-layout').addEventListener('change', updateSigPreview);
+
+document.getElementById('btn-copy-sig-html').addEventListener('click', () => {
+  const html = buildSigHTML(getSigFields());
+  navigator.clipboard.writeText(html).then(() => showToast('HTML copied!', 'success')).catch(() => showToast('Copy failed', 'error'));
+});
+
+document.getElementById('btn-save-sig').addEventListener('click', async () => {
+  const id = document.getElementById('sig-edit-id').value;
+  const label = document.getElementById('sig-label').value.trim();
+  if (!label) { showToast('Please give the signature a name.', 'error'); return; }
+  const payload = {
+    id: id || undefined,
+    label,
+    fields: getSigFields(),
+    is_default: document.getElementById('sig-is-default').checked,
+  };
+  const btn = document.getElementById('btn-save-sig');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/email/signatures', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error();
+    showToast('Signature saved!', 'success');
+    closeSigModal();
+    await loadSignatures();
+  } catch { showToast('Failed to save signature.', 'error'); }
   finally { btn.disabled = false; }
 });
 

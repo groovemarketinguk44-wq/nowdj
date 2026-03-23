@@ -38,7 +38,9 @@ from auth import (
     hash_password, verify_password, create_token, decode_token,
     require_customer, require_staff, require_tenant_admin, require_super_admin,
 )
+import json
 import os
+import uuid
 import email_manager as em
 
 
@@ -711,6 +713,72 @@ async def delete_email_template(
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
     delete_template(tid, tenant["id"])
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Email — signatures  (tenant admin)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/email/signatures")
+async def list_signatures(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    raw = get_setting("email_signatures", tenant_id=tenant["id"])
+    try:
+        return json.loads(raw) if raw else []
+    except Exception:
+        return []
+
+
+@app.post("/api/email/signatures")
+async def save_signature(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    raw = get_setting("email_signatures", tenant_id=tid)
+    sigs = json.loads(raw) if raw else []
+
+    sig_id = payload.get("id")
+    if sig_id:
+        found = False
+        for i, s in enumerate(sigs):
+            if s["id"] == sig_id:
+                sigs[i] = {**s, **payload}
+                found = True
+                break
+        if not found:
+            sigs.append({**payload, "id": sig_id})
+    else:
+        sig_id = str(uuid.uuid4())[:8]
+        sigs.append({**payload, "id": sig_id})
+
+    # Only one default at a time
+    if payload.get("is_default"):
+        for s in sigs:
+            if s["id"] != sig_id:
+                s["is_default"] = False
+
+    set_setting("email_signatures", json.dumps(sigs), tenant_id=tid)
+    return {"success": True, "id": sig_id}
+
+
+@app.delete("/api/email/signatures/{sig_id}")
+async def delete_signature(
+    sig_id: str,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    raw = get_setting("email_signatures", tenant_id=tid)
+    sigs = [s for s in (json.loads(raw) if raw else []) if s["id"] != sig_id]
+    set_setting("email_signatures", json.dumps(sigs), tenant_id=tid)
     return {"success": True}
 
 
