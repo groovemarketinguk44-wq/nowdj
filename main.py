@@ -220,6 +220,7 @@ async def admin_page(request: Request):
         "request": request,
         "branding": branding,
         "branding_style": build_branding_style(branding),
+        "tenant_email": tenant["email"],
     })
 
 
@@ -252,13 +253,18 @@ async def login_page(request: Request):
             "request": request,
             "branding": {"company_name": "NowDJ", "logo_emoji": "🎧", "logo_image": "", "accent_color": "#fa854f"},
             "branding_style": "",
+            "portal_url": "",
         })
     tenant = _get_tenant_or_404(request)
     branding = load_branding_config(tenant["id"], tenant["name"])
+    slug = tenant["slug"]
+    custom_domain = tenant.get("custom_domain") or ""
+    portal_url = "/portal" if custom_domain else f"/{slug}/portal"
     return templates.TemplateResponse("login.html", {
         "request": request,
         "branding": branding,
         "branding_style": build_branding_style(branding),
+        "portal_url": portal_url,
     })
 
 

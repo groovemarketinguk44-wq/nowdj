@@ -127,7 +127,7 @@
   <button class="btn" id="btn-login">Sign In</button>
 
   <div class="divider"><span>Don't have an account?</span></div>
-  <button class="btn-secondary" onclick="location.href='/portal'">Create a Customer Account</button>
+  {% if portal_url %}<button class="btn-secondary" onclick="location.href='{{ portal_url }}'">Create a Customer Account</button>{% endif %}
 </div>
 
 <a href="/" class="back">← Back to quote builder</a>
