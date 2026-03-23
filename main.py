@@ -782,39 +782,45 @@ async def unified_login(payload: dict, request: Request):
         token = create_token("super_admin", 0, email, "Super Admin")
         return {"role": "super_admin", "token": token}
 
-    # ── If on a specific tenant (subdomain or /t/{slug} path), check only that tenant
+    def _tenant_resp(role, uid, t_email, t_name, tid, slug, custom_domain, extra=None):
+        token = create_token(role, uid, t_email, t_name, tenant_id=tid)
+        r = {"role": role, "token": token, "name": t_name, "email": t_email,
+             "slug": slug, "custom_domain": custom_domain or ""}
+        if extra:
+            r.update(extra)
+        return r
+
+    # ── If on a specific tenant (subdomain or /{slug} path), check only that tenant
     tenant = getattr(request.state, "tenant", None)
     if tenant:
-        tid = tenant["id"]
+        tid  = tenant["id"]
         slug = tenant["slug"]
+        cd   = tenant.get("custom_domain") or ""
         if email == tenant["email"].lower() and verify_password(password, tenant["password_hash"]):
-            token = create_token("tenant_admin", tenant["id"], tenant["email"], tenant["name"], tenant_id=tid)
-            return {"role": "tenant_admin", "token": token, "name": tenant["name"], "email": tenant["email"], "slug": slug}
+            return _tenant_resp("tenant_admin", tenant["id"], tenant["email"], tenant["name"], tid, slug, cd)
         member = get_staff_by_email(email, tid)
         if member and verify_password(password, member["password_hash"]):
-            token = create_token("staff", member["id"], member["email"], member["name"], tenant_id=tid)
-            return {"role": "staff", "token": token, "name": member["name"], "email": member["email"], "slug": slug}
+            return _tenant_resp("staff", member["id"], member["email"], member["name"], tid, slug, cd)
         user = get_user_by_email(email, tid)
         if user and verify_password(password, user["password_hash"]):
-            token = create_token("customer", user["id"], user["email"], user["name"], tenant_id=tid)
-            return {"role": "customer", "token": token, "name": user["name"], "email": user["email"], "slug": slug}
+            return _tenant_resp("customer", user["id"], user["email"], user["name"], tid, slug, cd)
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
-    # ── Admin domain with no tenant context — search globally across all workspaces
+    # ── Admin domain — search globally across all workspaces
     tenant_row = get_tenant_by_email(email)
     if tenant_row and verify_password(password, tenant_row["password_hash"]):
-        token = create_token("tenant_admin", tenant_row["id"], tenant_row["email"], tenant_row["name"], tenant_id=tenant_row["id"])
-        return {"role": "tenant_admin", "token": token, "name": tenant_row["name"], "email": tenant_row["email"], "slug": tenant_row["slug"]}
+        return _tenant_resp("tenant_admin", tenant_row["id"], tenant_row["email"], tenant_row["name"],
+                            tenant_row["id"], tenant_row["slug"], tenant_row.get("custom_domain") or "")
 
     member = find_staff_globally(email)
     if member and verify_password(password, member["password_hash"]):
-        token = create_token("staff", member["id"], member["email"], member["name"], tenant_id=member["tenant_id"])
-        return {"role": "staff", "token": token, "name": member["name"], "email": member["email"], "slug": member["tenant_slug"]}
+        return _tenant_resp("staff", member["id"], member["email"], member["name"],
+                            member["tenant_id"], member["tenant_slug"], member.get("tenant_custom_domain") or "")
 
     user = find_user_globally(email)
     if user and verify_password(password, user["password_hash"]):
-        token = create_token("customer", user["id"], user["email"], user["name"], tenant_id=user["tenant_id"])
-        return {"role": "customer", "token": token, "name": user["name"], "email": user["email"], "slug": user["tenant_slug"]}
+        return _tenant_resp("customer", user["id"], user["email"], user["name"],
+                            user["tenant_id"], user["tenant_slug"], user.get("tenant_custom_domain") or "")
 
     raise HTTPException(status_code=401, detail="Incorrect email or password")
 

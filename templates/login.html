@@ -152,21 +152,25 @@ async function tryLogin() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Login failed');
 
-    const prefix = d.slug ? '/' + d.slug : '';
+    // If tenant has a custom domain, redirect there; otherwise use /{slug} path
+    function tenantUrl(path) {
+      if (d.custom_domain) return 'https://' + d.custom_domain + path;
+      return (d.slug ? '/' + d.slug : '') + path;
+    }
     if (d.role === 'super_admin') {
       localStorage.setItem('ndj_super_token', d.token);
       location.href = '/admin';
     } else if (d.role === 'tenant_admin') {
       localStorage.setItem('ndj_admin_token', d.token);
-      location.href = prefix + '/admin';
+      location.href = tenantUrl('/admin');
     } else if (d.role === 'staff') {
       localStorage.setItem('ndj_staff_token', d.token);
       localStorage.setItem('ndj_staff_user', JSON.stringify({ name: d.name, email: d.email }));
-      location.href = prefix + '/staff-portal';
+      location.href = tenantUrl('/staff-portal');
     } else {
       localStorage.setItem('ndj_customer_token', d.token);
       localStorage.setItem('ndj_customer_user', JSON.stringify({ name: d.name, email: d.email }));
-      location.href = prefix + '/portal';
+      location.href = tenantUrl('/portal');
     }
   } catch(e) {
     errEl.textContent = e.message || 'Incorrect email or password.';

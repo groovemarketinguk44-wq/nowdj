@@ -632,12 +632,12 @@ def get_staff_by_email(email: str, tenant_id: int) -> dict | None:
 
 
 def find_staff_globally(email: str) -> dict | None:
-    """Find a staff member by email across all tenants; includes tenant_slug."""
+    """Find a staff member by email across all tenants; includes tenant_slug and tenant_custom_domain."""
     conn = _conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT sm.*, t.slug AS tenant_slug
+                """SELECT sm.*, t.slug AS tenant_slug, t.custom_domain AS tenant_custom_domain
                    FROM staff_members sm
                    JOIN tenants t ON t.id = sm.tenant_id
                    WHERE sm.email = %s LIMIT 1""",
@@ -650,12 +650,12 @@ def find_staff_globally(email: str) -> dict | None:
 
 
 def find_user_globally(email: str) -> dict | None:
-    """Find a customer by email across all tenants; includes tenant_slug."""
+    """Find a customer by email across all tenants; includes tenant_slug and tenant_custom_domain."""
     conn = _conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT u.*, t.slug AS tenant_slug
+                """SELECT u.*, t.slug AS tenant_slug, t.custom_domain AS tenant_custom_domain
                    FROM users u
                    JOIN tenants t ON t.id = u.tenant_id
                    WHERE u.email = %s LIMIT 1""",
