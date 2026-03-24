@@ -118,6 +118,7 @@ def init_db() -> None:
                     )
                 """)
                 cur.execute("ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE")
+                cur.execute("ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0")
 
                 # ── Settings (plain key-value; tenant keys are prefixed t{id}:key)
                 cur.execute("""
@@ -548,10 +549,25 @@ def get_all_templates(tenant_id: int) -> list[dict]:
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM email_templates WHERE tenant_id = %s ORDER BY id ASC",
+                "SELECT * FROM email_templates WHERE tenant_id = %s ORDER BY sort_order ASC, id ASC",
                 (tenant_id,),
             )
             return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def reorder_templates(ordered_ids: list[int], tenant_id: int) -> None:
+    """Set sort_order for each template id in the given order."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                for pos, tid in enumerate(ordered_ids):
+                    cur.execute(
+                        "UPDATE email_templates SET sort_order=%s WHERE id=%s AND tenant_id=%s",
+                        (pos, tid, tenant_id),
+                    )
     finally:
         conn.close()
 

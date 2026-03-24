@@ -21,7 +21,7 @@ from catalog_store import (
 from database import (
     init_db, migrate_automations, migrate_null_tenant_ids,
     get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote, update_quote_total,
-    get_all_templates, get_template_by_id, create_template, update_template, delete_template,
+    get_all_templates, get_template_by_id, create_template, update_template, delete_template, reorder_templates,
     seed_templates_for_tenant,
     get_all_automations, get_active_automations_for_trigger,
     create_automation, update_automation, delete_automation,
@@ -846,7 +846,6 @@ async def list_email_templates(
     _admin: Annotated[dict, Depends(require_tenant_admin)],
 ):
     tenant = _get_tenant_or_404(request)
-    seed_templates_for_tenant(tenant["id"])
     return get_all_templates(tenant["id"])
 
 
@@ -911,6 +910,18 @@ async def delete_email_template(
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
     delete_template(tid, tenant["id"])
+    return {"success": True}
+
+
+@app.post("/api/email/templates/reorder")
+async def reorder_email_templates(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    ids = payload.get("ids", [])
+    reorder_templates([int(i) for i in ids], tenant["id"])
     return {"success": True}
 
 

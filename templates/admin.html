@@ -2756,8 +2756,13 @@ function renderTemplatesGrid() {
   emailTemplates.forEach(t => {
     const card = document.createElement('div');
     card.className = 'template-card';
+    card.dataset.id = t.id;
+    card.draggable = true;
     card.innerHTML = `
       <div class="tmpl-card-top">
+        <span class="tmpl-drag-handle" title="Drag to reorder">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+        </span>
         <div class="tmpl-name">${escHtml(t.name)}</div>
         <div class="tmpl-actions">
           <button class="btn-icon" title="Edit" data-edit="${t.id}">
@@ -2782,9 +2787,39 @@ function renderTemplatesGrid() {
       try {
         const r = await fetch(`/api/email/templates/${t.id}`, { method: 'DELETE' });
         if (!r.ok) throw new Error();
+        emailTemplates = emailTemplates.filter(x => x.id !== t.id);
         showToast('Template deleted.', 'success');
-        loadEmailTemplates();
+        renderTemplatesGrid();
       } catch { showToast('Failed to delete template.', 'error'); }
+    });
+    // Drag-to-reorder
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', t.id);
+      card.classList.add('tmpl-dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('tmpl-dragging'));
+    card.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; card.classList.add('tmpl-drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('tmpl-drag-over'));
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      card.classList.remove('tmpl-drag-over');
+      const draggedId = parseInt(e.dataTransfer.getData('text/plain'));
+      const targetId  = t.id;
+      if (draggedId === targetId) return;
+      const from = emailTemplates.findIndex(x => x.id === draggedId);
+      const to   = emailTemplates.findIndex(x => x.id === targetId);
+      if (from === -1 || to === -1) return;
+      const reordered = [...emailTemplates];
+      const [moved] = reordered.splice(from, 1);
+      reordered.splice(to, 0, moved);
+      emailTemplates = reordered;
+      renderTemplatesGrid();
+      await fetch('/api/email/templates/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: reordered.map(x => x.id) }),
+      });
     });
     grid.appendChild(card);
   });
