@@ -42,6 +42,50 @@ function updateSectionStates() {
   });
 }
 
+function applyConstraints() {
+  // Build sets of: selected exclusive groups, and which groups have no_addons active
+  const selectedGroups = new Set();       // exclusive_group values of selected items
+  const noAddonGroups  = new Set();       // groups where the selected item has no_addons:true
+
+  state.selected.forEach((_, id) => {
+    const card = document.querySelector(`.item-card[data-id="${id}"]`);
+    if (!card) return;
+    const grp = card.dataset.exclusiveGroup;
+    if (grp) {
+      selectedGroups.add(grp);
+      if (card.dataset.noAddons === 'true') noAddonGroups.add(grp);
+    }
+  });
+
+  document.querySelectorAll('.item-card').forEach(card => {
+    const id = card.dataset.id;
+    if (state.selected.has(id)) {
+      // Selected items are never greyed
+      card.classList.remove('greyed');
+      card.dataset.disableReason = '';
+      return;
+    }
+
+    let reason = '';
+
+    // Exclusive group conflict?
+    const grp = card.dataset.exclusiveGroup;
+    if (grp && selectedGroups.has(grp)) reason = 'exclusive';
+
+    // Addon requirement not met?
+    const addonFor = card.dataset.addonFor;
+    if (!reason && addonFor) {
+      // Enabled only if the addonFor group has a selection AND that selection has no_addons:false
+      if (!selectedGroups.has(addonFor) || noAddonGroups.has(addonFor)) {
+        reason = 'addon';
+      }
+    }
+
+    card.classList.toggle('greyed', !!reason);
+    card.dataset.disableReason = reason;
+  });
+}
+
 /* ── Package panel ── */
 
 function renderPackage() {
@@ -171,6 +215,7 @@ function selectItem(id, name, basePrice, pricingType, allowQty) {
   }
   renderPackage();
   updateSectionStates();
+  applyConstraints();
 }
 
 function deselectItem(id) {
@@ -193,9 +238,31 @@ function deselectItem(id) {
   }
   renderPackage();
   updateSectionStates();
+  applyConstraints();
 }
 
 function toggleItem(id, name, basePrice, pricingType, allowQty) {
+  const card = document.querySelector(`.item-card[data-id="${id}"]`);
+
+  if (card?.classList.contains('greyed')) {
+    const reason = card.dataset.disableReason;
+    if (reason === 'exclusive') {
+      // Radio-group swap: deselect whatever is currently selected in this group
+      const grp = card.dataset.exclusiveGroup;
+      if (grp) {
+        const toRemove = [];
+        state.selected.forEach((_, sid) => {
+          const sc = document.querySelector(`.item-card[data-id="${sid}"]`);
+          if (sc && sc.dataset.exclusiveGroup === grp) toRemove.push(sid);
+        });
+        toRemove.forEach(sid => deselectItem(sid));
+      }
+      selectItem(id, name, basePrice, pricingType, allowQty);
+    }
+    // 'addon' reason: item not available — do nothing
+    return;
+  }
+
   if (state.selected.has(id)) {
     deselectItem(id);
   } else {
@@ -339,6 +406,7 @@ function resetAll() {
   });
   renderPackage();
   updateSectionStates();
+  applyConstraints();
   document.getElementById('quote-form')?.reset();
   document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
   clearError();
@@ -521,6 +589,7 @@ document.getElementById('mbb-goto-form')?.addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
   initCards();
   renderPackage();
+  applyConstraints();
 
   ['f-name', 'f-email'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', (e) => e.target.classList.remove('invalid'));

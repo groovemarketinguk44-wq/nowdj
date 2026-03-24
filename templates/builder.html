@@ -78,6 +78,9 @@
             data-price="{{ item['price'] }}"
             data-pricing-type="{{ item.get('pricing_type') or ('hourly' if item.get('hourly') else 'fixed') }}"
             data-allow-quantity="{{ 'true' if item.get('allow_quantity') else 'false' }}"
+            data-exclusive-group="{{ item.get('exclusive_group', '') }}"
+            data-addon-for="{{ item.get('addon_for', '') }}"
+            data-no-addons="{{ 'true' if item.get('no_addons') else 'false' }}"
           >
             <div class="card-header">
               <div class="card-check">
