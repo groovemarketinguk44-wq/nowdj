@@ -1438,6 +1438,8 @@ if (checkLogin()) {
 /* ======================================================================
    DASHBOARD INIT
    ====================================================================== */
+const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
+
 function initDashboard() {
   initNav();
   loadCatalog();
@@ -1490,8 +1492,6 @@ function initNav() {
     document.querySelector('.mbn-item[data-section="enquiries"]')?.classList.add('active');
   }
 }
-
-const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
 
 function switchSection(id) {
   if (!VALID_SECTIONS.includes(id)) id = 'enquiries';
