@@ -1944,6 +1944,11 @@ function renderQuotes() {
   cardsEl.innerHTML = '';
 
   quotes.forEach(q => {
+    const doc  = getLinkedDoc(q);
+    const name      = doc?.client_name  || q.name       || '—';
+    const eventDate = doc?.event_date   || q.event_date  || '';
+    const location  = doc?.location     || q.location    || '—';
+    const eventType = doc?.event_type   || q.event_type  || '—';
     const items = getEnquiryDisplayItems(q);
     const tags  = items.length
       ? items.slice(0,3).map(i=>`<span class="item-tag">${escHtml(i.name)}</span>`).join('')
@@ -1957,10 +1962,10 @@ function renderQuotes() {
     if (isExpanded) row.classList.add('expanded');
     row.innerHTML = `
       <td class="col-id">#${q.id}</td>
-      <td class="col-name">${escHtml(q.name||'—')}</td>
-      <td>${fmtDate(q.event_date)}</td>
-      <td class="col-location">${escHtml(q.location||'—')}</td>
-      <td class="col-type" style="font-size:.82rem">${escHtml(q.event_type||'—')}</td>
+      <td class="col-name">${escHtml(name)}</td>
+      <td>${fmtDate(eventDate)}</td>
+      <td class="col-location">${escHtml(location)}</td>
+      <td class="col-type" style="font-size:.82rem">${escHtml(eventType)}</td>
       <td class="col-items"><div class="items-tags">${tags}</div></td>
       <td class="col-price">${fmt(getEnquiryEffectiveTotal(q))}</td>
       <td>${statusBadge(q.status||'new')}</td>
@@ -1981,8 +1986,8 @@ function renderQuotes() {
     card.innerHTML = `
       <div class="ec-header">
         <div class="ec-header-left">
-          <span class="ec-name">${escHtml(q.name||'—')}</span>
-          <span class="ec-meta">${fmtDate(q.event_date)}${q.event_type ? ' · ' + escHtml(q.event_type) : ''}</span>
+          <span class="ec-name">${escHtml(name)}</span>
+          <span class="ec-meta">${fmtDate(eventDate)}${eventType !== '—' ? ' · ' + escHtml(eventType) : ''}</span>
         </div>
         <div class="ec-header-right">
           ${statusBadge(q.status||'new')}
@@ -2007,9 +2012,16 @@ function renderQuotes() {
 }
 
 function buildDetail(q) {
-  const items = Array.isArray(q.selected_items) ? q.selected_items : [];
-  const itemsHtml = items.length
-    ? items.map(i=>`<div class="detail-item"><span>${escHtml(i.name)}</span><span class="di-price">${fmt(i.price||0)}</span></div>`).join('')
+  const doc       = getLinkedDoc(q);
+  const dName     = doc?.client_name  || q.name       || '—';
+  const dEmail    = doc?.client_email || q.email       || '';
+  const dPhone    = doc?.client_phone || q.phone       || '';
+  const dType     = doc?.event_type   || q.event_type  || '—';
+  const dDate     = doc?.event_date   || q.event_date  || '';
+  const dLocation = doc?.location     || q.location    || '—';
+  const dispItems = getEnquiryDisplayItems(q);
+  const itemsHtml = dispItems.length
+    ? dispItems.map(i=>`<div class="detail-item"><span>${escHtml(i.name)}</span><span class="di-price">${i.price != null ? fmt(i.price) : ''}</span></div>`).join('')
       + `<div class="detail-total"><span>Total</span><span class="dt-price">${fmt(getEnquiryEffectiveTotal(q))}</span></div>`
     : '<p style="color:var(--text-muted);font-size:.82rem">No items</p>';
 
@@ -2017,12 +2029,12 @@ function buildDetail(q) {
     <div class="quote-detail">
       <div class="detail-section">
         <h4>Contact Details</h4>
-        <div class="detail-row"><span class="dl">Name</span><span class="dv">${escHtml(q.name||'—')}</span></div>
-        <div class="detail-row"><span class="dl">Email</span><span class="dv"><a href="mailto:${escHtml(q.email||'')}" style="color:var(--accent)">${escHtml(q.email||'—')}</a></span></div>
-        <div class="detail-row"><span class="dl">Phone</span><span class="dv">${q.phone?`<a href="tel:${escHtml(q.phone)}" style="color:var(--accent)">${escHtml(q.phone)}</a>`:'—'}</span></div>
-        <div class="detail-row"><span class="dl">Type</span><span class="dv">${escHtml(q.event_type||'—')}</span></div>
-        <div class="detail-row"><span class="dl">Date</span><span class="dv">${fmtDate(q.event_date)}</span></div>
-        <div class="detail-row"><span class="dl">Location</span><span class="dv">${escHtml(q.location||'—')}</span></div>
+        <div class="detail-row"><span class="dl">Name</span><span class="dv">${escHtml(dName)}</span></div>
+        <div class="detail-row"><span class="dl">Email</span><span class="dv"><a href="mailto:${escHtml(dEmail)}" style="color:var(--accent)">${escHtml(dEmail||'—')}</a></span></div>
+        <div class="detail-row"><span class="dl">Phone</span><span class="dv">${dPhone?`<a href="tel:${escHtml(dPhone)}" style="color:var(--accent)">${escHtml(dPhone)}</a>`:'—'}</span></div>
+        <div class="detail-row"><span class="dl">Type</span><span class="dv">${escHtml(dType)}</span></div>
+        <div class="detail-row"><span class="dl">Date</span><span class="dv">${fmtDate(dDate)}</span></div>
+        <div class="detail-row"><span class="dl">Location</span><span class="dv">${escHtml(dLocation)}</span></div>
         <div class="detail-row"><span class="dl">Received</span><span class="dv">${fmtDT(q.created_at)}</span></div>
         ${q.message?`<h4 style="margin-top:1rem">Message</h4><div class="detail-message">${escHtml(q.message)}</div>`:''}
         <div class="status-selector">
@@ -2124,7 +2136,9 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const headers = ['ID','Name','Email','Phone','Event Date','Location','Event Type','Items','Total','Status','Created'];
   const rows = quotes.map(q => {
     const items = getEnquiryDisplayItems(q).map(i=>i.name).join(' | ');
-    return [q.id,q.name,q.email,q.phone,q.event_date,q.location,q.event_type,items,getEnquiryEffectiveTotal(q).toFixed(2),q.status,q.created_at]
+    const d = getLinkedDoc(q);
+    const n = d?.client_name||q.name, ed = d?.event_date||q.event_date, lo = d?.location||q.location, et = d?.event_type||q.event_type;
+    return [q.id,n,d?.client_email||q.email,d?.client_phone||q.phone,ed,lo,et,items,getEnquiryEffectiveTotal(q).toFixed(2),q.status,q.created_at]
       .map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',');
   });
   const csv  = [headers.join(','),...rows].join('\n');
