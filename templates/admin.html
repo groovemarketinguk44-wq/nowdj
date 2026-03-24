@@ -3003,13 +3003,15 @@ document.getElementById('save-automation-btn').addEventListener('click', async (
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Server error');
+      const text = await res.text().catch(() => '');
+      let detail = `HTTP ${res.status}`;
+      try { const j = JSON.parse(text); detail = (typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)) || detail; } catch {}
+      throw new Error(detail);
     }
     showToast('Automation saved!', 'success');
     closeAutomationModal();
     loadAutomations();
-  } catch (e) { showToast('Failed to save: ' + (e.message || 'unknown error'), 'error'); }
+  } catch (e) { showToast('Failed: ' + (e.message || 'unknown'), 'error'); }
   finally { btn.disabled = false; }
 });
 

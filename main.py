@@ -899,29 +899,27 @@ async def create_automation_route(
     name = payload.get("name", "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
+    import sys
+    args = (
+        tenant["id"],
+        name,
+        payload.get("trigger_event", "form_submission"),
+        payload.get("template_id") or None,
+        payload.get("send_to", "custom"),
+        (payload.get("send_to_email") or "").strip() or None,
+    )
+    print(f"[automation] creating: {args}", file=sys.stderr)
     try:
-        aid = create_automation(
-            tenant["id"],
-            name,
-            payload.get("trigger_event", "form_submission"),
-            payload.get("template_id") or None,
-            payload.get("send_to", "custom"),
-            payload.get("send_to_email", "").strip() or None,
-        )
+        aid = create_automation(*args)
     except Exception as e:
-        # Table may not exist yet — run migration and retry once
-        if "email_automations" in str(e):
-            migrate_automations()
-            aid = create_automation(
-                tenant["id"],
-                name,
-                payload.get("trigger_event", "form_submission"),
-                payload.get("template_id") or None,
-                payload.get("send_to", "custom"),
-                payload.get("send_to_email", "").strip() or None,
-            )
-        else:
-            raise HTTPException(status_code=500, detail=str(e))
+        print(f"[automation] first attempt failed: {e}", file=sys.stderr)
+        migrate_automations()
+        try:
+            aid = create_automation(*args)
+        except Exception as e2:
+            print(f"[automation] second attempt failed: {e2}", file=sys.stderr)
+            raise HTTPException(status_code=500, detail=str(e2))
+    print(f"[automation] created id={aid}", file=sys.stderr)
     return {"success": True, "id": aid}
 
 
