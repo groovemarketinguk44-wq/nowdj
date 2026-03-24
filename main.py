@@ -1245,8 +1245,10 @@ async def bookings_ics(request: Request, cal_token: str = ""):
         "PRODID:-//NowDJ//Bookings//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        f"X-WR-CALNAME:NowDJ Bookings",
+        "X-WR-CALNAME:NowDJ Bookings",
         "X-WR-TIMEZONE:Europe/London",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+        "X-PUBLISHED-TTL:PT15M",
     ]
     for b in bookings:
         if b.get("status") == "cancelled":
@@ -1282,7 +1284,11 @@ async def bookings_ics(request: Request, cal_token: str = ""):
     return Response(
         content=ics_content,
         media_type="text/calendar; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="bookings.ics"'},
+        headers={
+            "Content-Disposition": 'attachment; filename="bookings.ics"',
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+        },
     )
 
 
