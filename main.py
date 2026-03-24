@@ -1222,7 +1222,28 @@ async def bookings_ics(request: Request, cal_token: str = ""):
     if not stored or stored != cal_token:
         raise HTTPException(status_code=403, detail="Invalid calendar token")
 
-    bookings = get_all_bookings(tid)
+    # Apply doc-sync in memory so the feed always has the latest dates
+    # even if the DB hasn't been updated yet via the admin bookings endpoint
+    all_docs = list_documents(tid)
+    doc_by_quote: dict = {}
+    for d in all_docs:
+        qid = d.get("source_quote_id")
+        if not qid:
+            continue
+        prev = doc_by_quote.get(qid)
+        if prev is None or (d.get("updated_at") or d.get("created_at", "")) >= (prev.get("updated_at") or prev.get("created_at", "")):
+            doc_by_quote[qid] = d
+
+    raw_bookings = get_all_bookings(tid)
+    bookings = []
+    for bk in raw_bookings:
+        bk = dict(bk)
+        doc = doc_by_quote.get(bk.get("quote_id"))
+        if doc and doc.get("event_date"):
+            bk["event_date"]  = doc["event_date"]
+            bk["event_type"]  = doc.get("event_type") or bk.get("event_type", "")
+            bk["location"]    = doc.get("location")   or bk.get("location", "")
+        bookings.append(bk)
 
     def ics_date(d: str) -> str:
         """Convert YYYY-MM-DD to YYYYMMDD for ICS VALUE=DATE."""
