@@ -2742,15 +2742,88 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   .branding-grid { grid-template-columns: 1fr !important; }
 
   /* ── Site header (public pages) ── */
-  .site-header { padding: 0 1rem; }
+  .site-header { padding: 0 1rem; height: 56px; }
+  .logo-text { font-size: 1.1rem; }
+  .logo-icon { width: 30px; height: 30px; font-size: 15px; }
+  .nav-links { gap: 0.75rem; }
+  .nav-links a { font-size: 0.8rem; }
+
+  /* ── Builder layout ── */
   .builder-layout { padding: 1rem 1rem 5rem; gap: 1.25rem; }
   .items-grid { grid-template-columns: 1fr; }
+  .package-panel, .quote-form-panel { border-radius: var(--radius); }
+  .form-header { font-size: 0.9rem; padding: 1rem 1.25rem; }
+  .form-body { padding: 1rem 1.25rem; }
+  .page-hero { padding: 0; }
+  .page-hero h1 { font-size: 1.75rem; }
+  .eyebrow { font-size: 0.7rem; }
+  .section-icon { width: 32px; height: 32px; }
+  .section-icon svg { width: 15px; height: 15px; }
+  .section-title { font-size: 0.9rem; }
+
+  /* ── Bottom nav labels ── */
+  .mbn-item { font-size: 0.65rem; padding: 0.5rem 0.2rem 0.45rem; }
+
+  /* ── Email tabs (Templates / Automations / Signatures — may overflow) ── */
+  .email-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    gap: 0;
+    margin-left: -0.85rem;
+    margin-right: -0.85rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+  .email-tabs::-webkit-scrollbar { display: none; }
+  .email-tab { padding: 8px 12px; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
+  .email-tab svg { width: 12px; height: 12px; }
+
+  /* ── Admin table horizontal scroll ── */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -0.85rem; padding: 0 0.85rem; }
+  .admin-table { min-width: 480px; }
+
+  /* ── Catalog / items table rows ── */
+  .items-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Account section ── */
+  .account-cols { flex-direction: column !important; gap: 1rem !important; }
+  .account-form-card, .account-info-card { max-width: 100% !important; }
+
+  /* ── Staff / clients cards ── */
+  .staff-grid, .clients-grid { grid-template-columns: 1fr !important; }
+  .staff-card, .client-card { padding: 0.9rem; }
+
+  /* ── Admin doc tabs ── */
+  #doc-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    gap: 0;
+    margin-left: -0.85rem;
+    margin-right: -0.85rem;
+    padding-left: 0.85rem;
+  }
+  #doc-tabs::-webkit-scrollbar { display: none; }
+
+  /* ── Bookings calendar ── */
+  .cal-grid { font-size: 0.75rem; }
+  .cal-day { padding: 4px 2px; min-height: 36px; }
+  .cal-event { font-size: 0.68rem; padding: 1px 4px; }
+
+  /* ── Template card drag handle ── */
+  .tmpl-drag-handle { opacity: 0.7; }
 }
 
 @media (max-width: 420px) {
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .admin-section { padding: 0.75rem 0.65rem 2rem; }
   .section-page-header h1 { font-size: 1.3rem; }
+  .logo-text { font-size: 1rem; }
+  .detail-actions button { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
+  .filter-pill { font-size: 0.72rem; padding: 0.28rem 0.55rem; }
 }
 
 /* ========================================================================

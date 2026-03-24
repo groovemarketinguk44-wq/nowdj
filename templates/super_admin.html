@@ -143,6 +143,32 @@
     .form-msg { font-size: 0.82rem; }
     .form-msg.ok  { color: var(--success); }
     .form-msg.err { color: var(--danger); }
+
+    @media (max-width: 768px) {
+      .shell { flex-direction: column; }
+      .sidebar {
+        width: 100%; min-height: auto;
+        flex-direction: row; align-items: center;
+        padding: 0.75rem 1rem;
+        border-right: none; border-bottom: 1px solid var(--border-default);
+      }
+      .sidebar-brand { margin-bottom: 0; }
+      .sidebar-label { display: none; }
+      .sidebar-footer { margin-top: 0; margin-left: auto; }
+      .btn-logout-side { padding: 0.4rem 0.75rem; font-size: 0.8rem; white-space: nowrap; }
+      .main { padding: 1.25rem 1rem; }
+      .page-header { margin-bottom: 1.25rem; }
+      .page-header h1 { font-size: 1.3rem; }
+      #tenants-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -1rem; padding: 0 1rem; }
+      .tenants-table { min-width: 640px; font-size: 0.82rem; }
+      .tenants-table th, .tenants-table td { padding: 0.5rem 0.6rem; }
+      .card { padding: 1.25rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span2 { grid-column: span 1; }
+      .form-field input, .form-field select { font-size: 16px; min-height: 42px; }
+      .form-footer { flex-wrap: wrap; }
+      .btn-create { flex: 1; }
+    }
   </style>
 </head>
 <body>
