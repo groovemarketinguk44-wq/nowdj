@@ -2771,8 +2771,14 @@ function calcLineTotal(item) {
 }
 
 // Returns the best available total for an enquiry — prefers linked doc's computed total
+function getLinkedDoc(q) {
+  const linked = allDocs.filter(d => d.source_quote_id == q.id);
+  if (!linked.length) return null;
+  return linked.reduce((a, b) => (a.updated_at || a.created_at) >= (b.updated_at || b.created_at) ? a : b);
+}
+
 function getEnquiryEffectiveTotal(q) {
-  const doc = allDocs.find(d => d.source_quote_id == q.id);
+  const doc = getLinkedDoc(q);
   if (doc) {
     try {
       const items = typeof doc.line_items === 'string' ? JSON.parse(doc.line_items) : (doc.line_items || []);
@@ -2795,7 +2801,7 @@ function getEnquiryEffectiveTotal(q) {
 }
 
 function getEnquiryDisplayItems(q) {
-  const doc = allDocs.find(d => d.source_quote_id == q.id);
+  const doc = getLinkedDoc(q);
   if (doc) {
     try {
       const items = typeof doc.line_items === 'string' ? JSON.parse(doc.line_items) : (doc.line_items || []);
