@@ -883,6 +883,20 @@ def get_bookings_for_staff(staff_id: int, tenant_id: int) -> list[dict]:
         conn.close()
 
 
+def sync_booking_date_fields(bid: int, event_date: str, event_type: str, location: str, tenant_id: int) -> None:
+    """Targeted update: only sync event_date/event_type/location from a linked document."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE bookings SET event_date=%s, event_type=%s, location=%s WHERE id=%s AND tenant_id=%s",
+                    (event_date, event_type, location, bid, tenant_id),
+                )
+    finally:
+        conn.close()
+
+
 def get_booking_by_quote_id(quote_id: int, tenant_id: int) -> dict | None:
     conn = _conn()
     try:

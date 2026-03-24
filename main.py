@@ -28,7 +28,7 @@ from database import (
     get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member,
     delete_staff_member, update_staff_member_info,
     get_all_bookings, get_booking_by_id, get_booking_by_quote_id, get_bookings_for_user, get_bookings_for_staff,
-    create_booking, update_booking, delete_booking,
+    create_booking, update_booking, delete_booking, sync_booking_date_fields,
     create_document, get_document, list_documents, update_document, delete_document,
     next_doc_number,
     get_setting, set_setting,
@@ -1117,25 +1117,18 @@ async def admin_list_bookings(
         if not qid:
             continue
         doc = doc_by_quote.get(qid)
-        if not doc:
+        if not doc or not doc.get("event_date"):
             continue
-        changed = (
-            (doc.get("event_date") and doc["event_date"] != bk.get("event_date")) or
-            (doc.get("location")   and doc["location"]   != bk.get("location"))   or
-            (doc.get("event_type") and doc["event_type"] != bk.get("event_type"))
-        )
-        if changed:
-            update_booking(bk["id"], {
-                "staff_id":    bk.get("staff_id"),
-                "title":       bk.get("title", ""),
-                "event_date":  doc["event_date"] or bk.get("event_date", ""),
-                "event_type":  doc.get("event_type") or bk.get("event_type", ""),
-                "location":    doc.get("location")   or bk.get("location", ""),
-                "notes":       bk.get("notes", ""),
-                "total_price": bk.get("total_price", 0),
-                "status":      bk.get("status", "confirmed"),
-                "staff_pay":   bk.get("staff_pay"),
-            }, tid)
+        if (doc["event_date"] != bk.get("event_date") or
+                doc.get("location", "") != bk.get("location", "") or
+                doc.get("event_type", "") != bk.get("event_type", "")):
+            sync_booking_date_fields(
+                bk["id"],
+                doc["event_date"],
+                doc.get("event_type") or bk.get("event_type", ""),
+                doc.get("location")   or bk.get("location", ""),
+                tid,
+            )
 
     return get_all_bookings(tid)
 
@@ -1503,29 +1496,20 @@ async def docs_list(
     return list_documents(tenant["id"], doc_type=type)
 
 
-def _sync_booking_from_doc(payload: dict, doc: dict, tid: int) -> None:
-    """If there's a booking linked to the source enquiry, sync date/location/type from the doc."""
+def _sync_booking_from_doc(payload: dict, doc: dict | None, tid: int) -> None:
+    """Sync event_date/location/event_type to the linked booking when a doc is saved."""
     src = payload.get("source_quote_id") or (doc.get("source_quote_id") if doc else None)
     if not src:
         return
-    try:
-        booking = get_booking_by_quote_id(int(src), tid)
-        if not booking:
-            return
-        merged = {
-            "staff_id":    booking.get("staff_id"),
-            "title":       booking.get("title", ""),
-            "event_date":  payload.get("event_date") or booking.get("event_date", ""),
-            "event_type":  payload.get("event_type") or booking.get("event_type", ""),
-            "location":    payload.get("location")   or booking.get("location", ""),
-            "notes":       booking.get("notes", ""),
-            "total_price": booking.get("total_price", 0),
-            "status":      booking.get("status", "confirmed"),
-            "staff_pay":   booking.get("staff_pay"),
-        }
-        update_booking(booking["id"], merged, tid)
-    except Exception:
-        pass
+    event_date = payload.get("event_date") or (doc.get("event_date") if doc else "") or ""
+    event_type = payload.get("event_type") or (doc.get("event_type") if doc else "") or ""
+    location   = payload.get("location")   or (doc.get("location")   if doc else "") or ""
+    if not event_date:
+        return
+    booking = get_booking_by_quote_id(int(src), tid)
+    if not booking:
+        return
+    sync_booking_date_fields(booking["id"], event_date, event_type, location, tid)
 
 
 def _doc_subtotal(line_items_json: str) -> float:
