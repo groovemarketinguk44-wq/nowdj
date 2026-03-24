@@ -442,6 +442,14 @@
           </button>
         </div>
 
+        <!-- Upcoming Bookings -->
+        <div class="content-card" style="margin-bottom:1.5rem" id="upcoming-bookings-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+            <strong style="font-size:0.95rem">Upcoming — This Week &amp; Next</strong>
+          </div>
+          <div id="upcoming-bookings-list"><div style="color:var(--text-muted);font-size:0.85rem">Loading…</div></div>
+        </div>
+
         <!-- Calendar -->
         <div class="content-card" style="margin-bottom:1.5rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
@@ -3202,9 +3210,9 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     showToast('Saved!', 'success');
     closeDocModal();
     loadDocs();
-    // If linked to an enquiry, refresh quotes so tracker stats update
+    // If linked to an enquiry, refresh quotes + bookings so everything stays in sync
     const srcQId = document.getElementById('doc-source-quote-id').value;
-    if (srcQId) loadQuotes();
+    if (srcQId) { loadQuotes(); loadAdminBookings(); }
     // Auto-open preview for new docs
     if (!id && data.id) {
       const token = localStorage.getItem('ndj_admin_token') || '';
@@ -3836,6 +3844,7 @@ async function loadAdminBookings() {
   renderCalendar();
 
   document.getElementById('bookings-loading').style.display = 'none';
+  renderUpcomingBookings();
   renderAdminBookingList();
 
   const badge = document.getElementById('sidebar-booking-count');
@@ -3844,6 +3853,51 @@ async function loadAdminBookings() {
   badge.style.display = upcoming ? '' : 'none';
   const mbnBookingBadge = document.getElementById('mbn-booking-badge');
   if (mbnBookingBadge) { mbnBookingBadge.textContent = upcoming; mbnBookingBadge.style.display = upcoming ? '' : 'none'; }
+}
+
+function renderUpcomingBookings() {
+  const el = document.getElementById('upcoming-bookings-list');
+  if (!el) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const endOfNextWeek = new Date(today);
+  // end of next week = next Sunday + 6 days (i.e. today + days-until-sunday + 7)
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const daysToEndOfThisWeek = dayOfWeek === 0 ? 6 : 7 - dayOfWeek;
+  endOfNextWeek.setDate(today.getDate() + daysToEndOfThisWeek + 7);
+
+  const upcoming = adminBookings
+    .filter(b => {
+      if (!b.event_date || b.status === 'cancelled') return false;
+      const d = new Date(b.event_date); d.setHours(0,0,0,0);
+      return d >= today && d <= endOfNextWeek;
+    })
+    .sort((a,b) => a.event_date.localeCompare(b.event_date));
+
+  if (!upcoming.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:0.83rem;padding:0.25rem 0">No bookings in the next two weeks.</div>';
+    return;
+  }
+  const bkStatusMap = { confirmed:'booked', attended:'attended', paid:'paid', completed:'paid', cancelled:'declined' };
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+    <thead><tr style="color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em">
+      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem 0">Date</th>
+      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Title</th>
+      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Location</th>
+      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Staff</th>
+      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Status</th>
+      <th style="text-align:right;padding:0.3rem 0 0.5rem">Total</th>
+    </tr></thead>
+    <tbody>
+    ${upcoming.map(b => `<tr style="border-top:1px solid var(--border);cursor:pointer" onclick="openEditBooking(${b.id})">
+      <td style="padding:0.5rem 0.6rem 0.5rem 0;white-space:nowrap;color:var(--accent);font-weight:600">${fmtDate(b.event_date)}</td>
+      <td style="padding:0.5rem 0.6rem">${escHtml(b.title||b.event_type||'—')}</td>
+      <td style="padding:0.5rem 0.6rem;color:var(--text-muted)">${escHtml(b.location||'—')}</td>
+      <td style="padding:0.5rem 0.6rem;color:var(--text-muted)">${escHtml(b.staff_name||'—')}</td>
+      <td style="padding:0.5rem 0.6rem">${statusBadge(bkStatusMap[b.status]||b.status)}</td>
+      <td style="padding:0.5rem 0 0.5rem;text-align:right;font-weight:600">${b.total_price ? fmt(b.total_price) : '—'}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
 function renderAdminBookingList() {
@@ -3944,6 +3998,10 @@ function openBookingModal(b) {
           </div>
         </div>
         <div class="field-group">
+          <label class="field-label">Staff Pay (£) <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400">— visible to assigned staff, not the full booking rate</span></label>
+          <input class="field-input" type="number" id="bm-staff-pay" value="${b.staff_pay != null ? b.staff_pay : ''}" placeholder="Leave blank to hide" min="0" />
+        </div>
+        <div class="field-group">
           <label class="field-label">Status</label>
           <select class="field-input" id="bm-status">
             ${['confirmed','attended','paid','completed','cancelled'].map(s => '<option value="'+s+'"'+(b.status===s?' selected':'')+'>' + (s==='confirmed'?'Booked (Confirmed)':s.charAt(0).toUpperCase()+s.slice(1)) + '</option>').join('')}
@@ -3975,6 +4033,7 @@ function openBookingModal(b) {
       location:    document.getElementById('bm-location').value.trim(),
       staff_id:    document.getElementById('bm-staff').value ? parseInt(document.getElementById('bm-staff').value) : null,
       total_price: parseFloat(document.getElementById('bm-price').value) || 0,
+      staff_pay:   document.getElementById('bm-staff-pay').value !== '' ? parseFloat(document.getElementById('bm-staff-pay').value) : null,
       status:      document.getElementById('bm-status').value,
       notes:       document.getElementById('bm-notes').value.trim(),
       quote_id:    b.quote_id || null,

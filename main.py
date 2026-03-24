@@ -1350,6 +1350,31 @@ async def docs_list(
     return list_documents(tenant["id"], doc_type=type)
 
 
+def _sync_booking_from_doc(payload: dict, doc: dict, tid: int) -> None:
+    """If there's a booking linked to the source enquiry, sync date/location/type from the doc."""
+    src = payload.get("source_quote_id") or (doc.get("source_quote_id") if doc else None)
+    if not src:
+        return
+    try:
+        booking = get_booking_by_quote_id(int(src), tid)
+        if not booking:
+            return
+        merged = {
+            "staff_id":    booking.get("staff_id"),
+            "title":       booking.get("title", ""),
+            "event_date":  payload.get("event_date") or booking.get("event_date", ""),
+            "event_type":  payload.get("event_type") or booking.get("event_type", ""),
+            "location":    payload.get("location")   or booking.get("location", ""),
+            "notes":       booking.get("notes", ""),
+            "total_price": booking.get("total_price", 0),
+            "status":      booking.get("status", "confirmed"),
+            "staff_pay":   booking.get("staff_pay"),
+        }
+        update_booking(booking["id"], merged, tid)
+    except Exception:
+        pass
+
+
 def _doc_subtotal(line_items_json: str) -> float:
     """Sum of all line item totals (before discount)."""
     try:
@@ -1410,6 +1435,7 @@ async def docs_create(
             update_quote_total(int(src), total, tid)
         except Exception:
             pass
+    _sync_booking_from_doc(payload, None, tid)
     return {"success": True, "id": doc_id, "doc_number": doc_number}
 
 
@@ -1449,6 +1475,7 @@ async def docs_update(
             update_quote_total(int(src), total, tid)
         except Exception:
             pass
+    _sync_booking_from_doc(payload, doc, tid)
     return {"success": True}
 
 

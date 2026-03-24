@@ -235,9 +235,9 @@ function bookingCard(b) {
         <div class="booking-title">${esc(b.title || b.event_type || 'Booking')} <span class="status-badge status-${esc(b.status)}">${esc(b.status)}</span></div>
         <div class="booking-meta">
           ${dt ? `<span>${dt.full}</span>` : ''}
+          ${b.event_type ? `<span>🎉 ${esc(b.event_type)}</span>` : ''}
           ${b.location ? `<span>📍 ${esc(b.location)}</span>` : ''}
-          ${b.customer_name ? `<span>👤 ${esc(b.customer_name)}</span>` : ''}
-          ${b.total_price ? `<span>💰 £${parseFloat(b.total_price).toFixed(0)}</span>` : ''}
+          ${b.staff_pay != null ? `<span>💰 Your pay: £${parseFloat(b.staff_pay).toFixed(0)}</span>` : ''}
         </div>
         ${b.notes ? `<div class="booking-notes">${esc(b.notes)}</div>` : ''}
       </div>

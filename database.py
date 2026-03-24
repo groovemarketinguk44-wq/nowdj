@@ -208,6 +208,8 @@ def init_db() -> None:
                 # Migration: add discount columns if missing
                 cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'percent'")
                 cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_value REAL DEFAULT 0")
+                # Migration: add staff_pay column to bookings
+                cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS staff_pay REAL DEFAULT NULL")
     finally:
         conn.close()
 
@@ -902,8 +904,8 @@ def create_booking(data: dict, tenant_id: int) -> int:
                 cur.execute("""
                     INSERT INTO bookings
                         (tenant_id, quote_id, user_id, staff_id, title, event_date, event_type,
-                         location, notes, total_price, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         location, notes, total_price, status, staff_pay)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     tenant_id,
@@ -917,6 +919,7 @@ def create_booking(data: dict, tenant_id: int) -> int:
                     data.get("notes", ""),
                     data.get("total_price", 0),
                     data.get("status", "confirmed"),
+                    data.get("staff_pay"),
                 ))
                 return cur.fetchone()["id"]
     finally:
@@ -937,7 +940,8 @@ def update_booking(bid: int, data: dict, tenant_id: int) -> None:
                         location    = %s,
                         notes       = %s,
                         total_price = %s,
-                        status      = %s
+                        status      = %s,
+                        staff_pay   = %s
                     WHERE id = %s AND tenant_id = %s
                 """, (
                     data.get("staff_id"),
@@ -948,6 +952,7 @@ def update_booking(bid: int, data: dict, tenant_id: int) -> None:
                     data.get("notes", ""),
                     data.get("total_price", 0),
                     data.get("status", "confirmed"),
+                    data.get("staff_pay"),
                     bid,
                     tenant_id,
                 ))
