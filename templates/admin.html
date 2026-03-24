@@ -1426,6 +1426,8 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   document.getElementById('login-error').classList.remove('visible');
 });
 
+const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
+
 // Check on load
 if (checkLogin()) {
   document.getElementById('login-screen').style.display = 'none';
@@ -1438,8 +1440,6 @@ if (checkLogin()) {
 /* ======================================================================
    DASHBOARD INIT
    ====================================================================== */
-const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
-
 function initDashboard() {
   initNav();
   loadCatalog();
