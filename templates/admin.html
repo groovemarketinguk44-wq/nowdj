@@ -1173,11 +1173,14 @@
           <button type="button" class="wysiwyg-btn" title="Add link" id="btn-tmpl-link">&#128279;</button>
           <span class="wysiwyg-sep"></span>
           <span class="wysiwyg-label">Insert:</span>
-          {% raw %}<button type="button" class="var-chip" data-var="{{name}}">name</button>
+          {% raw %}<button type="button" class="var-chip" data-var="{{first_name}}">first name</button>
+          <button type="button" class="var-chip" data-var="{{last_name}}">last name</button>
           <button type="button" class="var-chip" data-var="{{email}}">email</button>
           <button type="button" class="var-chip" data-var="{{phone}}">phone</button>
           <button type="button" class="var-chip" data-var="{{event_date}}">event date</button>
+          <button type="button" class="var-chip" data-var="{{event_month}}">event month</button>
           <button type="button" class="var-chip" data-var="{{event_type}}">event type</button>
+          <button type="button" class="var-chip" data-var="{{event_type_lower}}">event type (lower)</button>
           <button type="button" class="var-chip" data-var="{{location}}">location</button>
           <button type="button" class="var-chip" data-var="{{total}}">total</button>
           <button type="button" class="var-chip" data-var="{{quote_id}}">quote id</button>{% endraw %}
@@ -1186,7 +1189,7 @@
             <option value="">Insert signature…</option>
           </select>
         </div>
-        <div id="template-edit-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Hi {{name}}, thanks for your enquiry…"></div>
+        <div id="template-edit-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Hi {{first_name}}, thanks for your enquiry…"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2752,6 +2755,9 @@ function renderTemplatesGrid() {
           <button class="btn-icon" title="Edit" data-edit="${t.id}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
+          <button class="btn-icon" title="Duplicate" data-duplicate="${t.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
           <button class="btn-icon danger" title="Delete" data-delete="${t.id}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
@@ -2760,6 +2766,9 @@ function renderTemplatesGrid() {
       <div class="tmpl-subject">${escHtml(t.subject || '')}</div>
       <div class="tmpl-preview">${escHtml(t.body ? t.body.replace(/<[^>]+>/g,'').slice(0,100) + '…' : '')}</div>`;
     card.querySelector('[data-edit]').addEventListener('click', () => openTemplateEditor(t));
+    card.querySelector('[data-duplicate]').addEventListener('click', () => {
+      openTemplateEditor({ ...t, id: '', name: `Copy of ${t.name}` });
+    });
     card.querySelector('[data-delete]').addEventListener('click', async () => {
       if (!confirm(`Delete template "${t.name}"?`)) return;
       try {

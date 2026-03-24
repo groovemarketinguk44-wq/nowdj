@@ -425,17 +425,19 @@ async def submit_quote(quote: QuoteRequest, request: Request):
     try:
         automations = get_active_automations_for_trigger("form_submission", tid)
         for auto in automations:
-            vars_map = {
-                "name":       quote.name or "",
-                "email":      quote.email or "",
-                "phone":      quote.phone or "",
-                "event_date": quote.event_date or "",
-                "event_type": quote.event_type or "",
-                "location":   quote.location or "",
-                "total":      f"£{total:,.2f}",
-                "message":    quote.message or "",
-                "quote_id":   str(quote_id),
-            }
+            vars_map = _build_vars_map(
+                name=quote.name or "",
+                first_name=quote.first_name or "",
+                last_name=quote.last_name or "",
+                email=quote.email or "",
+                phone=quote.phone or "",
+                event_date=quote.event_date or "",
+                event_type=quote.event_type or "",
+                location=quote.location or "",
+                total=f"£{total:,.2f}",
+                message=quote.message or "",
+                quote_id=str(quote_id),
+            )
             subj = _render_template_vars(auto.get("subject") or "", vars_map)
             body = _render_template_vars(auto.get("body") or "", vars_map)
             if auto["send_to"] == "submitter":
@@ -462,6 +464,42 @@ def _render_template_vars(text: str, vars_map: dict) -> str:
     for key, val in vars_map.items():
         text = text.replace("{{" + key + "}}", val)
     return text
+
+
+def _event_month(event_date: str) -> str:
+    """Return month name from YYYY-MM-DD string, e.g. '2025-03-15' → 'March'."""
+    try:
+        import datetime as _dt
+        return _dt.date.fromisoformat(event_date).strftime("%B")
+    except Exception:
+        return ""
+
+
+def _build_vars_map(name: str, email: str, phone: str, event_date: str,
+                    event_type: str, location: str, total: str,
+                    message: str, quote_id: str,
+                    first_name: str = "", last_name: str = "") -> dict:
+    """Build the standard template variable map."""
+    # Derive first/last from full name if not provided
+    if not first_name and name:
+        parts = name.strip().split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else ""
+    return {
+        "name":            name,
+        "first_name":      first_name,
+        "last_name":       last_name,
+        "email":           email,
+        "phone":           phone,
+        "event_date":      event_date,
+        "event_month":     _event_month(event_date),
+        "event_type":      event_type,
+        "event_type_lower": event_type.lower(),
+        "location":        location,
+        "total":           total,
+        "message":         message,
+        "quote_id":        quote_id,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -570,17 +608,17 @@ async def patch_status(
     if auto_trigger:
         try:
             automations = get_active_automations_for_trigger(auto_trigger, tenant["id"])
-            vars_map = {
-                "name":       q.get("name") or "",
-                "email":      q.get("email") or "",
-                "phone":      q.get("phone") or "",
-                "event_date": q.get("event_date") or "",
-                "event_type": q.get("event_type") or "",
-                "location":   q.get("location") or "",
-                "total":      f"£{q.get('total_price', 0):,.2f}",
-                "message":    q.get("message") or "",
-                "quote_id":   str(quote_id),
-            }
+            vars_map = _build_vars_map(
+                name=q.get("name") or "",
+                email=q.get("email") or "",
+                phone=q.get("phone") or "",
+                event_date=q.get("event_date") or "",
+                event_type=q.get("event_type") or "",
+                location=q.get("location") or "",
+                total=f"£{q.get('total_price', 0):,.2f}",
+                message=q.get("message") or "",
+                quote_id=str(quote_id),
+            )
             for auto in automations:
                 subj = _render_template_vars(auto.get("subject") or "", vars_map)
                 body = _render_template_vars(auto.get("body") or "", vars_map)
@@ -1296,14 +1334,14 @@ async def admin_create_booking(
     bid = create_booking(payload, tenant["id"])
     try:
         automations = get_active_automations_for_trigger("booking_created", tenant["id"])
-        vars_map = {
-            "name":       payload.get("title") or "",
-            "event_date": payload.get("event_date") or "",
-            "event_type": payload.get("event_type") or "",
-            "location":   payload.get("location") or "",
-            "total":      f"£{payload.get('total_price', 0):,.2f}",
-            "email": "", "phone": "", "message": "", "quote_id": "",
-        }
+        vars_map = _build_vars_map(
+            name=payload.get("title") or "",
+            email="", phone="", message="", quote_id="",
+            event_date=payload.get("event_date") or "",
+            event_type=payload.get("event_type") or "",
+            location=payload.get("location") or "",
+            total=f"£{payload.get('total_price', 0):,.2f}",
+        )
         for auto in automations:
             subj = _render_template_vars(auto.get("subject") or "", vars_map)
             body = _render_template_vars(auto.get("body") or "", vars_map)
