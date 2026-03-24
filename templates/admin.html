@@ -1346,6 +1346,16 @@ document.addEventListener('click', (e) => {
   }
 });
 
+/* ── Drag-safe overlay close ──────────────────────────────────────────────
+   Replaces the naive "click on overlay → close" pattern which fires when
+   the user drags to select text and releases the mouse outside the modal.
+   Only closes if the mousedown AND mouseup both landed on the overlay.    */
+function addOverlayClose(el, closeFn) {
+  let downOnOverlay = false;
+  el.addEventListener('mousedown', (e) => { downOnOverlay = (e.target === el); });
+  el.addEventListener('click',     (e) => { if (e.target === el && downOnOverlay) closeFn(); });
+}
+
 /* ── Helpers ── */
 const fmt    = (n) => '£' + Number(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const fmtK   = (n) => n >= 1000 ? '£' + (n / 1000).toFixed(1) + 'k' : fmt(n);
@@ -1689,9 +1699,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('irm-cancel').addEventListener('click', () => {
     document.getElementById('item-rules-modal').classList.remove('open');
   });
-  document.getElementById('item-rules-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) document.getElementById('item-rules-modal').classList.remove('open');
-  });
+  addOverlayClose(document.getElementById('item-rules-modal'), () => document.getElementById('item-rules-modal').classList.remove('open'));
 });
 
 function buildItemRow(catId, itemId, item) {
@@ -1889,7 +1897,7 @@ async function openSiteConfigModal() {
 
 document.getElementById('close-config-modal').addEventListener('click',  closeModal);
 document.getElementById('cancel-config-modal').addEventListener('click', closeModal);
-document.getElementById('site-config-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+addOverlayClose(document.getElementById('site-config-modal'), closeModal);
 
 function closeModal() { document.getElementById('site-config-modal').classList.remove('open'); }
 
@@ -2479,7 +2487,7 @@ function renderMessageViewer(viewer, msg, mode) {
 document.getElementById('btn-compose-new').addEventListener('click', () => openComposeModal({}));
 document.getElementById('close-compose-modal').addEventListener('click', closeComposeModal);
 document.getElementById('cancel-compose-modal').addEventListener('click', closeComposeModal);
-document.getElementById('compose-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeComposeModal(); });
+addOverlayClose(document.getElementById('compose-modal'), closeComposeModal);
 
 let _composeQuoteVars = {};
 
@@ -2785,7 +2793,7 @@ function renderTemplatesGrid() {
 document.getElementById('btn-new-template').addEventListener('click', () => openTemplateEditor(null));
 document.getElementById('close-template-modal').addEventListener('click', closeTemplateModal);
 document.getElementById('cancel-template-modal').addEventListener('click', closeTemplateModal);
-document.getElementById('template-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTemplateModal(); });
+addOverlayClose(document.getElementById('template-editor-modal'), closeTemplateModal);
 
 // WYSIWYG toolbar: link button
 document.getElementById('btn-compose-link').addEventListener('click', () => {
@@ -3005,9 +3013,7 @@ document.getElementById('btn-new-automation').addEventListener('click', async ()
 });
 document.getElementById('close-automation-modal').addEventListener('click', closeAutomationModal);
 document.getElementById('cancel-automation-modal').addEventListener('click', closeAutomationModal);
-document.getElementById('automation-modal-overlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeAutomationModal();
-});
+addOverlayClose(document.getElementById('automation-modal-overlay'), closeAutomationModal);
 
 document.getElementById('save-automation-btn').addEventListener('click', async () => {
   const id         = document.getElementById('automation-edit-id').value;
@@ -3323,7 +3329,7 @@ document.getElementById('btn-new-quote').addEventListener('click',   () => openD
 document.getElementById('btn-new-invoice').addEventListener('click', () => openDocEditor(null, 'invoice'));
 document.getElementById('close-doc-modal').addEventListener('click',  closeDocModal);
 document.getElementById('cancel-doc-modal').addEventListener('click', closeDocModal);
-document.getElementById('doc-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDocModal(); });
+addOverlayClose(document.getElementById('doc-editor-modal'), closeDocModal);
 
 async function openDocEditor(doc, type = 'quote', preferSigId = null) {
   docLineItems = doc ? JSON.parse(doc.line_items || '[]') : [
@@ -3582,15 +3588,13 @@ document.getElementById('sig-picker-confirm').addEventListener('click', () => {
     _pendingDocCreate = null;
   });
 });
-document.getElementById('sig-picker-modal').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) { e.currentTarget.classList.remove('open'); _pendingDocCreate = null; }
-});
+addOverlayClose(document.getElementById('sig-picker-modal'), () => { document.getElementById('sig-picker-modal').classList.remove('open'); _pendingDocCreate = null; });
 
 // ── Enquiry picker ────────────────────────────────────────────────────────
 
 document.getElementById('btn-pull-enquiry').addEventListener('click', openEnquiryPicker);
 document.getElementById('close-enquiry-picker').addEventListener('click', () => document.getElementById('enquiry-picker-modal').classList.remove('open'));
-document.getElementById('enquiry-picker-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+addOverlayClose(document.getElementById('enquiry-picker-modal'), () => document.getElementById('enquiry-picker-modal').classList.remove('open'));
 
 let _allEnquiries = [];
 
@@ -3652,7 +3656,7 @@ function renderEnquiryList(list) {
 
 document.getElementById('btn-add-from-catalog').addEventListener('click', openCatalogPicker);
 document.getElementById('close-catalog-picker').addEventListener('click', () => document.getElementById('catalog-picker-modal').classList.remove('open'));
-document.getElementById('catalog-picker-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+addOverlayClose(document.getElementById('catalog-picker-modal'), () => document.getElementById('catalog-picker-modal').classList.remove('open'));
 document.getElementById('catalog-picker-search').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
   renderCatalogPickerList(q);
@@ -3719,7 +3723,7 @@ function renderCatalogPickerList(query) {
 document.getElementById('btn-doc-settings').addEventListener('click', openDocSettings);
 document.getElementById('close-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
 document.getElementById('cancel-doc-settings-modal').addEventListener('click', () => document.getElementById('doc-settings-modal').classList.remove('open'));
-document.getElementById('doc-settings-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+addOverlayClose(document.getElementById('doc-settings-modal'), () => document.getElementById('doc-settings-modal').classList.remove('open'));
 
 function openDocSettings() {
   document.getElementById('dset-company-name').value    = docSettings.company_name    || '';
@@ -3931,7 +3935,7 @@ function buildSigHTML(f) {
 document.getElementById('btn-new-signature').addEventListener('click', () => openSigEditor(null));
 document.getElementById('close-sig-modal').addEventListener('click', closeSigModal);
 document.getElementById('cancel-sig-modal').addEventListener('click', closeSigModal);
-document.getElementById('sig-editor-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSigModal(); });
+addOverlayClose(document.getElementById('sig-editor-modal'), closeSigModal);
 
 const _sigFields = ['label','display_name','title','company','tagline','phone','email','website','logo','instagram','facebook','tiktok','youtube','linkedin','doc_logo','address','doc_banking','doc_accent'];
 
