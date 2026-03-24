@@ -234,6 +234,18 @@ def migrate_automations() -> None:
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+                # Rename trigger → trigger_event if table was created with old column name
+                cur.execute("""
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name='email_automations' AND column_name='trigger'
+                        ) THEN
+                            ALTER TABLE email_automations RENAME COLUMN "trigger" TO trigger_event;
+                        END IF;
+                    END $$;
+                """)
         print("migrate_automations: OK", file=sys.stderr)
     except Exception as e:
         print(f"migrate_automations FAILED: {e}", file=sys.stderr)
