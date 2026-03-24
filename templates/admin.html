@@ -1894,7 +1894,7 @@ function renderQuotes() {
   cardsEl.innerHTML = '';
 
   quotes.forEach(q => {
-    const items = Array.isArray(q.selected_items) ? q.selected_items : [];
+    const items = getEnquiryDisplayItems(q);
     const tags  = items.length
       ? items.slice(0,3).map(i=>`<span class="item-tag">${escHtml(i.name)}</span>`).join('')
         + (items.length>3 ? `<span class="item-tag">+${items.length-3}</span>` : '')
@@ -2067,8 +2067,8 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const quotes = filteredQuotes();
   const headers = ['ID','Name','Email','Phone','Event Date','Location','Event Type','Items','Total','Status','Created'];
   const rows = quotes.map(q => {
-    const items = Array.isArray(q.selected_items) ? q.selected_items.map(i=>i.name).join(' | ') : '';
-    return [q.id,q.name,q.email,q.phone,q.event_date,q.location,q.event_type,items,q.total_price,q.status,q.created_at]
+    const items = getEnquiryDisplayItems(q).map(i=>i.name).join(' | ');
+    return [q.id,q.name,q.email,q.phone,q.event_date,q.location,q.event_type,items,getEnquiryEffectiveTotal(q).toFixed(2),q.status,q.created_at]
       .map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',');
   });
   const csv  = [headers.join(','),...rows].join('\n');
@@ -2776,16 +2776,33 @@ function getEnquiryEffectiveTotal(q) {
   if (doc) {
     try {
       const items = typeof doc.line_items === 'string' ? JSON.parse(doc.line_items) : (doc.line_items || []);
-      let total = 0;
+      let subtotal = 0;
       for (const item of items) {
         const { val } = calcLineTotal(item);
         if (val === null) return q.total_price || 0;
-        total += val;
+        subtotal += val;
       }
-      return total;
+      const discVal  = parseFloat(doc.discount_value) || 0;
+      const discType = doc.discount_type || 'percent';
+      if (discVal > 0) {
+        const disc = discType === 'fixed' ? Math.min(discVal, subtotal) : subtotal * discVal / 100;
+        subtotal = Math.max(0, subtotal - disc);
+      }
+      return subtotal;
     } catch { /* fall through */ }
   }
   return q.total_price || 0;
+}
+
+function getEnquiryDisplayItems(q) {
+  const doc = allDocs.find(d => d.source_quote_id == q.id);
+  if (doc) {
+    try {
+      const items = typeof doc.line_items === 'string' ? JSON.parse(doc.line_items) : (doc.line_items || []);
+      return items.map(i => ({ name: i.description || i.name || '' })).filter(i => i.name);
+    } catch { /* fall through */ }
+  }
+  return Array.isArray(q.selected_items) ? q.selected_items : [];
 }
 
 function calcDocTotal(items) {
