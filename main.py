@@ -1098,6 +1098,45 @@ async def admin_list_bookings(
                 "total_price": q.get("total_price", 0),
                 "status":      _bk_map[q["status"]],
             }, tid)
+
+    # Sync: for every booking linked to an enquiry, apply the most recent
+    # linked document's date/location/type so everything stays in agreement.
+    all_docs = list_documents(tid)
+    # Build map: quote_id → most recently updated doc
+    doc_by_quote: dict = {}
+    for d in all_docs:
+        qid = d.get("source_quote_id")
+        if not qid:
+            continue
+        prev = doc_by_quote.get(qid)
+        if prev is None or (d.get("updated_at") or d.get("created_at", "")) >= (prev.get("updated_at") or prev.get("created_at", "")):
+            doc_by_quote[qid] = d
+
+    for bk in get_all_bookings(tid):
+        qid = bk.get("quote_id")
+        if not qid:
+            continue
+        doc = doc_by_quote.get(qid)
+        if not doc:
+            continue
+        changed = (
+            (doc.get("event_date") and doc["event_date"] != bk.get("event_date")) or
+            (doc.get("location")   and doc["location"]   != bk.get("location"))   or
+            (doc.get("event_type") and doc["event_type"] != bk.get("event_type"))
+        )
+        if changed:
+            update_booking(bk["id"], {
+                "staff_id":    bk.get("staff_id"),
+                "title":       bk.get("title", ""),
+                "event_date":  doc["event_date"] or bk.get("event_date", ""),
+                "event_type":  doc.get("event_type") or bk.get("event_type", ""),
+                "location":    doc.get("location")   or bk.get("location", ""),
+                "notes":       bk.get("notes", ""),
+                "total_price": bk.get("total_price", 0),
+                "status":      bk.get("status", "confirmed"),
+                "staff_pay":   bk.get("staff_pay"),
+            }, tid)
+
     return get_all_bookings(tid)
 
 
