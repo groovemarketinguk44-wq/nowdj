@@ -258,8 +258,13 @@ async def portal_page(request: Request):
 
 @app.get("/staff-portal", response_class=HTMLResponse)
 async def staff_portal_page(request: Request):
-    tenant = _get_tenant_or_404(request)
-    branding = load_branding_config(tenant["id"], tenant["name"])
+    tenant = getattr(request.state, "tenant", None)
+    if tenant:
+        branding = load_branding_config(tenant["id"], tenant["name"])
+    else:
+        # No tenant from URL — page still renders; login uses global staff lookup
+        from catalog_store import DEFAULT_BRANDING_CONFIG
+        branding = DEFAULT_BRANDING_CONFIG.copy()
     return templates.TemplateResponse("staff.html", {
         "request": request,
         "branding": branding,
