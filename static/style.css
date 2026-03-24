@@ -3160,6 +3160,20 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   font-size: 1.2rem;
   color: var(--accent);
 }
+.doc-discount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0 0.25rem;
+  margin-top: 0.25rem;
+}
+.doc-discount-row input,
+.doc-discount-row select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
 @media (max-width: 860px) {
   .doc-editor-card { width: 96vw; }
   .doc-editor-body { grid-template-columns: 1fr; overflow-y: auto; }

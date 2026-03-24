@@ -806,6 +806,30 @@
           <span style="width:28px"></span>
         </div>
         <div id="doc-line-items-container"></div>
+        <!-- Discount -->
+        <div class="doc-discount-row">
+          <span style="font-size:0.8rem;color:var(--text-secondary)">Discount</span>
+          <div style="display:flex;align-items:center;gap:0.4rem">
+            <input type="number" id="doc-discount-value" min="0" step="any" value="0"
+              style="width:72px;text-align:right;padding:0.3rem 0.4rem;font-size:0.85rem"
+              oninput="recalcDocTotal()" />
+            <select id="doc-discount-type" onchange="recalcDocTotal()"
+              style="padding:0.3rem 0.4rem;font-size:0.85rem;width:58px">
+              <option value="percent">%</option>
+              <option value="fixed">£</option>
+            </select>
+          </div>
+        </div>
+        <!-- Subtotal (shown only when discount > 0) -->
+        <div class="doc-grand-total" id="doc-subtotal-row" style="display:none;opacity:0.65">
+          <span>Subtotal</span>
+          <strong id="doc-subtotal-value">£0.00</strong>
+        </div>
+        <!-- Discount amount (shown only when discount > 0) -->
+        <div class="doc-grand-total" id="doc-discount-amount-row" style="display:none;opacity:0.85">
+          <span id="doc-discount-amount-label">Discount</span>
+          <strong id="doc-discount-amount-value" style="color:var(--accent)">-£0.00</strong>
+        </div>
         <!-- Grand total -->
         <div class="doc-grand-total">
           <span>Grand Total</span>
@@ -2848,16 +2872,38 @@ function openDocEditorFromEnquiry(q, docType = 'quote', preferSigId = null) {
 }
 
 function recalcDocTotal() {
-  let grand = 0, currency = '£';
+  let subtotal = 0, currency = '£';
   docLineItems.forEach((item, i) => {
     const { currency: cur, val } = calcLineTotal(item);
     if (cur) currency = cur;
     const el = document.getElementById(`doc-lt-${i}`);
     if (el) el.textContent = val !== null ? `${cur}${val.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })}` : '—';
-    if (val !== null) grand += val;
+    if (val !== null) subtotal += val;
   });
-  document.getElementById('doc-grand-total-value').textContent =
-    `${currency}${grand.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+  const fmt = v => `${currency}${v.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+  const discVal  = parseFloat(document.getElementById('doc-discount-value')?.value) || 0;
+  const discType = document.getElementById('doc-discount-type')?.value || 'percent';
+  let discAmount = 0;
+  if (discVal > 0) {
+    discAmount = discType === 'fixed'
+      ? Math.min(discVal, subtotal)
+      : subtotal * discVal / 100;
+  }
+  const grand = Math.max(0, subtotal - discAmount);
+  document.getElementById('doc-grand-total-value').textContent = fmt(grand);
+  const subRow  = document.getElementById('doc-subtotal-row');
+  const discRow = document.getElementById('doc-discount-amount-row');
+  if (discVal > 0) {
+    subRow.style.display  = '';
+    discRow.style.display = '';
+    document.getElementById('doc-subtotal-value').textContent = fmt(subtotal);
+    document.getElementById('doc-discount-amount-value').textContent = `-${fmt(discAmount)}`;
+    document.getElementById('doc-discount-amount-label').textContent =
+      discType === 'percent' ? `Discount (${discVal}%)` : 'Discount';
+  } else {
+    subRow.style.display  = 'none';
+    discRow.style.display = 'none';
+  }
 }
 
 function removeDocLine(i) { docLineItems.splice(i, 1); renderDocLineItems(); }
@@ -2928,6 +2974,8 @@ async function openDocEditor(doc, type = 'quote', preferSigId = null) {
     fromSel.value = '';
     _clearFromFields();
   }
+  document.getElementById('doc-discount-value').value = doc?.discount_value || 0;
+  document.getElementById('doc-discount-type').value  = doc?.discount_type  || 'percent';
   renderDocLineItems();
   document.getElementById('doc-editor-modal').classList.add('open');
 }
@@ -3037,6 +3085,8 @@ document.getElementById('btn-save-doc').addEventListener('click', async () => {
     notes:           document.getElementById('doc-notes').value.trim(),
     status:          document.getElementById('doc-status').value,
     line_items:      JSON.stringify(docLineItems),
+    discount_type:   document.getElementById('doc-discount-type').value,
+    discount_value:  parseFloat(document.getElementById('doc-discount-value').value) || 0,
     source_quote_id: document.getElementById('doc-source-quote-id').value || null,
     sender: JSON.stringify({
       name:    document.getElementById('doc-from-name-input').value.trim(),

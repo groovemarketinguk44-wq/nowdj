@@ -1325,8 +1325,8 @@ async def docs_list(
     return list_documents(tenant["id"], doc_type=type)
 
 
-def _doc_grand_total(line_items_json: str) -> float:
-    """Compute grand total from a line_items JSON string."""
+def _doc_subtotal(line_items_json: str) -> float:
+    """Sum of all line item totals (before discount)."""
     try:
         items = json.loads(line_items_json or "[]")
     except Exception:
@@ -1345,6 +1345,17 @@ def _doc_grand_total(line_items_json: str) -> float:
         qty = float(m.group()) if m else 1.0
         total += unit * qty
     return total
+
+
+def _doc_grand_total(line_items_json: str, discount_type: str = "percent", discount_value: float = 0.0) -> float:
+    """Compute grand total after applying discount."""
+    subtotal = _doc_subtotal(line_items_json)
+    if discount_value > 0:
+        if discount_type == "fixed":
+            subtotal = max(0.0, subtotal - discount_value)
+        else:
+            subtotal = max(0.0, subtotal * (1 - discount_value / 100))
+    return subtotal
 
 
 @app.post("/api/docs")
@@ -1366,7 +1377,11 @@ async def docs_create(
     src = payload.get("source_quote_id")
     if src:
         try:
-            total = _doc_grand_total(payload.get("line_items", "[]"))
+            total = _doc_grand_total(
+                payload.get("line_items", "[]"),
+                payload.get("discount_type", "percent"),
+                float(payload.get("discount_value") or 0),
+            )
             update_quote_total(int(src), total, tid)
         except Exception:
             pass
@@ -1403,7 +1418,9 @@ async def docs_update(
     src = payload.get("source_quote_id") or doc.get("source_quote_id")
     if src and "line_items" in payload:
         try:
-            total = _doc_grand_total(payload["line_items"])
+            disc_type = payload.get("discount_type") or doc.get("discount_type", "percent")
+            disc_val = float(payload.get("discount_value") if "discount_value" in payload else (doc.get("discount_value") or 0))
+            total = _doc_grand_total(payload["line_items"], disc_type, disc_val)
             update_quote_total(int(src), total, tid)
         except Exception:
             pass
@@ -1470,7 +1487,23 @@ def _build_doc_render_context(doc: dict, tenant_id: int) -> dict:
                                 "unit_price_fmt": item.get("price", "—"),
                                 "qty_fmt": str(item.get("qty", "1"))})
 
+    subtotal = grand_total  # line items sum before discount
+    disc_type  = doc.get("discount_type", "percent") or "percent"
+    disc_val   = float(doc.get("discount_value") or 0)
+    disc_amount = 0.0
+    has_discount = False
+    if disc_val > 0 and all_numeric:
+        has_discount = True
+        if disc_type == "fixed":
+            disc_amount = min(disc_val, subtotal)
+        else:
+            disc_amount = subtotal * disc_val / 100
+        grand_total = max(0.0, subtotal - disc_amount)
+    subtotal_fmt = f"{grand_currency}{subtotal:,.2f}" if all_numeric else "—"
     grand_total_fmt = f"{grand_currency}{grand_total:,.2f}" if all_numeric else "—"
+    discount_fmt = f"{grand_currency}{disc_amount:,.2f}" if all_numeric else "—"
+    discount_label = (f"Discount ({disc_val:g}%)" if disc_type == "percent" else "Discount")
+
     created = doc.get("created_at", "")
     try:
         doc_date = datetime.datetime.fromisoformat(created).strftime("%-d %B %Y")
@@ -1478,7 +1511,9 @@ def _build_doc_render_context(doc: dict, tenant_id: int) -> dict:
         doc_date = created[:10] if created else ""
     doc_type_label = "INVOICE" if doc.get("doc_type") == "invoice" else "QUOTE"
 
-    return {"settings": settings, "line_items": line_items, "grand_total": grand_total_fmt,
+    return {"settings": settings, "line_items": line_items,
+            "subtotal_fmt": subtotal_fmt, "grand_total": grand_total_fmt,
+            "has_discount": has_discount, "discount_fmt": discount_fmt, "discount_label": discount_label,
             "doc_date": doc_date, "doc_type_label": doc_type_label}
 
 

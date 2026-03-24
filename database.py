@@ -205,6 +205,9 @@ def init_db() -> None:
                 cur.execute("""
                     ALTER TABLE documents ADD COLUMN IF NOT EXISTS sender TEXT DEFAULT '{}'
                 """)
+                # Migration: add discount columns if missing
+                cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'percent'")
+                cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_value REAL DEFAULT 0")
     finally:
         conn.close()
 
@@ -1010,8 +1013,9 @@ def create_document(tenant_id: int, doc_type: str, doc_number: str, data: dict) 
                     INSERT INTO documents
                         (tenant_id, doc_type, doc_number, status,
                          client_name, client_email, client_phone, client_address,
-                         event_date, event_type, location, line_items, notes, source_quote_id, sender)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         event_date, event_type, location, line_items, notes, source_quote_id, sender,
+                         discount_type, discount_value)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     tenant_id,
@@ -1029,6 +1033,8 @@ def create_document(tenant_id: int, doc_type: str, doc_number: str, data: dict) 
                     data.get("notes", ""),
                     data.get("source_quote_id"),
                     data.get("sender", "{}"),
+                    data.get("discount_type", "percent"),
+                    float(data.get("discount_value") or 0),
                 ))
                 return cur.fetchone()["id"]
     finally:
@@ -1074,6 +1080,7 @@ def update_document(doc_id: int, tenant_id: int, data: dict) -> None:
     allowed = {
         "status", "client_name", "client_email", "client_phone", "client_address",
         "event_date", "event_type", "location", "line_items", "notes", "doc_number", "sender",
+        "discount_type", "discount_value",
     }
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:

@@ -418,8 +418,18 @@
     </table>
   </div>
 
-  <!-- ── Grand total ── -->
+  <!-- ── Totals ── -->
   <div class="doc-total-section">
+    {% if has_discount %}
+    <div class="doc-total-box" style="opacity:0.7">
+      <span class="doc-total-label">Subtotal</span>
+      <span class="doc-total-value" style="font-size:1rem">{{ subtotal_fmt }}</span>
+    </div>
+    <div class="doc-total-box" style="opacity:0.85">
+      <span class="doc-total-label">{{ discount_label }}</span>
+      <span class="doc-total-value" style="font-size:1rem;color:var(--accent)">-{{ discount_fmt }}</span>
+    </div>
+    {% endif %}
     <div class="doc-total-box">
       <span class="doc-total-label">Grand Total</span>
       <span class="doc-total-value">{{ grand_total }}</span>
