@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/static/style.css" />
   {{ branding_style | safe }}
   <style>
-    /* ── Header right ── */
+    /* ── Header ── */
     #btn-logout {
       background: none; border: 1px solid var(--border-hover);
       color: var(--text-secondary); padding: 0.4rem 0.9rem;
@@ -20,9 +20,10 @@
     }
     #btn-logout:hover { border-color: var(--accent); color: var(--text-primary); }
     .staff-label { font-size: 0.82rem; color: var(--text-muted); display: none; }
+    .brand-logo-img { height: 28px; width: auto; object-fit: contain; display: block; }
 
     /* ── Page ── */
-    .page { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .page { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem; }
 
     /* ── Auth card ── */
     .auth-card {
@@ -33,104 +34,176 @@
     }
     .auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
     .auth-sub { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.8rem; }
-
-    /* ── Form ── */
     .form-group { margin-bottom: 1rem; }
-    .form-group label {
-      display: block; font-size: 0.82rem; font-weight: 500;
-      color: var(--text-secondary); margin-bottom: 0.4rem;
-    }
+    .form-group label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
     .form-group input {
-      width: 100%; background: var(--bg-input);
-      border: 1px solid var(--border-hover);
-      border-radius: var(--radius-sm);
-      padding: 0.65rem 0.9rem; color: var(--text-primary);
-      font-size: 0.9rem; outline: none; font-family: inherit;
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 0.65rem 0.9rem;
+      color: var(--text-primary); font-size: 1rem; outline: none; font-family: inherit;
       transition: border-color var(--transition), box-shadow var(--transition);
     }
-    .form-group input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-dim);
-    }
+    .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
     .btn-primary {
-      width: 100%; background: var(--accent); color: #fff;
-      border: none; border-radius: var(--radius-sm);
-      padding: 0.75rem; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; margin-top: 0.5rem; font-family: inherit;
-      transition: opacity var(--transition);
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; margin-top: 0.5rem; font-family: inherit;
+      transition: opacity var(--transition); touch-action: manipulation;
     }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .auth-error {
-      color: var(--danger); font-size: 0.82rem; margin-top: 0.6rem;
-      display: none; background: rgba(239,68,68,0.08);
-      border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
+      color: var(--danger); font-size: 0.82rem; margin-top: 0.6rem; display: none;
+      background: rgba(239,68,68,0.08); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
     }
     .auth-error.visible { display: block; }
 
     /* ── Dashboard ── */
     #dashboard { display: none; }
-    .dash-header { margin-bottom: 2rem; }
-    .dash-header h1 { font-size: 1.5rem; font-weight: 700; }
-    .dash-header p { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; }
 
+    /* ── Welcome banner ── */
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--accent-dim) 0%, rgba(var(--accent-rgb,99,102,241),0.06) 100%);
+      border: 1px solid var(--border-active); border-radius: var(--radius-xl);
+      padding: 1.75rem 2rem; margin-bottom: 1.75rem; display: flex;
+      align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .welcome-text h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem; }
+    .welcome-text p { color: var(--text-secondary); font-size: 0.875rem; }
+
+    /* ── Stats row ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-lg); padding: 1.1rem 1.2rem;
+      text-align: center;
+    }
+    .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-top: 0.35rem; }
+
+    /* ── Section title ── */
     .section-title {
       font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.75rem;
     }
+    .divider { border: none; border-top: 1px solid var(--border-hover); margin: 1.75rem 0; }
 
-    /* ── Booking cards ── */
-    .booking-card {
+    /* ── Job cards ── */
+    .job-card {
       background: var(--bg-card); border: 1px solid var(--border-hover);
-      border-radius: var(--radius-lg); padding: 1.2rem 1.4rem;
-      margin-bottom: 0.75rem; display: flex; gap: 1.2rem; align-items: flex-start;
-      transition: border-color var(--transition);
+      border-radius: var(--radius-lg); margin-bottom: 0.85rem;
+      overflow: hidden; transition: border-color var(--transition);
     }
-    .booking-card:hover { border-color: var(--border-active); }
-    .booking-date-box {
-      background: var(--accent-dim); border-radius: var(--radius-sm);
-      padding: 0.6rem 0.8rem; text-align: center; min-width: 56px;
-      flex-shrink: 0; border: 1px solid var(--border-active);
+    .job-card:hover { border-color: var(--border-active); }
+    .job-card-header {
+      display: flex; align-items: stretch; gap: 0;
     }
-    .date-day   { font-size: 1.5rem; font-weight: 800; color: var(--accent); line-height: 1; }
-    .date-month { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-top: 0.1rem; }
-    .booking-info { flex: 1; min-width: 0; }
-    .booking-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
-    .booking-meta {
-      color: var(--text-muted); font-size: 0.82rem;
-      display: flex; flex-wrap: wrap; gap: 0.75rem;
+    .job-date-col {
+      background: var(--accent-dim); border-right: 1px solid var(--border-active);
+      padding: 1.25rem 1rem; text-align: center; min-width: 68px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
+    .job-date-col .day { font-size: 1.8rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .job-date-col .month { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 0.15rem; }
+    .job-date-col .year { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .job-main {
+      flex: 1; padding: 1.1rem 1.25rem; min-width: 0;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .job-title-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; flex-wrap: wrap; }
+    .job-title { font-weight: 700; font-size: 1rem; }
     .status-badge {
-      font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.55rem;
-      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em;
+      font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0;
     }
     .status-confirmed { background: rgba(16,185,129,0.15); color: var(--success); }
     .status-completed { background: var(--accent-dim); color: var(--accent); }
     .status-cancelled { background: rgba(239,68,68,0.12); color: var(--danger); }
-    .booking-notes {
-      margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-muted);
-      background: rgba(255,255,255,0.04); border-radius: var(--radius-sm);
-      padding: 0.4rem 0.6rem;
+    .status-pending   { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .job-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; color: var(--text-muted); font-size: 0.82rem; }
+    .job-meta span { display: flex; align-items: center; gap: 0.3rem; }
+    .job-pay-col {
+      padding: 1.1rem 1.25rem; display: flex; flex-direction: column;
+      align-items: flex-end; justify-content: center; flex-shrink: 0; gap: 0.25rem;
     }
+    .job-pay-amount {
+      font-size: 1.3rem; font-weight: 800; color: var(--success);
+    }
+    .job-pay-label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-    .divider { border: none; border-top: 1px solid var(--border-hover); margin: 1.5rem 0; }
+    /* expandable details */
+    .job-details {
+      border-top: 1px solid var(--border-hover);
+      padding: 0.9rem 1.25rem; display: none;
+      background: rgba(255,255,255,0.02);
+    }
+    .job-details.open { display: block; }
+    .job-details-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem 1.5rem;
+    }
+    .jd-item label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 0.15rem; }
+    .jd-item span { font-size: 0.875rem; color: var(--text-primary); }
+    .job-notes-box {
+      margin-top: 0.75rem; background: rgba(255,255,255,0.04);
+      border-radius: var(--radius-sm); padding: 0.6rem 0.8rem;
+      font-size: 0.82rem; color: var(--text-secondary); white-space: pre-wrap;
+    }
+    .job-notes-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.3rem; }
+
+    .btn-expand {
+      background: none; border: none; cursor: pointer; color: var(--text-muted);
+      font-size: 0.78rem; font-family: inherit; padding: 0.5rem 1.25rem 0.75rem;
+      width: 100%; text-align: center; display: block;
+      transition: color var(--transition); border-top: 1px solid var(--border-hover);
+    }
+    .btn-expand:hover { color: var(--accent); }
 
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
-    .empty-state strong { color: var(--text-secondary); display: block; margin-bottom: 0.3rem; }
+    .empty-state strong { color: var(--text-secondary); display: block; margin-bottom: 0.3rem; font-size: 1rem; }
     .empty-state p { font-size: 0.875rem; }
-    .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
+    .loading { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.875rem; }
 
-    .brand-logo-img { height: 28px; width: auto; object-fit: contain; display: block; }
+    /* ── Profile section ── */
+    .profile-card {
+      background: var(--bg-card); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-lg); padding: 1.5rem;
+    }
+    .profile-card .form-group input { font-size: 0.9rem; }
 
+    /* ── Past jobs toggle ── */
+    .past-toggle {
+      background: none; border: 1px solid var(--border-hover);
+      color: var(--text-secondary); padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm); cursor: pointer; font-family: inherit;
+      font-size: 0.82rem; margin-bottom: 0.75rem;
+      transition: border-color var(--transition), color var(--transition);
+    }
+    .past-toggle:hover { border-color: var(--accent); color: var(--text-primary); }
+
+    /* ── Mobile ── */
     @media (max-width: 768px) {
-      .page { padding: 1.5rem 1rem; }
+      .page { padding: 1.25rem 1rem; }
       .auth-card { padding: 1.75rem 1.25rem; margin: 1.5rem auto; }
-      .form-group input { font-size: 16px; }
-      .dash-header h1 { font-size: 1.25rem; }
-      .booking-card { padding: 1rem; gap: 0.85rem; }
-      .booking-date-box { min-width: 48px; padding: 0.5rem 0.6rem; }
-      .date-day { font-size: 1.25rem; }
-      .booking-meta { gap: 0.5rem; font-size: 0.8rem; }
+      .welcome-banner { padding: 1.25rem 1.2rem; }
+      .welcome-text h1 { font-size: 1.25rem; }
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+      .stat-card { padding: 0.85rem 0.5rem; }
+      .stat-value { font-size: 1.3rem; }
+      .stat-label { font-size: 0.65rem; }
+      .job-date-col { min-width: 56px; padding: 1rem 0.7rem; }
+      .job-date-col .day { font-size: 1.4rem; }
+      .job-main { padding: 0.9rem 1rem; }
+      .job-title { font-size: 0.92rem; }
+      .job-meta { font-size: 0.78rem; gap: 0.4rem 0.75rem; }
+      .job-pay-col { padding: 0.9rem 1rem; }
+      .job-pay-amount { font-size: 1.1rem; }
+      .job-details-grid { grid-template-columns: 1fr; }
+      .job-details { padding: 0.75rem 1rem; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+      .job-pay-col { min-width: auto; }
     }
   </style>
 </head>
@@ -153,7 +226,7 @@
   <div id="auth-section">
     <div class="auth-card">
       <div class="auth-title">Staff Login</div>
-      <div class="auth-sub">Sign in to view your schedule</div>
+      <div class="auth-sub">Sign in to view your schedule &amp; pay</div>
       <div class="form-group">
         <label>Email</label>
         <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email" />
@@ -169,38 +242,68 @@
 
   <!-- Dashboard -->
   <div id="dashboard">
-    <div class="dash-header">
-      <h1 id="staff-name-heading">My Schedule</h1>
-      <p>Your upcoming and recent bookings</p>
+
+    <!-- Welcome banner -->
+    <div class="welcome-banner">
+      <div class="welcome-text">
+        <h1 id="welcome-name">My Schedule</h1>
+        <p id="welcome-sub">Here's your upcoming work</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row" style="display:none">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-upcoming">—</div>
+        <div class="stat-label">Upcoming Jobs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pay">—</div>
+        <div class="stat-label">Upcoming Pay</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total Jobs</div>
+      </div>
     </div>
 
     <div class="loading" id="bookings-loading">Loading your schedule…</div>
+
+    <!-- Upcoming -->
     <div id="upcoming-section" style="display:none">
-      <div class="section-title">Upcoming</div>
+      <div class="section-title">Upcoming Jobs</div>
       <div id="upcoming-list"></div>
     </div>
-    <hr class="divider" id="divider" style="display:none" />
+
+    <!-- Past -->
     <div id="past-section" style="display:none">
-      <div class="section-title">Past</div>
-      <div id="past-list"></div>
-    </div>
-    <div class="empty-state" id="empty-state" style="display:none">
-      <strong>No bookings assigned yet</strong>
-      <p>Check back soon — your schedule will appear here once bookings are assigned.</p>
+      <hr class="divider" />
+      <button class="past-toggle" id="past-toggle">Show past jobs</button>
+      <div id="past-list" style="display:none"></div>
     </div>
 
+    <div class="empty-state" id="empty-state" style="display:none">
+      <strong>No bookings assigned yet</strong>
+      <p>Your schedule will appear here once jobs are assigned to you.</p>
+    </div>
+
+    <!-- Profile -->
     <hr class="divider" style="margin-top:2rem" />
     <div id="profile-section" style="display:none">
       <div class="section-title" style="margin-bottom:0.75rem">Account Settings</div>
-      <div style="background:var(--bg-card);border:1px solid var(--border-hover);border-radius:var(--radius-lg);padding:1.4rem;max-width:420px">
+      <div class="profile-card" style="max-width:440px">
         <div class="form-group"><label>Full Name</label><input type="text" id="prof-name" /></div>
         <div class="form-group"><label>Email</label><input type="email" id="prof-email" /></div>
-        <div class="form-group"><label>New Password <span style="color:var(--text-muted);font-size:0.8rem">(leave blank to keep current)</span></label><input type="password" id="prof-pw" placeholder="••••••••" /></div>
+        <div class="form-group">
+          <label>New Password <span style="color:var(--text-muted);font-size:0.8rem">(leave blank to keep current)</span></label>
+          <input type="password" id="prof-pw" placeholder="••••••••" />
+        </div>
         <div class="auth-error" id="prof-error"></div>
         <div style="color:var(--success);font-size:0.82rem;margin-top:0.5rem;display:none" id="prof-success">Details updated!</div>
         <button class="btn-primary" id="btn-save-profile" style="margin-top:0.75rem">Save Changes</button>
       </div>
     </div>
+
   </div>
 
 </div>
@@ -217,14 +320,19 @@ function saveSession(d) {
 }
 function clearSession() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); }
 function authHeaders() { return { 'Authorization': 'Bearer ' + getToken() }; }
-
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function fmtDate(d) {
   if (!d) return null;
   try {
     const dt = new Date(d + (d.includes('T') ? '' : 'T00:00:00'));
-    return { day: dt.getDate(), month: dt.toLocaleString('en-GB',{month:'short'}), full: dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) };
+    return {
+      day:   dt.getDate(),
+      month: dt.toLocaleString('en-GB', { month: 'short' }),
+      year:  dt.getFullYear(),
+      weekday: dt.toLocaleString('en-GB', { weekday: 'long' }),
+      full:  dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    };
   } catch { return null; }
 }
 
@@ -236,22 +344,82 @@ function isPast(dateStr) {
   } catch { return false; }
 }
 
-function bookingCard(b) {
+function fmtPay(val) {
+  if (val == null || val === '') return null;
+  const n = parseFloat(val);
+  if (isNaN(n)) return null;
+  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+let _expandedCards = new Set();
+
+function jobCard(b, idx) {
   const dt = fmtDate(b.event_date);
+  const pay = fmtPay(b.staff_pay);
+  const cardId = 'job-' + idx;
+
+  const statusClass = {
+    confirmed: 'status-confirmed',
+    completed: 'status-completed',
+    cancelled: 'status-cancelled',
+    pending:   'status-pending',
+  }[b.status] || 'status-pending';
+
+  const eventTypeIcon = b.event_type ? '🎉' : '';
+
+  // Build detail rows
+  const details = [];
+  if (b.event_type)     details.push({ label: 'Event Type', val: b.event_type });
+  if (b.location)       details.push({ label: 'Venue / Location', val: b.location });
+  if (dt)               details.push({ label: 'Full Date', val: dt.full });
+  if (b.customer_name)  details.push({ label: 'Client', val: b.customer_name });
+  if (pay)              details.push({ label: 'Your Pay', val: pay });
+
+  const detailsHtml = details.map(d =>
+    `<div class="jd-item"><label>${esc(d.label)}</label><span>${esc(d.val)}</span></div>`
+  ).join('');
+
+  const notesHtml = b.notes ? `
+    <div class="job-notes-label">Notes</div>
+    <div class="job-notes-box">${esc(b.notes)}</div>` : '';
+
+  const hasDetails = details.length > 3 || b.notes;
+
   return `
-    <div class="booking-card">
-      ${dt ? `<div class="booking-date-box"><div class="date-day">${dt.day}</div><div class="date-month">${dt.month}</div></div>` : ''}
-      <div class="booking-info">
-        <div class="booking-title">${esc(b.title || b.event_type || 'Booking')} <span class="status-badge status-${esc(b.status)}">${esc(b.status)}</span></div>
-        <div class="booking-meta">
-          ${dt ? `<span>${dt.full}</span>` : ''}
-          ${b.event_type ? `<span>🎉 ${esc(b.event_type)}</span>` : ''}
-          ${b.location ? `<span>📍 ${esc(b.location)}</span>` : ''}
-          ${b.staff_pay != null ? `<span>💰 Your pay: £${parseFloat(b.staff_pay).toFixed(0)}</span>` : ''}
+    <div class="job-card" id="${cardId}">
+      <div class="job-card-header">
+        <div class="job-date-col">
+          ${dt ? `<div class="day">${dt.day}</div><div class="month">${dt.month}</div><div class="year">${dt.year}</div>` : '<div class="day">?</div>'}
         </div>
-        ${b.notes ? `<div class="booking-notes">${esc(b.notes)}</div>` : ''}
+        <div class="job-main">
+          <div class="job-title-row">
+            <span class="job-title">${esc(b.title || b.event_type || 'Booking')}</span>
+            <span class="status-badge ${statusClass}">${esc(b.status || 'pending')}</span>
+          </div>
+          <div class="job-meta">
+            ${dt ? `<span>📅 ${esc(dt.weekday)}, ${dt.day} ${esc(dt.month)} ${dt.year}</span>` : ''}
+            ${b.event_type ? `<span>${eventTypeIcon} ${esc(b.event_type)}</span>` : ''}
+            ${b.location ? `<span>📍 ${esc(b.location)}</span>` : ''}
+          </div>
+        </div>
+        ${pay ? `<div class="job-pay-col"><div class="job-pay-label">Your Pay</div><div class="job-pay-amount">${esc(pay)}</div></div>` : ''}
       </div>
+      ${hasDetails || b.notes ? `
+        <div class="job-details" id="${cardId}-details">
+          <div class="job-details-grid">${detailsHtml}</div>
+          ${notesHtml}
+        </div>
+        <button class="btn-expand" onclick="toggleDetails('${cardId}')">▼ View details</button>
+      ` : ''}
     </div>`;
+}
+
+function toggleDetails(cardId) {
+  const det = document.getElementById(cardId + '-details');
+  const btn = document.querySelector(`#${cardId} .btn-expand`);
+  if (!det) return;
+  const open = det.classList.toggle('open');
+  btn.textContent = open ? '▲ Hide details' : '▼ View details';
 }
 
 document.getElementById('btn-login').addEventListener('click', async () => {
@@ -283,6 +451,14 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   document.getElementById('staff-label').style.display = 'none';
 });
 
+document.getElementById('past-toggle').addEventListener('click', () => {
+  const list = document.getElementById('past-list');
+  const btn  = document.getElementById('past-toggle');
+  const open = list.style.display === 'none';
+  list.style.display = open ? '' : 'none';
+  btn.textContent = open ? 'Hide past jobs' : 'Show past jobs';
+});
+
 async function showDashboard() {
   const user = getUser();
   document.getElementById('auth-section').style.display = 'none';
@@ -290,36 +466,59 @@ async function showDashboard() {
   document.getElementById('btn-logout').style.display = '';
   document.getElementById('staff-label').style.display = '';
   document.getElementById('staff-label').textContent = user.name;
-  document.getElementById('staff-name-heading').textContent = user.name + "'s Schedule";
+
+  const firstName = (user.name || '').split(' ')[0] || user.name || 'there';
+  document.getElementById('welcome-name').textContent = 'Hey, ' + firstName + ' 👋';
 
   document.getElementById('profile-section').style.display = '';
   document.getElementById('prof-name').value  = user.name  || '';
   document.getElementById('prof-email').value = user.email || '';
 
-  const r = await fetch('/api/staff/bookings', { headers: authHeaders() });
-  if (r.status === 401) { clearSession(); location.reload(); return; }
-  const bookings = await r.json();
+  let bookings = [];
+  try {
+    const r = await fetch('/api/staff/bookings', { headers: authHeaders() });
+    if (r.status === 401) { clearSession(); location.reload(); return; }
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to load bookings');
+    bookings = Array.isArray(data) ? data : [];
+  } catch (e) {
+    document.getElementById('bookings-loading').textContent = 'Could not load schedule: ' + e.message;
+    return;
+  }
 
   document.getElementById('bookings-loading').style.display = 'none';
 
   const upcoming = bookings.filter(b => !isPast(b.event_date) && b.status !== 'cancelled');
-  const past     = bookings.filter(b => isPast(b.event_date) || b.status === 'cancelled');
+  const past     = bookings.filter(b =>  isPast(b.event_date) || b.status === 'cancelled');
+
+  // Stats — always show once loaded
+  const upcomingPay = upcoming.reduce((sum, b) => sum + (parseFloat(b.staff_pay) || 0), 0);
+  document.getElementById('stat-upcoming').textContent = upcoming.length;
+  document.getElementById('stat-pay').textContent = '£' + upcomingPay.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  document.getElementById('stat-total').textContent = bookings.length;
+  document.getElementById('stats-row').style.display = '';
 
   if (!bookings.length) {
     document.getElementById('empty-state').style.display = '';
+    document.getElementById('welcome-sub').textContent = 'No jobs assigned yet — check back soon.';
     return;
   }
 
   if (upcoming.length) {
+    const next = upcoming[0];
+    const dt = fmtDate(next.event_date);
+    document.getElementById('welcome-sub').textContent = dt
+      ? `Next job: ${dt.weekday}, ${dt.day} ${dt.month} ${dt.year}`
+      : 'Your upcoming jobs are below';
     document.getElementById('upcoming-section').style.display = '';
-    document.getElementById('upcoming-list').innerHTML = upcoming.map(bookingCard).join('');
+    document.getElementById('upcoming-list').innerHTML = upcoming.map((b, i) => jobCard(b, 'u' + i)).join('');
+  } else {
+    document.getElementById('welcome-sub').textContent = 'No upcoming jobs right now';
   }
+
   if (past.length) {
     document.getElementById('past-section').style.display = '';
-    document.getElementById('past-list').innerHTML = past.map(bookingCard).join('');
-  }
-  if (upcoming.length && past.length) {
-    document.getElementById('divider').style.display = '';
+    document.getElementById('past-list').innerHTML = past.map((b, i) => jobCard(b, 'p' + i)).join('');
   }
 }
 
@@ -342,7 +541,8 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Failed');
     saveSession(d);
-    document.getElementById('staff-name-heading').textContent = d.name + "'s Schedule";
+    const firstName = d.name.split(' ')[0] || d.name;
+    document.getElementById('welcome-name').textContent = 'Hey, ' + firstName + ' 👋';
     document.getElementById('staff-label').textContent = d.name;
     okEl.style.display = 'block';
     document.getElementById('prof-pw').value = '';
