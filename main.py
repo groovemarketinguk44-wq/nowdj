@@ -1139,6 +1139,114 @@ async def admin_delete_booking(
     return {"success": True}
 
 
+# ── Calendar feed ──────────────────────────────────────────────────────────
+
+def _get_or_create_cal_token(tenant_id: int) -> str:
+    """Return the tenant's calendar token, creating one if it doesn't exist."""
+    token = get_setting("cal_token", tenant_id=tenant_id)
+    if not token:
+        token = str(uuid.uuid4()).replace("-", "")
+        set_setting("cal_token", token, tenant_id=tenant_id)
+    return token
+
+
+@app.get("/api/admin/calendar-token")
+async def get_calendar_token(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    token = _get_or_create_cal_token(tenant["id"])
+    base = str(request.base_url).rstrip("/")
+    return {"token": token, "url": f"{base}/calendar/bookings.ics?cal_token={token}"}
+
+
+@app.post("/api/admin/calendar-token/regenerate")
+async def regenerate_calendar_token(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    token = str(uuid.uuid4()).replace("-", "")
+    set_setting("cal_token", token, tenant_id=tenant["id"])
+    base = str(request.base_url).rstrip("/")
+    return {"token": token, "url": f"{base}/calendar/bookings.ics?cal_token={token}"}
+
+
+@app.get("/calendar/bookings.ics")
+async def bookings_ics(request: Request, cal_token: str = ""):
+    """Public ICS feed — authenticated by per-tenant calendar token."""
+    from fastapi.responses import Response
+    if not cal_token:
+        raise HTTPException(status_code=401, detail="Missing cal_token")
+
+    # Find the tenant whose token matches
+    tenant = getattr(request.state, "tenant", None)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    tid = tenant["id"]
+
+    stored = get_setting("cal_token", tenant_id=tid)
+    if not stored or stored != cal_token:
+        raise HTTPException(status_code=403, detail="Invalid calendar token")
+
+    bookings = get_all_bookings(tid)
+
+    def ics_date(d: str) -> str:
+        """Convert YYYY-MM-DD to YYYYMMDD for ICS VALUE=DATE."""
+        return d.replace("-", "") if d else ""
+
+    def ics_escape(s: str) -> str:
+        return (s or "").replace("\\", "\\\\").replace("\n", "\\n").replace(",", "\\,").replace(";", "\\;")
+
+    now_stamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//NowDJ//Bookings//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        f"X-WR-CALNAME:NowDJ Bookings",
+        "X-WR-TIMEZONE:Europe/London",
+    ]
+    for b in bookings:
+        if b.get("status") == "cancelled":
+            continue
+        dt = ics_date(b.get("event_date", ""))
+        if not dt:
+            continue
+        title   = ics_escape(b.get("title") or b.get("event_type") or "Booking")
+        loc     = ics_escape(b.get("location", ""))
+        notes   = ics_escape(b.get("notes", ""))
+        staff   = ics_escape(b.get("staff_name", ""))
+        desc_parts = []
+        if b.get("event_type"): desc_parts.append(f"Type: {b['event_type']}")
+        if staff:               desc_parts.append(f"Staff: {staff}")
+        if b.get("total_price"): desc_parts.append(f"Total: £{b['total_price']:.2f}")
+        if notes:               desc_parts.append(notes)
+        desc = ics_escape("\\n".join(desc_parts))
+        uid = f"nowdj-booking-{b['id']}@nowdj"
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTAMP:{now_stamp}",
+            f"DTSTART;VALUE=DATE:{dt}",
+            f"DTEND;VALUE=DATE:{dt}",
+            f"SUMMARY:{title}",
+            f"LOCATION:{loc}",
+            f"DESCRIPTION:{desc}",
+            "END:VEVENT",
+        ]
+    lines.append("END:VCALENDAR")
+
+    ics_content = "\r\n".join(lines) + "\r\n"
+    return Response(
+        content=ics_content,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="bookings.ics"'},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Admin — user (client) management  (tenant admin)
 # ---------------------------------------------------------------------------
