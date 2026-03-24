@@ -452,6 +452,31 @@ async def get_quote(
     return q
 
 
+@app.post("/quotes/{quote_id}/duplicate")
+async def duplicate_quote_route(
+    quote_id: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    original = get_quote_by_id(quote_id, tid)
+    if not original:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    new_id = save_quote({
+        "name":           original["name"],
+        "email":          original["email"],
+        "phone":          original.get("phone", ""),
+        "event_date":     original.get("event_date", ""),
+        "location":       original.get("location", ""),
+        "event_type":     original.get("event_type", ""),
+        "selected_items": original.get("selected_items", []),
+        "total_price":    original.get("total_price", 0),
+        "message":        original.get("message", ""),
+    }, tid)
+    return {"success": True, "id": new_id}
+
+
 @app.delete("/quotes/{quote_id}")
 async def delete_quote_route(
     quote_id: int,

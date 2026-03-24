@@ -1898,6 +1898,15 @@ function _wireDetailListeners(el, q) {
     if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
     else openDocEditorFromEnquiry(q, 'invoice');
   });
+  el.querySelector('.btn-duplicate-enquiry')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/quotes/${q.id}/duplicate`, { method: 'POST' });
+      if (!res.ok) throw new Error();
+      showToast('Enquiry duplicated.', 'success');
+      await loadQuotes();
+    } catch { showToast('Failed to duplicate.', 'error'); }
+  });
   el.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (!confirm(`Delete enquiry from ${q.name || 'this person'}? This cannot be undone.`)) return;
@@ -2041,10 +2050,16 @@ function buildDetail(q) {
             ${allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'invoice') ? 'Edit Invoice' : 'Invoice'}
           </button>
         </div>
-        <button class="btn-delete-enquiry btn-sm btn-danger" data-quote-id="${q.id}" style="margin-top:0.5rem;width:100%;justify-content:center">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          Delete Enquiry
-        </button>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <button class="btn-duplicate-enquiry btn-secondary btn-sm" data-quote-id="${q.id}" style="flex:1;justify-content:center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Duplicate
+          </button>
+          <button class="btn-delete-enquiry btn-sm btn-danger" data-quote-id="${q.id}" style="flex:1;justify-content:center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            Delete Enquiry
+          </button>
+        </div>
       </div>
       <div class="detail-section">
         <h4>Package Items</h4>
