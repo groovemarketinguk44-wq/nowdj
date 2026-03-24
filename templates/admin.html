@@ -1996,6 +1996,7 @@ function _wireDetailListeners(el, q) {
     e.stopPropagation();
     openComposeModal({
       to_email: q.email || '', to_name: q.name || '',
+      quote_id: q.id,
       enquiryDocs: allDocs.filter(d => d.source_quote_id == q.id),
       quoteVars: { name: q.name||'', email: q.email||'', phone: q.phone||'',
         event_date: q.event_date||'', event_type: q.event_type||'', location: q.location||'',
@@ -2490,10 +2491,12 @@ document.getElementById('cancel-compose-modal').addEventListener('click', closeC
 addOverlayClose(document.getElementById('compose-modal'), closeComposeModal);
 
 let _composeQuoteVars = {};
+let _composeQuoteId   = null;
 
-async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {}, enquiryDocs = [] } = {}) {
+async function openComposeModal({ replyTo = null, to_email = '', to_name = '', prefill = {}, quoteVars = {}, enquiryDocs = [], quote_id = null } = {}) {
   composeMsgId = null;
   _composeQuoteVars = quoteVars;
+  _composeQuoteId = quote_id || null;
   document.getElementById('compose-to').value      = to_email;
   document.getElementById('compose-to-name').value = to_name;
   document.getElementById('compose-subject').value = prefill.subject || '';
@@ -2717,6 +2720,7 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
     } else {
       const sendPayload = { to_email, to_name, subject, body };
       if (attachDocId) sendPayload.doc_id = parseInt(attachDocId);
+      if (_composeQuoteId) sendPayload.quote_id = _composeQuoteId;
       res = await fetch('/api/email/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sendPayload),
       });
@@ -2724,6 +2728,11 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || 'Send failed');
     showToast('Email sent!', 'success');
+    // Auto-advance new → contacted in local state so the UI updates instantly
+    if (_composeQuoteId && data.status_updated) {
+      const q = allQuotes.find(e => e.id == _composeQuoteId);
+      if (q) { q.status = 'contacted'; updateStats(allQuotes); renderQuotes(); }
+    }
     closeComposeModal();
     sentMessages = [];
   } catch (err) {

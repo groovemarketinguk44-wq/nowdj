@@ -811,11 +811,24 @@ async def email_send(
 
     try:
         ok = await em.send_email(to_email, to_name, subject, body, tenant["id"], attachments)
-        return {"success": ok}
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Auto-advance status: new → contacted when an email is sent to an enquiry
+    status_updated = False
+    quote_id = payload.get("quote_id")
+    if ok and quote_id:
+        try:
+            q = get_quote_by_id(int(quote_id), tenant["id"])
+            if q and q.get("status") == "new":
+                update_quote_status(int(quote_id), "contacted", tenant["id"])
+                status_updated = True
+        except Exception:
+            pass  # never block the send response
+
+    return {"success": ok, "status_updated": status_updated}
 
 
 @app.post("/api/email/reply/{msg_id:path}")
