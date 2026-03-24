@@ -9,6 +9,9 @@
   --bg-card:       #111827;
   --bg-card-hover: #161f30;
   --bg-input:      #0d1117;
+  --bg-hover:      #161f30;
+  --bg-alt:        #0d1117;
+  --text:          #f8f8f8;
 
   --accent:        #fa854f;
   --accent-light:  #ffb38a;
@@ -2343,6 +2346,7 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 .mobile-bottom-nav { display: none; }
 .mobile-more-overlay { display: none; }
 .mobile-more-sheet { display: none; }
+.quotes-cards-list { display: none; }
 
 @media (max-width: 768px) {
   /* ── Layout ── */
@@ -2488,6 +2492,82 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   .quotes-table .col-received { display: none; }
   th.col-location, th.col-type, th.col-received { display: none; }
 
+  /* ── Enquiry card layout (replaces table on mobile) ── */
+  .quotes-table-wrap { display: none; }
+  .quotes-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .enquiry-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color var(--transition);
+  }
+  .enquiry-card.open { border-color: var(--border-hover); }
+  .ec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    gap: 0.75rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .ec-header:active { background: rgba(255,255,255,0.03); }
+  .ec-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    flex: 1;
+  }
+  .ec-name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ec-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .ec-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .ec-total {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .ec-chevron {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    transition: transform var(--transition);
+    flex-shrink: 0;
+  }
+  .enquiry-card.open .ec-chevron { transform: rotate(180deg); }
+  .ec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0 1rem 0.75rem;
+  }
+  .ec-tags:empty { display: none; }
+  .ec-detail {
+    border-top: 1px solid var(--border);
+    padding: 1rem;
+  }
+
   /* ── Enquiry detail (expanded row) ── */
   .quote-detail { grid-template-columns: 1fr; gap: 1rem; }
   .detail-actions { flex-wrap: wrap; gap: 0.5rem; }
@@ -2549,6 +2629,9 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   }
   .btn-primary, .btn-secondary { min-height: 42px; }
   .btn-sm { min-height: 34px; }
+
+  /* ── Branding section ── */
+  .branding-grid { grid-template-columns: 1fr !important; }
 
   /* ── Site header (public pages) ── */
   .site-header { padding: 0 1rem; }

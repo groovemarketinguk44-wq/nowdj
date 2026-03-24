@@ -246,6 +246,8 @@
             </tbody>
           </table>
         </div>
+        <!-- Mobile card list (shown instead of table on small screens) -->
+        <div id="quotes-cards" class="quotes-cards-list" style="display:none"></div>
       </div>
 
       <!-- ================================================================
@@ -537,7 +539,7 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:860px">
+        <div class="branding-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:860px">
 
           <!-- Settings -->
           <div class="content-card">
@@ -1756,26 +1758,80 @@ function statusBadge(s) {
   return `<span class="status-badge status-${s}">${labels[s]||s}</span>`;
 }
 
+function _wireDetailListeners(el, q) {
+  el.querySelector('.status-select')?.addEventListener('change', async (e) => {
+    await patchStatus(q.id, e.target.value);
+  });
+  el.querySelector('.btn-send-email')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openComposeModal({
+      to_email: q.email || '', to_name: q.name || '',
+      enquiryDocs: allDocs.filter(d => d.source_quote_id == q.id),
+      quoteVars: { name: q.name||'', email: q.email||'', phone: q.phone||'',
+        event_date: q.event_date||'', event_type: q.event_type||'', location: q.location||'',
+        total: '£' + getEnquiryEffectiveTotal(q).toFixed(2), quote_id: String(q.id) },
+    });
+  });
+  el.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote');
+    if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'quote');
+    else openDocEditorFromEnquiry(q, 'quote');
+  });
+  el.querySelector('.btn-create-invoice')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'invoice');
+    if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
+    else openDocEditorFromEnquiry(q, 'invoice');
+  });
+  el.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm(`Delete enquiry from ${q.name || 'this person'}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/quotes/${q.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      expandedId = null;
+      allQuotes = allQuotes.filter(x => x.id !== q.id);
+      updateStats(allQuotes);
+      renderQuotes();
+      showToast('Enquiry deleted.', 'success');
+    } catch { showToast('Failed to delete.', 'error'); }
+  });
+}
+
 function renderQuotes() {
-  const tbody  = document.getElementById('quotes-tbody');
+  const tbody    = document.getElementById('quotes-tbody');
+  const cardsEl  = document.getElementById('quotes-cards');
+  const tableWrap = document.querySelector('.quotes-table-wrap');
+  const isMobile = window.innerWidth <= 768;
+
+  tableWrap.style.display = isMobile ? 'none' : '';
+  cardsEl.style.display   = isMobile ? '' : 'none';
+
   const quotes = filteredQuotes();
+  const emptyMsg = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">No quotes found</div>';
 
   if (!quotes.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="table-empty"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No quotes found</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="table-empty"><p>No quotes found</p></div></td></tr>`;
+    cardsEl.innerHTML = emptyMsg;
     return;
   }
 
   tbody.innerHTML = '';
+  cardsEl.innerHTML = '';
+
   quotes.forEach(q => {
     const items = Array.isArray(q.selected_items) ? q.selected_items : [];
     const tags  = items.length
       ? items.slice(0,3).map(i=>`<span class="item-tag">${escHtml(i.name)}</span>`).join('')
         + (items.length>3 ? `<span class="item-tag">+${items.length-3}</span>` : '')
       : '<span style="color:var(--text-muted);font-size:.8rem">—</span>';
+    const isExpanded = expandedId === q.id;
 
+    // ── Desktop table row ──
     const row = document.createElement('tr');
     row.dataset.id = q.id;
-    if (expandedId === q.id) row.classList.add('expanded');
+    if (isExpanded) row.classList.add('expanded');
     row.innerHTML = `
       <td class="col-id">#${q.id}</td>
       <td class="col-name">${escHtml(q.name||'—')}</td>
@@ -1786,67 +1842,44 @@ function renderQuotes() {
       <td class="col-price">${fmt(getEnquiryEffectiveTotal(q))}</td>
       <td>${statusBadge(q.status||'new')}</td>
       <td class="col-received" style="font-size:.78rem;color:var(--text-muted);white-space:nowrap">${fmtDate(q.created_at)}</td>`;
-
-    row.addEventListener('click', () => {
-      expandedId = expandedId === q.id ? null : q.id;
-      renderQuotes();
-    });
-
+    row.addEventListener('click', () => { expandedId = isExpanded ? null : q.id; renderQuotes(); });
     tbody.appendChild(row);
-
-    if (expandedId === q.id) {
+    if (isExpanded) {
       const dr = document.createElement('tr');
       dr.className = 'expanded-row';
       dr.innerHTML = `<td colspan="9">${buildDetail(q)}</td>`;
-      dr.querySelector('.status-select')?.addEventListener('change', async (e) => {
-        await patchStatus(q.id, e.target.value);
-      });
-      dr.querySelector('.btn-send-email')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const enquiryDocs = allDocs.filter(d => d.source_quote_id == q.id);
-        openComposeModal({
-          to_email: q.email || '',
-          to_name:  q.name  || '',
-          enquiryDocs,
-          quoteVars: {
-            name:       q.name       || '',
-            email:      q.email      || '',
-            phone:      q.phone      || '',
-            event_date: q.event_date || '',
-            event_type: q.event_type || '',
-            location:   q.location   || '',
-            total:      '£' + getEnquiryEffectiveTotal(q).toFixed(2),
-            quote_id:   String(q.id),
-          },
-        });
-      });
-      dr.querySelector('.btn-create-quote')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'quote');
-        if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'quote');
-        else openDocEditorFromEnquiry(q, 'quote');
-      });
-      dr.querySelector('.btn-create-invoice')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const hasExisting = allDocs.some(d => d.source_quote_id == q.id && d.doc_type === 'invoice');
-        if (!hasExisting && savedSignatures.length > 1) openSigPickerForDoc(q, 'invoice');
-        else openDocEditorFromEnquiry(q, 'invoice');
-      });
-      dr.querySelector('.btn-delete-enquiry')?.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm(`Delete enquiry from ${q.name || 'this person'}? This cannot be undone.`)) return;
-        try {
-          const res = await fetch(`/quotes/${q.id}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error();
-          expandedId = null;
-          allQuotes = allQuotes.filter(x => x.id !== q.id);
-          updateStats(allQuotes);
-          renderQuotes();
-          showToast('Enquiry deleted.', 'success');
-        } catch { showToast('Failed to delete.', 'error'); }
-      });
+      _wireDetailListeners(dr, q);
       tbody.appendChild(dr);
     }
+
+    // ── Mobile card ──
+    const card = document.createElement('div');
+    card.className = 'enquiry-card' + (isExpanded ? ' open' : '');
+    card.innerHTML = `
+      <div class="ec-header">
+        <div class="ec-header-left">
+          <span class="ec-name">${escHtml(q.name||'—')}</span>
+          <span class="ec-meta">${fmtDate(q.event_date)}${q.event_type ? ' · ' + escHtml(q.event_type) : ''}</span>
+        </div>
+        <div class="ec-header-right">
+          ${statusBadge(q.status||'new')}
+          <span class="ec-total">${fmt(getEnquiryEffectiveTotal(q))}</span>
+          <svg class="ec-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+      <div class="ec-tags">${tags}</div>`;
+    card.querySelector('.ec-header').addEventListener('click', () => {
+      expandedId = isExpanded ? null : q.id;
+      renderQuotes();
+    });
+    if (isExpanded) {
+      const detail = document.createElement('div');
+      detail.className = 'ec-detail';
+      detail.innerHTML = buildDetail(q);
+      _wireDetailListeners(detail, q);
+      card.appendChild(detail);
+    }
+    cardsEl.appendChild(card);
   });
 }
 
@@ -1974,6 +2007,13 @@ document.getElementById('btn-export').addEventListener('click', () => {
 });
 
 setInterval(loadQuotes, 60_000);
+
+// Re-render enquiry list on resize so card/table switch works
+let _rqResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_rqResizeTimer);
+  _rqResizeTimer = setTimeout(renderQuotes, 150);
+});
 
 /* ======================================================================
    EMAIL MANAGEMENT
@@ -2326,7 +2366,7 @@ function updateAttachmentInline() {
   const opt = attachSel.options[attachSel.selectedIndex];
   const label = opt ? opt.textContent : 'Document';
   inlineEl.style.display = '';
-  inlineEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--text-muted)">&#128206; <strong style="color:var(--text)">${escHtml(label)}.pdf</strong> will be attached</div>`;
+  inlineEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--text-muted)">&#128206; <strong style="color:var(--text-primary)">${escHtml(label)}.pdf</strong> will be attached</div>`;
 }
 document.getElementById('compose-attachment-select').addEventListener('change', updateAttachmentInline);
 
@@ -2584,6 +2624,7 @@ async function loadDocs() {
     const r = await fetch('/api/docs');
     allDocs = await r.json();
     renderDocsTable();
+    renderQuotes(); // refresh enquiry tracker totals now that docs are loaded
   } catch {
     document.getElementById('docs-tbody').innerHTML = '<tr><td colspan="8" style="color:var(--danger);padding:1.5rem">Failed to load documents.</td></tr>';
   }
