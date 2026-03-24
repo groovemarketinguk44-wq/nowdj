@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from catalog_store import (
+    DEFAULT_BRANDING_CONFIG,
     build_branding_style,
     get_prices,
     load_branding_config,
@@ -262,8 +263,6 @@ async def staff_portal_page(request: Request):
     if tenant:
         branding = load_branding_config(tenant["id"], tenant["name"])
     else:
-        # No tenant from URL — page still renders; login uses global staff lookup
-        from catalog_store import DEFAULT_BRANDING_CONFIG
         branding = DEFAULT_BRANDING_CONFIG.copy()
     return templates.TemplateResponse("staff.html", {
         "request": request,
