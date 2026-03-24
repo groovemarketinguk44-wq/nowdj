@@ -921,6 +921,43 @@
 </div>
 
 <!-- ======================================================================
+     ITEM SELECTION RULES MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="item-rules-modal">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-header">
+      <h3>Selection Rules — <span id="irm-item-name" style="color:var(--accent)"></span></h3>
+      <button class="btn-close-modal" id="irm-cancel">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+      <p style="font-size:0.78rem;color:var(--text-muted);margin:0">Controls how items interact on the booking form. Leave blank if no rules needed.</p>
+      <div class="modal-field">
+        <label>Exclusive group</label>
+        <input type="text" id="irm-exclusive-group" placeholder="e.g. dj_set" style="font-family:monospace" />
+        <div class="field-hint">Items in the same group are mutually exclusive — picking one deselects the others.</div>
+      </div>
+      <div class="modal-field">
+        <label>Add-on for group</label>
+        <input type="text" id="irm-addon-for" placeholder="e.g. dj_set" style="font-family:monospace" />
+        <div class="field-hint">This item is only available when a non-blocked item from that group is selected.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;cursor:pointer">
+        <input type="checkbox" id="irm-no-addons" style="accent-color:var(--accent);width:15px;height:15px" />
+        Block add-ons when selected
+        <span style="font-size:0.75rem;color:var(--text-muted)">(e.g. Plug in &amp; Play can't have Extra Hour)</span>
+      </label>
+      <div style="font-size:0.72rem;color:var(--text-muted)">Item ID: <code id="irm-item-id" style="color:var(--accent)"></code></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="irm-cancel-btn" onclick="document.getElementById('item-rules-modal').classList.remove('open')">Cancel</button>
+      <button class="btn-primary" id="irm-save">Save Rules</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
      CATALOG PICKER MODAL (for doc line items)
      ====================================================================== -->
 <div class="modal-overlay" id="catalog-picker-modal">
@@ -1483,7 +1520,6 @@ function buildCategoryCard(catId, cat) {
   Object.entries(cat.items || {}).forEach(([itemId, item]) => {
     const tr = buildItemRow(catId, itemId, item);
     tbody.appendChild(tr);
-    if (tr._rulesRow) tbody.appendChild(tr._rulesRow);
   });
 
   // Add item
@@ -1493,7 +1529,6 @@ function buildCategoryCard(catId, cat) {
     catalogData[catId].items[newId] = newItem;
     const row = buildItemRow(catId, newId, newItem);
     tbody.appendChild(row);
-    if (row._rulesRow) tbody.appendChild(row._rulesRow);
     row.querySelector('.item-input').focus();
   });
 
@@ -1512,6 +1547,44 @@ function syncItemOrder(catId, tbody) {
   });
   catalogData[catId].items = newItems;
 }
+
+let _rulesModalCallback = null;
+let _rulesModalCatId = null;
+let _rulesModalItemId = null;
+
+function openItemRulesModal(catId, itemId, onClose) {
+  const item = catalogData[catId].items[itemId];
+  _rulesModalCatId = catId;
+  _rulesModalItemId = itemId;
+  _rulesModalCallback = onClose;
+  document.getElementById('irm-item-name').textContent = item.name || itemId;
+  document.getElementById('irm-item-id').textContent   = itemId;
+  document.getElementById('irm-exclusive-group').value = item.exclusive_group || '';
+  document.getElementById('irm-addon-for').value       = item.addon_for || '';
+  document.getElementById('irm-no-addons').checked     = !!item.no_addons;
+  document.getElementById('item-rules-modal').classList.add('open');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('irm-save').addEventListener('click', () => {
+    const item = catalogData[_rulesModalCatId]?.items[_rulesModalItemId];
+    if (!item) return;
+    const eg = document.getElementById('irm-exclusive-group').value.trim();
+    const af = document.getElementById('irm-addon-for').value.trim();
+    const na = document.getElementById('irm-no-addons').checked;
+    if (eg) item.exclusive_group = eg; else delete item.exclusive_group;
+    if (af) item.addon_for = af;       else delete item.addon_for;
+    if (na) item.no_addons = true;     else delete item.no_addons;
+    if (_rulesModalCallback) _rulesModalCallback();
+    document.getElementById('item-rules-modal').classList.remove('open');
+  });
+  document.getElementById('irm-cancel').addEventListener('click', () => {
+    document.getElementById('item-rules-modal').classList.remove('open');
+  });
+  document.getElementById('item-rules-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) document.getElementById('item-rules-modal').classList.remove('open');
+  });
+});
 
 function buildItemRow(catId, itemId, item) {
   const tr = document.createElement('tr');
@@ -1549,41 +1622,12 @@ function buildItemRow(catId, itemId, item) {
       </button>
     </td>`;
 
-  // ── Rules sub-row ──
-  const rulesRow = document.createElement('tr');
-  rulesRow.dataset.rulesFor = itemId;
-  rulesRow.style.display = 'none';
-  rulesRow.innerHTML = `
-    <td></td>
-    <td colspan="5" style="padding:0.35rem 0.5rem 0.65rem 0.5rem">
-      <div style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-base);border-radius:6px;padding:0.4rem 0.65rem;font-size:0.78rem">
-        <label style="color:var(--text-muted);white-space:nowrap">Exclusive group</label>
-        <input class="item-input item-rules-input" type="text" data-rules-field="exclusive_group"
-               value="${escHtml(item.exclusive_group||'')}" placeholder="e.g. dj_set"
-               style="width:100px;font-family:monospace;font-size:0.78rem" />
-        <label style="color:var(--text-muted);white-space:nowrap;margin-left:0.5rem">Add-on for group</label>
-        <input class="item-input item-rules-input" type="text" data-rules-field="addon_for"
-               value="${escHtml(item.addon_for||'')}" placeholder="e.g. dj_set"
-               style="width:100px;font-family:monospace;font-size:0.78rem" />
-        <label style="color:var(--text-muted);white-space:nowrap;margin-left:0.5rem;display:flex;align-items:center;gap:4px;cursor:pointer">
-          <input type="checkbox" data-rules-field="no_addons" ${item.no_addons ? 'checked' : ''} style="accent-color:var(--accent)" />
-          No add-ons
-        </label>
-        <span style="font-size:0.68rem;color:var(--text-muted);margin-left:auto">ID: <code style="font-size:0.68rem;color:var(--accent)">${escHtml(itemId)}</code></span>
-      </div>
-    </td>`;
-
-  // Wire rules inputs
-  rulesRow.querySelectorAll('.item-rules-input').forEach(input => {
-    input.addEventListener('input', (e) => {
-      catalogData[catId].items[itemId][e.target.dataset.rulesField] = e.target.value.trim() || undefined;
-    });
-  });
-  rulesRow.querySelector('[data-rules-field="no_addons"]').addEventListener('change', (e) => {
-    catalogData[catId].items[itemId].no_addons = e.target.checked || undefined;
-  });
-
-  tr._rulesRow = rulesRow;
+  // ── ⚙ button indicator ──
+  function _updateRulesBtn() {
+    const hasRules = !!(item.exclusive_group || item.addon_for || item.no_addons);
+    tr.querySelector('.btn-item-rules').style.color = hasRules ? 'var(--accent)' : 'var(--text-muted)';
+  }
+  _updateRulesBtn();
 
   /* ── field sync ── */
   tr.querySelectorAll('.item-input').forEach(input => {
@@ -1611,14 +1655,11 @@ function buildItemRow(catId, itemId, item) {
 
   tr.querySelector('.btn-item-rules').addEventListener('click', (e) => {
     e.stopPropagation();
-    const isOpen = rulesRow.style.display !== 'none';
-    rulesRow.style.display = isOpen ? 'none' : '';
-    e.currentTarget.style.color = isOpen ? 'var(--text-muted)' : 'var(--accent)';
+    openItemRulesModal(catId, itemId, _updateRulesBtn);
   });
 
   tr.querySelector('.btn-del-item').addEventListener('click', () => {
     delete catalogData[catId].items[itemId];
-    if (tr._rulesRow) tr._rulesRow.remove();
     tr.remove();
   });
 
