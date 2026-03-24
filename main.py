@@ -899,14 +899,29 @@ async def create_automation_route(
     name = payload.get("name", "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
-    aid = create_automation(
-        tenant["id"],
-        name,
-        payload.get("trigger_event", "form_submission"),
-        payload.get("template_id") or None,
-        payload.get("send_to", "custom"),
-        payload.get("send_to_email", "").strip() or None,
-    )
+    try:
+        aid = create_automation(
+            tenant["id"],
+            name,
+            payload.get("trigger_event", "form_submission"),
+            payload.get("template_id") or None,
+            payload.get("send_to", "custom"),
+            payload.get("send_to_email", "").strip() or None,
+        )
+    except Exception as e:
+        # Table may not exist yet — run migration and retry once
+        if "email_automations" in str(e):
+            migrate_automations()
+            aid = create_automation(
+                tenant["id"],
+                name,
+                payload.get("trigger_event", "form_submission"),
+                payload.get("template_id") or None,
+                payload.get("send_to", "custom"),
+                payload.get("send_to_email", "").strip() or None,
+            )
+        else:
+            raise HTTPException(status_code=500, detail=str(e))
     return {"success": True, "id": aid}
 
 

@@ -216,6 +216,7 @@ def init_db() -> None:
 
 def migrate_automations() -> None:
     """Run in its own transaction so it never rolls back init_db."""
+    import sys
     conn = _conn()
     try:
         with conn:
@@ -233,6 +234,9 @@ def migrate_automations() -> None:
                         created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
+        print("migrate_automations: OK", file=sys.stderr)
+    except Exception as e:
+        print(f"migrate_automations FAILED: {e}", file=sys.stderr)
     finally:
         conn.close()
 
