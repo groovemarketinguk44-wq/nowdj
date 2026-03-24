@@ -23,6 +23,8 @@ from database import (
     get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote, update_quote_total,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
     seed_templates_for_tenant,
+    get_all_automations, get_active_automations_for_trigger,
+    create_automation, update_automation, delete_automation,
     get_user_by_email, get_user_by_id, get_all_users, create_user, delete_user,
     get_quotes_by_email, update_user,
     get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member,
@@ -418,12 +420,47 @@ async def submit_quote(quote: QuoteRequest, request: Request):
         "message": quote.message,
     }, tid)
 
+    # Fire automations for form_submission trigger (best-effort, don't block response)
+    try:
+        automations = get_active_automations_for_trigger("form_submission", tid)
+        for auto in automations:
+            vars_map = {
+                "name":       quote.name or "",
+                "email":      quote.email or "",
+                "phone":      quote.phone or "",
+                "event_date": quote.event_date or "",
+                "event_type": quote.event_type or "",
+                "location":   quote.location or "",
+                "total":      f"£{total:,.2f}",
+                "message":    quote.message or "",
+                "quote_id":   str(quote_id),
+            }
+            subj = _render_template_vars(auto.get("subject") or "", vars_map)
+            body = _render_template_vars(auto.get("body") or "", vars_map)
+            if auto["send_to"] == "submitter":
+                to_email = quote.email
+                to_name  = quote.name or quote.email
+            else:
+                to_email = auto.get("send_to_email") or ""
+                to_name  = to_email
+            if to_email:
+                await em.send_email(to_email, to_name, subj, body, tid)
+    except Exception:
+        pass  # Never let automation errors break form submission
+
     return {
         "success": True,
         "quote_id": quote_id,
         "total_price": total,
         "message": f"Quote #{quote_id} submitted! We'll be in touch shortly.",
     }
+
+
+def _render_template_vars(text: str, vars_map: dict) -> str:
+    """Replace {{key}} placeholders in template text."""
+    for key, val in vars_map.items():
+        text = text.replace("{{" + key + "}}", val)
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -802,6 +839,75 @@ async def delete_email_template(
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
     delete_template(tid, tenant["id"])
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Email — automations  (tenant admin)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/email/automations")
+async def list_automations(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return get_all_automations(tenant["id"])
+
+
+@app.post("/api/email/automations")
+async def create_automation_route(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    name = payload.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    aid = create_automation(
+        tenant["id"],
+        name,
+        payload.get("trigger", "form_submission"),
+        payload.get("template_id") or None,
+        payload.get("send_to", "custom"),
+        payload.get("send_to_email", "").strip() or None,
+    )
+    return {"success": True, "id": aid}
+
+
+@app.put("/api/email/automations/{aid}")
+async def update_automation_route(
+    aid: int,
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    name = payload.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    update_automation(
+        aid,
+        tenant["id"],
+        name,
+        payload.get("trigger", "form_submission"),
+        payload.get("template_id") or None,
+        payload.get("send_to", "custom"),
+        payload.get("send_to_email", "").strip() or None,
+        bool(payload.get("enabled", True)),
+    )
+    return {"success": True}
+
+
+@app.delete("/api/email/automations/{aid}")
+async def delete_automation_route(
+    aid: int,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    delete_automation(aid, tenant["id"])
     return {"success": True}
 
 

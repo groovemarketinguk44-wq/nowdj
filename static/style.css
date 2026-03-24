@@ -2214,6 +2214,57 @@ textarea.field-input { resize: vertical; min-height: 80px; }
 .tmpl-actions { display: flex; gap: 4px; }
 .tmpl-empty { text-align: center; padding: 4rem; color: var(--text-muted); font-size: 0.875rem; }
 
+/* Automations */
+.automation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.6rem;
+}
+.automation-row:last-child { margin-bottom: 0; }
+.automation-info { flex: 1; min-width: 0; }
+.automation-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.4rem; }
+.automation-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.automation-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.auto-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.auto-tag.trigger  { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.auto-tag.template { background: color-mix(in srgb, #22c55e 12%, transparent); color: #16a34a; }
+.auto-tag.sendto   { background: var(--bg-input); color: var(--text-muted); }
+
+/* Toggle switch */
+.toggle-switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  width: 36px; height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  transition: background 0.2s;
+  position: relative;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+
 /* Compose modal */
 .compose-modal-card { max-width: 640px; }
 

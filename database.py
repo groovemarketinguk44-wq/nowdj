@@ -210,6 +210,20 @@ def init_db() -> None:
                 cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_value REAL DEFAULT 0")
                 # Migration: add staff_pay column to bookings
                 cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS staff_pay REAL DEFAULT NULL")
+                # Automations table
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS email_automations (
+                        id          SERIAL PRIMARY KEY,
+                        tenant_id   INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                        name        TEXT NOT NULL,
+                        trigger     TEXT NOT NULL DEFAULT 'form_submission',
+                        template_id INTEGER REFERENCES email_templates(id) ON DELETE SET NULL,
+                        send_to     TEXT NOT NULL DEFAULT 'custom',
+                        send_to_email TEXT,
+                        enabled     BOOLEAN NOT NULL DEFAULT true,
+                        created_at  TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """)
     finally:
         conn.close()
 
@@ -568,6 +582,83 @@ def delete_template(tid: int, tenant_id: int) -> None:
                     "DELETE FROM email_templates WHERE id = %s AND tenant_id = %s",
                     (tid, tenant_id),
                 )
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Email Automations
+# ---------------------------------------------------------------------------
+
+def get_all_automations(tenant_id: int) -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.*, t.name AS template_name
+                FROM email_automations a
+                LEFT JOIN email_templates t ON t.id = a.template_id
+                WHERE a.tenant_id = %s
+                ORDER BY a.id ASC
+            """, (tenant_id,))
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_active_automations_for_trigger(trigger: str, tenant_id: int) -> list[dict]:
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.*, t.subject, t.body
+                FROM email_automations a
+                LEFT JOIN email_templates t ON t.id = a.template_id
+                WHERE a.tenant_id = %s AND a.trigger = %s AND a.enabled = true
+                  AND a.template_id IS NOT NULL
+            """, (tenant_id, trigger))
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def create_automation(tenant_id: int, name: str, trigger: str, template_id: int | None,
+                      send_to: str, send_to_email: str | None) -> int:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO email_automations
+                        (tenant_id, name, trigger, template_id, send_to, send_to_email)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                """, (tenant_id, name, trigger, template_id, send_to, send_to_email))
+                return cur.fetchone()["id"]
+    finally:
+        conn.close()
+
+
+def update_automation(aid: int, tenant_id: int, name: str, trigger: str, template_id: int | None,
+                      send_to: str, send_to_email: str | None, enabled: bool) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE email_automations
+                    SET name=%s, trigger=%s, template_id=%s, send_to=%s, send_to_email=%s, enabled=%s
+                    WHERE id=%s AND tenant_id=%s
+                """, (name, trigger, template_id, send_to, send_to_email, enabled, aid, tenant_id))
+    finally:
+        conn.close()
+
+
+def delete_automation(aid: int, tenant_id: int) -> None:
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM email_automations WHERE id=%s AND tenant_id=%s", (aid, tenant_id))
     finally:
         conn.close()
 

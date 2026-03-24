@@ -281,6 +281,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Templates
           </button>
+          <button class="email-tab" data-etab="automations">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Automations
+          </button>
           <button class="email-tab" data-etab="signatures">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Signatures
@@ -308,6 +312,68 @@
           </div>
           <div class="templates-grid" id="templates-grid">
             <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
+          </div>
+        </div>
+
+        <!-- Automations pane -->
+        <div class="email-pane" id="etab-automations">
+          <div class="templates-toolbar">
+            <h3>Email Automations</h3>
+            <p>Automatically send emails when something happens — like a new form submission. Pick a trigger, choose a template, and set who receives it.</p>
+            <button class="btn-primary" id="btn-new-automation">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Automation
+            </button>
+          </div>
+          <div id="automations-list">
+            <div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>
+          </div>
+        </div>
+
+        <!-- Automation editor modal -->
+        <div class="modal-overlay" id="automation-modal-overlay" style="display:none">
+          <div class="modal-card" style="max-width:500px">
+            <div class="modal-header">
+              <h3 id="automation-modal-title">New Automation</h3>
+              <button class="modal-close" id="close-automation-modal">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="automation-edit-id" value="" />
+              <div class="modal-field">
+                <label class="field-label">Automation Name</label>
+                <input type="text" id="automation-name" placeholder="e.g. New Enquiry Alert" />
+              </div>
+              <div class="modal-field">
+                <label class="field-label">Trigger</label>
+                <select id="automation-trigger">
+                  <option value="form_submission">New form submission</option>
+                </select>
+              </div>
+              <div class="modal-field">
+                <label class="field-label">Email Template</label>
+                <select id="automation-template">
+                  <option value="">— Select a template —</option>
+                </select>
+                <p class="field-hint">Variables like <code>{{name}}</code>, <code>{{event_date}}</code>, <code>{{event_type}}</code>, <code>{{location}}</code>, <code>{{total}}</code>, <code>{{message}}</code> are replaced automatically.</p>
+              </div>
+              <div class="modal-field">
+                <label class="field-label">Send To</label>
+                <select id="automation-send-to">
+                  <option value="custom">A specific email address (e.g. yourself)</option>
+                  <option value="submitter">The person who submitted the form</option>
+                </select>
+              </div>
+              <div class="modal-field" id="automation-custom-email-field">
+                <label class="field-label">Email Address</label>
+                <input type="email" id="automation-send-to-email" placeholder="you@example.com" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-secondary" id="cancel-automation-modal">Cancel</button>
+              <button class="btn-primary" id="save-automation-btn">Save Automation</button>
+            </div>
           </div>
         </div>
 
@@ -1386,6 +1452,9 @@ function initDashboard() {
       if (payload.email) document.getElementById('adm-email').value = payload.email;
     }
   } catch {}
+  // Restore section from URL hash (or default to enquiries)
+  const hashSection = window.location.hash.replace('#', '');
+  switchSection(VALID_SECTIONS.includes(hashSection) ? hashSection : 'enquiries');
 }
 
 /* ======================================================================
@@ -1422,7 +1491,11 @@ function initNav() {
   }
 }
 
+const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
+
 function switchSection(id) {
+  if (!VALID_SECTIONS.includes(id)) id = 'enquiries';
+  history.replaceState(null, '', '#' + id);
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
   document.getElementById(`section-${id}`)?.classList.add('active');
   document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.remove('active'));
@@ -2190,8 +2263,9 @@ function switchEmailTab(tab) {
   document.querySelectorAll('.email-pane').forEach(p => p.classList.toggle('active', p.id === `etab-${tab}`));
   if (tab === 'inbox'      && emailStatus.authenticated && inboxMessages.length === 0) loadInbox();
   if (tab === 'sent'       && emailStatus.authenticated && sentMessages.length === 0) loadSent();
-  if (tab === 'templates') loadEmailTemplates();
-  if (tab === 'signatures') loadSignatures();
+  if (tab === 'templates')    loadEmailTemplates();
+  if (tab === 'signatures')   loadSignatures();
+  if (tab === 'automations')  loadAutomations();
 }
 
 document.querySelectorAll('.email-tab').forEach(tab => {
@@ -2753,6 +2827,160 @@ document.getElementById('btn-save-template').addEventListener('click', async () 
     closeTemplateModal();
     loadEmailTemplates();
   } catch { showToast('Failed to save template.', 'error'); }
+  finally { btn.disabled = false; }
+});
+
+
+/* ======================================================================
+   EMAIL AUTOMATIONS
+   ====================================================================== */
+
+let automationsData = [];
+
+async function loadAutomations() {
+  const list = document.getElementById('automations-list');
+  list.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted)"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await fetch('/api/email/automations');
+    automationsData = await res.json();
+    renderAutomations();
+  } catch {
+    list.innerHTML = '<div style="color:var(--danger);padding:2rem">Failed to load automations.</div>';
+  }
+}
+
+function renderAutomations() {
+  const list = document.getElementById('automations-list');
+  if (!automationsData.length) {
+    list.innerHTML = `
+      <div class="tmpl-empty" style="padding:3rem;text-align:center;color:var(--text-muted)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:2.5rem;height:2.5rem;margin:0 auto 1rem;display:block;opacity:.4"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <p>No automations yet.</p>
+        <p style="font-size:0.82rem;margin-top:0.35rem">Create one to automatically send an email when a form is submitted.</p>
+      </div>`;
+    return;
+  }
+  const triggerLabels = { form_submission: 'New form submission' };
+  const sendToLabels  = { custom: 'Specific email', submitter: 'The submitter' };
+  list.innerHTML = '';
+  automationsData.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'automation-row';
+    row.innerHTML = `
+      <div class="automation-info">
+        <div class="automation-name">${escHtml(a.name)}</div>
+        <div class="automation-meta">
+          <span class="auto-tag trigger">${escHtml(triggerLabels[a.trigger] || a.trigger)}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;opacity:.4"><polyline points="9 18 15 12 9 6"/></svg>
+          <span class="auto-tag template">${escHtml(a.template_name || 'No template')}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;opacity:.4"><polyline points="9 18 15 12 9 6"/></svg>
+          <span class="auto-tag sendto">${escHtml(sendToLabels[a.send_to] || a.send_to)}${a.send_to === 'custom' && a.send_to_email ? ': ' + escHtml(a.send_to_email) : ''}</span>
+        </div>
+      </div>
+      <div class="automation-actions">
+        <label class="toggle-switch" title="${a.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}">
+          <input type="checkbox" class="auto-toggle" data-id="${a.id}" ${a.enabled ? 'checked' : ''} />
+          <span class="toggle-track"></span>
+        </label>
+        <button class="btn-icon" data-edit="${a.id}" title="Edit">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn-icon danger" data-delete="${a.id}" title="Delete">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>`;
+    row.querySelector('[data-edit]').addEventListener('click', () => openAutomationModal(a));
+    row.querySelector('[data-delete]').addEventListener('click', async () => {
+      if (!confirm(`Delete automation "${a.name}"?`)) return;
+      await fetch(`/api/email/automations/${a.id}`, { method: 'DELETE' });
+      showToast('Automation deleted.', 'success');
+      loadAutomations();
+    });
+    row.querySelector('.auto-toggle').addEventListener('change', async (e) => {
+      await fetch(`/api/email/automations/${a.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...a, enabled: e.target.checked }),
+      });
+      a.enabled = e.target.checked;
+    });
+    list.appendChild(row);
+  });
+}
+
+function openAutomationModal(a) {
+  // Populate template select with current templates
+  const sel = document.getElementById('automation-template');
+  sel.innerHTML = '<option value="">— Select a template —</option>';
+  emailTemplates.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+  document.getElementById('automation-modal-title').textContent = a ? 'Edit Automation' : 'New Automation';
+  document.getElementById('automation-edit-id').value     = a ? a.id : '';
+  document.getElementById('automation-name').value        = a ? a.name : '';
+  document.getElementById('automation-trigger').value     = a ? a.trigger : 'form_submission';
+  document.getElementById('automation-template').value    = a && a.template_id ? a.template_id : '';
+  document.getElementById('automation-send-to').value     = a ? a.send_to : 'custom';
+  document.getElementById('automation-send-to-email').value = a && a.send_to_email ? a.send_to_email : '';
+  document.getElementById('automation-custom-email-field').style.display =
+    (!a || a.send_to === 'custom') ? '' : 'none';
+  document.getElementById('automation-modal-overlay').style.display = 'flex';
+}
+
+function closeAutomationModal() {
+  document.getElementById('automation-modal-overlay').style.display = 'none';
+}
+
+document.getElementById('automation-send-to').addEventListener('change', (e) => {
+  document.getElementById('automation-custom-email-field').style.display =
+    e.target.value === 'custom' ? '' : 'none';
+});
+
+document.getElementById('btn-new-automation').addEventListener('click', async () => {
+  if (emailTemplates.length === 0) await loadEmailTemplates();
+  openAutomationModal(null);
+});
+document.getElementById('close-automation-modal').addEventListener('click', closeAutomationModal);
+document.getElementById('cancel-automation-modal').addEventListener('click', closeAutomationModal);
+document.getElementById('automation-modal-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeAutomationModal();
+});
+
+document.getElementById('save-automation-btn').addEventListener('click', async () => {
+  const id         = document.getElementById('automation-edit-id').value;
+  const name       = document.getElementById('automation-name').value.trim();
+  const trigger    = document.getElementById('automation-trigger').value;
+  const templateId = document.getElementById('automation-template').value;
+  const sendTo     = document.getElementById('automation-send-to').value;
+  const sendEmail  = document.getElementById('automation-send-to-email').value.trim();
+  if (!name) { showToast('Please enter a name.', 'error'); return; }
+  if (sendTo === 'custom' && !sendEmail) { showToast('Please enter an email address.', 'error'); return; }
+  const payload = {
+    name,
+    trigger,
+    template_id: templateId ? parseInt(templateId) : null,
+    send_to: sendTo,
+    send_to_email: sendTo === 'custom' ? sendEmail : null,
+    enabled: true,
+  };
+  const btn = document.getElementById('save-automation-btn');
+  btn.disabled = true;
+  try {
+    const url = id ? `/api/email/automations/${id}` : '/api/email/automations';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error();
+    showToast('Automation saved!', 'success');
+    closeAutomationModal();
+    loadAutomations();
+  } catch { showToast('Failed to save automation.', 'error'); }
   finally { btn.disabled = false; }
 });
 
