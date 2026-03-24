@@ -1302,6 +1302,7 @@ function initDashboard() {
   loadCatalog();
   loadQuotes();
   loadDocs();
+  checkEmailStatus();
   // Pre-fill account email from JWT
   try {
     const tok = localStorage.getItem('ndj_admin_token');
