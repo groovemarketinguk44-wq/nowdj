@@ -239,16 +239,22 @@
     .doc-total-section {
       padding: 0 2.5rem 1.5rem;
       display: flex;
-      justify-content: flex-end;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
     }
     .doc-total-box {
       min-width: 240px;
-      border-top: 2px solid var(--accent);
-      padding-top: 0.75rem;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: 2rem;
+      padding-top: 0;
+      border-top: none;
+    }
+    .doc-total-box:first-child {
+      border-top: 2px solid var(--accent);
+      padding-top: 0.75rem;
     }
     .doc-total-label {
       font-size: 0.8rem;
