@@ -2870,7 +2870,7 @@ function renderAutomations() {
       <div class="automation-info">
         <div class="automation-name">${escHtml(a.name)}</div>
         <div class="automation-meta">
-          <span class="auto-tag trigger">${escHtml(triggerLabels[a.trigger] || a.trigger)}</span>
+          <span class="auto-tag trigger">${escHtml(triggerLabels[a.trigger_event] || a.trigger_event)}</span>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;opacity:.4"><polyline points="9 18 15 12 9 6"/></svg>
           <span class="auto-tag template">${escHtml(a.template_name || 'No template')}</span>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;opacity:.4"><polyline points="9 18 15 12 9 6"/></svg>
@@ -2921,7 +2921,7 @@ function openAutomationModal(a) {
   document.getElementById('automation-modal-title').textContent = a ? 'Edit Automation' : 'New Automation';
   document.getElementById('automation-edit-id').value     = a ? a.id : '';
   document.getElementById('automation-name').value        = a ? a.name : '';
-  document.getElementById('automation-trigger').value     = a ? a.trigger : 'form_submission';
+  document.getElementById('automation-trigger').value     = a ? a.trigger_event : 'form_submission';
   document.getElementById('automation-template').value    = a && a.template_id ? a.template_id : '';
   document.getElementById('automation-send-to').value     = a ? a.send_to : 'custom';
   document.getElementById('automation-send-to-email').value = a && a.send_to_email ? a.send_to_email : '';
@@ -2952,7 +2952,7 @@ document.getElementById('automation-modal-overlay').addEventListener('click', (e
 document.getElementById('save-automation-btn').addEventListener('click', async () => {
   const id         = document.getElementById('automation-edit-id').value;
   const name       = document.getElementById('automation-name').value.trim();
-  const trigger    = document.getElementById('automation-trigger').value;
+  const trigger_event = document.getElementById('automation-trigger').value;
   const templateId = document.getElementById('automation-template').value;
   const sendTo     = document.getElementById('automation-send-to').value;
   const sendEmail  = document.getElementById('automation-send-to-email').value.trim();
@@ -2960,7 +2960,7 @@ document.getElementById('save-automation-btn').addEventListener('click', async (
   if (sendTo === 'custom' && !sendEmail) { showToast('Please enter an email address.', 'error'); return; }
   const payload = {
     name,
-    trigger,
+    trigger_event,
     template_id: templateId ? parseInt(templateId) : null,
     send_to: sendTo,
     send_to_email: sendTo === 'custom' ? sendEmail : null,
@@ -2973,7 +2973,7 @@ document.getElementById('save-automation-btn').addEventListener('click', async (
     const method = id ? 'PUT' : 'POST';
     const res = await fetch(url, {
       method,
-      headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error();

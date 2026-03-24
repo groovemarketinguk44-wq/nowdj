@@ -213,15 +213,15 @@ def init_db() -> None:
                 # Automations table
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS email_automations (
-                        id          SERIAL PRIMARY KEY,
-                        tenant_id   INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-                        name        TEXT NOT NULL,
-                        trigger     TEXT NOT NULL DEFAULT 'form_submission',
-                        template_id INTEGER REFERENCES email_templates(id) ON DELETE SET NULL,
-                        send_to     TEXT NOT NULL DEFAULT 'custom',
+                        id            SERIAL PRIMARY KEY,
+                        tenant_id     INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                        name          TEXT NOT NULL,
+                        trigger_event TEXT NOT NULL DEFAULT 'form_submission',
+                        template_id   INTEGER REFERENCES email_templates(id) ON DELETE SET NULL,
+                        send_to       TEXT NOT NULL DEFAULT 'custom',
                         send_to_email TEXT,
-                        enabled     BOOLEAN NOT NULL DEFAULT true,
-                        created_at  TIMESTAMPTZ DEFAULT NOW()
+                        enabled       BOOLEAN NOT NULL DEFAULT true,
+                        created_at    TIMESTAMPTZ DEFAULT NOW()
                     )
                 """)
     finally:
@@ -606,7 +606,7 @@ def get_all_automations(tenant_id: int) -> list[dict]:
         conn.close()
 
 
-def get_active_automations_for_trigger(trigger: str, tenant_id: int) -> list[dict]:
+def get_active_automations_for_trigger(trigger_event: str, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
@@ -614,15 +614,15 @@ def get_active_automations_for_trigger(trigger: str, tenant_id: int) -> list[dic
                 SELECT a.*, t.subject, t.body
                 FROM email_automations a
                 LEFT JOIN email_templates t ON t.id = a.template_id
-                WHERE a.tenant_id = %s AND a.trigger = %s AND a.enabled = true
+                WHERE a.tenant_id = %s AND a.trigger_event = %s AND a.enabled = true
                   AND a.template_id IS NOT NULL
-            """, (tenant_id, trigger))
+            """, (tenant_id, trigger_event))
             return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def create_automation(tenant_id: int, name: str, trigger: str, template_id: int | None,
+def create_automation(tenant_id: int, name: str, trigger_event: str, template_id: int | None,
                       send_to: str, send_to_email: str | None) -> int:
     conn = _conn()
     try:
@@ -630,15 +630,15 @@ def create_automation(tenant_id: int, name: str, trigger: str, template_id: int 
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO email_automations
-                        (tenant_id, name, trigger, template_id, send_to, send_to_email)
+                        (tenant_id, name, trigger_event, template_id, send_to, send_to_email)
                     VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-                """, (tenant_id, name, trigger, template_id, send_to, send_to_email))
+                """, (tenant_id, name, trigger_event, template_id, send_to, send_to_email))
                 return cur.fetchone()["id"]
     finally:
         conn.close()
 
 
-def update_automation(aid: int, tenant_id: int, name: str, trigger: str, template_id: int | None,
+def update_automation(aid: int, tenant_id: int, name: str, trigger_event: str, template_id: int | None,
                       send_to: str, send_to_email: str | None, enabled: bool) -> None:
     conn = _conn()
     try:
@@ -646,9 +646,9 @@ def update_automation(aid: int, tenant_id: int, name: str, trigger: str, templat
             with conn.cursor() as cur:
                 cur.execute("""
                     UPDATE email_automations
-                    SET name=%s, trigger=%s, template_id=%s, send_to=%s, send_to_email=%s, enabled=%s
+                    SET name=%s, trigger_event=%s, template_id=%s, send_to=%s, send_to_email=%s, enabled=%s
                     WHERE id=%s AND tenant_id=%s
-                """, (name, trigger, template_id, send_to, send_to_email, enabled, aid, tenant_id))
+                """, (name, trigger_event, template_id, send_to, send_to_email, enabled, aid, tenant_id))
     finally:
         conn.close()
 

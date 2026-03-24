@@ -868,7 +868,7 @@ async def create_automation_route(
     aid = create_automation(
         tenant["id"],
         name,
-        payload.get("trigger", "form_submission"),
+        payload.get("trigger_event", "form_submission"),
         payload.get("template_id") or None,
         payload.get("send_to", "custom"),
         payload.get("send_to_email", "").strip() or None,
@@ -891,7 +891,7 @@ async def update_automation_route(
         aid,
         tenant["id"],
         name,
-        payload.get("trigger", "form_submission"),
+        payload.get("trigger_event", "form_submission"),
         payload.get("template_id") or None,
         payload.get("send_to", "custom"),
         payload.get("send_to_email", "").strip() or None,
