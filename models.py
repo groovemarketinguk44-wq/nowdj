@@ -1,9 +1,11 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Any, Optional
 
 
 class QuoteRequest(BaseModel):
-    name: str
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    name: Optional[str] = ""
     email: str
     phone: Optional[str] = ""
     event_date: Optional[str] = ""
@@ -13,12 +15,15 @@ class QuoteRequest(BaseModel):
     item_quantities: dict[str, Any] = {}  # item_id → qty (int) or "qty:days" (str) for dual-stepper items
     message: Optional[str] = ""
 
-    @field_validator("name")
-    @classmethod
-    def name_required(cls, v: str) -> str:
-        if not v.strip():
+    @model_validator(mode="after")
+    def build_name(self) -> "QuoteRequest":
+        # Derive name from first_name + last_name if name not directly supplied
+        if not (self.name and self.name.strip()):
+            parts = [x.strip() for x in [self.first_name or "", self.last_name or ""] if x and x.strip()]
+            self.name = " ".join(parts)
+        if not self.name:
             raise ValueError("Name is required")
-        return v.strip()
+        return self
 
     @field_validator("email")
     @classmethod

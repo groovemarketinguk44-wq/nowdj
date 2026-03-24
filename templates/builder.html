@@ -152,30 +152,36 @@
 
               <div id="form-error" class="form-error"></div>
 
-              <div class="form-group">
-                <label for="f-name">Name <span class="field-required">*</span></label>
-                <input type="text" id="f-name" name="name" placeholder="Your full name" autocomplete="name" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-first-name">First Name <span class="field-required">*</span></label>
+                  <input type="text" id="f-first-name" name="first_name" placeholder="First name" autocomplete="given-name" required />
+                </div>
+                <div class="form-group">
+                  <label for="f-last-name">Last Name <span class="field-required">*</span></label>
+                  <input type="text" id="f-last-name" name="last_name" placeholder="Last name" autocomplete="family-name" required />
+                </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
                   <label for="f-email">Email <span class="field-required">*</span></label>
-                  <input type="email" id="f-email" name="email" placeholder="you@email.com" autocomplete="email" />
+                  <input type="email" id="f-email" name="email" placeholder="you@email.com" autocomplete="email" required />
                 </div>
                 <div class="form-group">
-                  <label for="f-phone">Phone</label>
-                  <input type="tel" id="f-phone" name="phone" placeholder="07700 000000" autocomplete="tel" />
+                  <label for="f-phone">Phone <span class="field-required">*</span></label>
+                  <input type="tel" id="f-phone" name="phone" placeholder="07700 000000" autocomplete="tel" required />
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="f-date">Event Date</label>
-                  <input type="date" id="f-date" name="event_date" />
+                  <label for="f-date">Event Date <span class="field-required">*</span></label>
+                  <input type="date" id="f-date" name="event_date" required />
                 </div>
                 <div class="form-group">
-                  <label for="f-event-type">Event Type</label>
-                  <select id="f-event-type" name="event_type">
+                  <label for="f-event-type">Event Type <span class="field-required">*</span></label>
+                  <select id="f-event-type" name="event_type" required>
                     <option value="">Select type…</option>
                     <option value="Wedding">Wedding</option>
                     <option value="Birthday Party">Birthday Party</option>
@@ -188,8 +194,8 @@
               </div>
 
               <div class="form-group">
-                <label for="f-location">Event Location</label>
-                <input type="text" id="f-location" name="location" placeholder="Venue name or town" />
+                <label for="f-location">Event Location <span class="field-required">*</span></label>
+                <input type="text" id="f-location" name="location" placeholder="Venue name or town" required />
               </div>
 
               <div class="form-group">

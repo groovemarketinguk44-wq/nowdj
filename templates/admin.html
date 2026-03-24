@@ -1181,6 +1181,10 @@
           <button type="button" class="var-chip" data-var="{{location}}">location</button>
           <button type="button" class="var-chip" data-var="{{total}}">total</button>
           <button type="button" class="var-chip" data-var="{{quote_id}}">quote id</button>{% endraw %}
+          <span class="wysiwyg-sep"></span>
+          <select id="tmpl-sig-inject" class="tmpl-sig-select">
+            <option value="">Insert signature…</option>
+          </select>
         </div>
         <div id="template-edit-body" contenteditable="true" class="wysiwyg-body" data-placeholder="Hi {{name}}, thanks for your enquiry…"></div>
       </div>
@@ -2812,9 +2816,30 @@ function openTemplateEditor(t) {
   const bodyEl = document.getElementById('template-edit-body');
   bodyEl.innerHTML = t && t.body ? t.body : '';
   document.getElementById('template-editor-title').textContent = t ? 'Edit Template' : 'New Template';
+  // Populate signature inject dropdown
+  const sigSel = document.getElementById('tmpl-sig-inject');
+  sigSel.innerHTML = '<option value="">Insert signature…</option>';
+  savedSignatures.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label || s.fields?.display_name || 'Untitled';
+    sigSel.appendChild(opt);
+  });
   document.getElementById('template-editor-modal').classList.add('open');
   setTimeout(() => bodyEl.focus(), 100);
 }
+
+document.getElementById('tmpl-sig-inject').addEventListener('change', function() {
+  const sigId = this.value;
+  if (!sigId) return;
+  const sig = savedSignatures.find(s => String(s.id) === String(sigId));
+  if (!sig) return;
+  const bodyEl = document.getElementById('template-edit-body');
+  bodyEl.focus();
+  const sigHtml = '<br/><br/>' + buildSigHTML(sig.fields || {});
+  document.execCommand('insertHTML', false, sigHtml);
+  this.value = '';
+});
 
 function closeTemplateModal() {
   document.getElementById('template-editor-modal').classList.remove('open');

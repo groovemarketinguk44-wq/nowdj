@@ -196,6 +196,12 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   margin-bottom: 0.5rem;
 }
 
+@media (max-width: 600px) {
+  .page-hero h1 .gradient-text {
+    display: block;
+  }
+}
+
 .page-hero p {
   color: var(--text-secondary);
   font-size: 1.05rem;
@@ -2320,6 +2326,17 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   transition: background var(--transition);
 }
 .var-chip:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.tmpl-sig-select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  max-width: 160px;
+}
+.tmpl-sig-select:focus { outline: none; border-color: var(--accent); }
 /* Shared frame that wraps editable body + inline sig */
 .compose-email-frame {
   border: 1px solid var(--border);

@@ -355,12 +355,15 @@ function initCards() {
 
 function validateForm() {
   let valid = true;
-  ['f-name', 'f-email'].forEach(fid => {
+  ['f-first-name', 'f-last-name', 'f-email', 'f-phone', 'f-date', 'f-location'].forEach(fid => {
     const el = document.getElementById(fid);
     if (!el) return;
     if (!el.value.trim()) { el.classList.add('invalid'); valid = false; }
     else el.classList.remove('invalid');
   });
+  const evtEl = document.getElementById('f-event-type');
+  if (evtEl && !evtEl.value) { evtEl.classList.add('invalid'); valid = false; }
+  else evtEl?.classList.remove('invalid');
   const emailEl = document.getElementById('f-email');
   if (emailEl && emailEl.value.trim() && !emailEl.value.includes('@')) {
     emailEl.classList.add('invalid');
@@ -427,7 +430,7 @@ async function handleSubmit(e) {
   }
 
   if (!validateForm()) {
-    showError('Please fill in your name and a valid email address.');
+    showError('Please fill in all required fields.');
     return;
   }
 
@@ -450,7 +453,8 @@ async function handleSubmit(e) {
   });
 
   const payload = {
-    name:            document.getElementById('f-name').value.trim(),
+    first_name:      document.getElementById('f-first-name').value.trim(),
+    last_name:       document.getElementById('f-last-name').value.trim(),
     email:           document.getElementById('f-email').value.trim(),
     phone:           document.getElementById('f-phone').value.trim(),
     event_date:      document.getElementById('f-date').value,
@@ -591,8 +595,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPackage();
   applyConstraints();
 
-  ['f-name', 'f-email'].forEach(id => {
+  ['f-first-name', 'f-last-name', 'f-email', 'f-phone', 'f-date', 'f-location', 'f-event-type'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', (e) => e.target.classList.remove('invalid'));
+    document.getElementById(id)?.addEventListener('change', (e) => e.target.classList.remove('invalid'));
   });
 
   document.getElementById('quote-form')?.addEventListener('submit', handleSubmit);
