@@ -602,4 +602,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('quote-form')?.addEventListener('submit', handleSubmit);
   document.getElementById('btn-new-quote')?.addEventListener('click', resetAll);
+
+  // iOS: first tap on submit dismisses keyboard → layout shifts → tap may miss button.
+  // Fire immediately on touchend before the layout shift can happen.
+  const submitBtn = document.getElementById('btn-submit');
+  if (submitBtn) {
+    submitBtn.addEventListener('touchend', (e) => {
+      e.preventDefault(); // prevent the delayed click that follows
+      if (!submitBtn.disabled) handleSubmit({ preventDefault: () => {} });
+    }, { passive: false });
+  }
 });

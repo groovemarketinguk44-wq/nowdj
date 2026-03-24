@@ -673,7 +673,7 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 0.875rem;
+  font-size: 1rem; /* ≥16px prevents iOS auto-zoom on focus */
   padding: 9px 12px;
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
@@ -714,6 +714,7 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   border: none;
   border-radius: var(--radius-sm);
   color: white;
+  touch-action: manipulation; /* remove iOS 300ms tap delay */
   font-size: 0.925rem;
   font-weight: 700;
   letter-spacing: 0.01em;
