@@ -3864,12 +3864,12 @@ async function loadAdminBookings() {
 function renderUpcomingBookings() {
   const el = document.getElementById('upcoming-bookings-list');
   if (!el) return;
+
   const today = new Date(); today.setHours(0,0,0,0);
   const endOfNextWeek = new Date(today);
-  // end of next week = next Sunday + 6 days (i.e. today + days-until-sunday + 7)
-  const dayOfWeek = today.getDay(); // 0=Sun
-  const daysToEndOfThisWeek = dayOfWeek === 0 ? 6 : 7 - dayOfWeek;
-  endOfNextWeek.setDate(today.getDate() + daysToEndOfThisWeek + 7);
+  const dow = today.getDay(); // 0=Sun,1=Mon…
+  const daysToSun = dow === 0 ? 0 : 7 - dow;           // days until this Sunday
+  endOfNextWeek.setDate(today.getDate() + daysToSun + 7); // end of next week (next Sunday)
 
   const upcoming = adminBookings
     .filter(b => {
@@ -3877,32 +3877,71 @@ function renderUpcomingBookings() {
       const d = new Date(b.event_date); d.setHours(0,0,0,0);
       return d >= today && d <= endOfNextWeek;
     })
-    .sort((a,b) => a.event_date.localeCompare(b.event_date));
+    .sort((a, b) => a.event_date.localeCompare(b.event_date));
 
   if (!upcoming.length) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:0.83rem;padding:0.25rem 0">No bookings in the next two weeks.</div>';
     return;
   }
+
+  // Build a human-readable label for each date
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1)); // Mon of this week
+  const nextMonday = new Date(thisMonday); nextMonday.setDate(thisMonday.getDate() + 7);
+  const nextSunday = new Date(nextMonday); nextSunday.setDate(nextMonday.getDate() + 6);
+
+  function dayLabel(dateStr) {
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    const diff = Math.round((d - today) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    const name = dayNames[d.getDay()];
+    if (d >= nextMonday && d <= nextSunday) return 'Next ' + name;
+    return 'This ' + name;
+  }
+
+  // Group by date string
+  const groups = [];
+  const seen = {};
+  for (const b of upcoming) {
+    if (!seen[b.event_date]) { seen[b.event_date] = []; groups.push(b.event_date); }
+    seen[b.event_date].push(b);
+  }
+
   const bkStatusMap = { confirmed:'booked', attended:'attended', paid:'paid', completed:'paid', cancelled:'declined' };
+
+  el.innerHTML = groups.map(dateStr => {
+    const bookings = seen[dateStr];
+    const label = dayLabel(dateStr);
+    const fullDate = new Date(dateStr).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+    const rows = bookings.map(b => `
+      <tr style="cursor:pointer" onclick="openEditBooking(${b.id})">
+        <td style="padding:0.45rem 0.75rem 0.45rem 1.5rem">${escHtml(b.title||b.event_type||'—')}</td>
+        <td style="padding:0.45rem 0.75rem;color:var(--text-muted)">${escHtml(b.location||'—')}</td>
+        <td style="padding:0.45rem 0.75rem;color:var(--text-muted)">${escHtml(b.staff_name||'—')}</td>
+        <td style="padding:0.45rem 0.75rem">${statusBadge(bkStatusMap[b.status]||b.status)}</td>
+        <td style="padding:0.45rem 0 0.45rem;text-align:right;font-weight:600">${b.total_price ? fmt(b.total_price) : '—'}</td>
+      </tr>`).join('');
+    return `
+      <tr>
+        <td colspan="5" style="padding:0.85rem 0 0.3rem">
+          <span style="font-size:0.92rem;font-weight:700;color:var(--text-primary)">${label}</span>
+          <span style="font-size:0.75rem;color:var(--text-muted);margin-left:0.5rem">${fullDate}</span>
+        </td>
+      </tr>
+      ${rows}`;
+  }).join('');
+
   el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
-    <thead><tr style="color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em">
-      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem 0">Date</th>
-      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Title</th>
-      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Location</th>
-      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Staff</th>
-      <th style="text-align:left;padding:0.3rem 0.6rem 0.5rem">Status</th>
+    <thead><tr style="color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:0.3rem 0.75rem 0.5rem 0;padding-left:1.5rem">Title</th>
+      <th style="text-align:left;padding:0.3rem 0.75rem 0.5rem">Location</th>
+      <th style="text-align:left;padding:0.3rem 0.75rem 0.5rem">Staff</th>
+      <th style="text-align:left;padding:0.3rem 0.75rem 0.5rem">Status</th>
       <th style="text-align:right;padding:0.3rem 0 0.5rem">Total</th>
     </tr></thead>
-    <tbody>
-    ${upcoming.map(b => `<tr style="border-top:1px solid var(--border);cursor:pointer" onclick="openEditBooking(${b.id})">
-      <td style="padding:0.5rem 0.6rem 0.5rem 0;white-space:nowrap;color:var(--accent);font-weight:600">${fmtDate(b.event_date)}</td>
-      <td style="padding:0.5rem 0.6rem">${escHtml(b.title||b.event_type||'—')}</td>
-      <td style="padding:0.5rem 0.6rem;color:var(--text-muted)">${escHtml(b.location||'—')}</td>
-      <td style="padding:0.5rem 0.6rem;color:var(--text-muted)">${escHtml(b.staff_name||'—')}</td>
-      <td style="padding:0.5rem 0.6rem">${statusBadge(bkStatusMap[b.status]||b.status)}</td>
-      <td style="padding:0.5rem 0 0.5rem;text-align:right;font-weight:600">${b.total_price ? fmt(b.total_price) : '—'}</td>
-    </tr>`).join('')}
-    </tbody>
+    <tbody>${el.innerHTML}</tbody>
   </table>`;
 }
 
