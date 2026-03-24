@@ -210,7 +210,16 @@ def init_db() -> None:
                 cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_value REAL DEFAULT 0")
                 # Migration: add staff_pay column to bookings
                 cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS staff_pay REAL DEFAULT NULL")
-                # Automations table
+    finally:
+        conn.close()
+
+
+def migrate_automations() -> None:
+    """Run in its own transaction so it never rolls back init_db."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS email_automations (
                         id            SERIAL PRIMARY KEY,

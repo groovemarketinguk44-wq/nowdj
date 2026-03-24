@@ -19,7 +19,7 @@ from catalog_store import (
     save_site_config,
 )
 from database import (
-    init_db, migrate_null_tenant_ids,
+    init_db, migrate_automations, migrate_null_tenant_ids,
     get_all_quotes, get_quote_by_id, save_quote, update_quote_status, delete_quote, update_quote_total,
     get_all_templates, get_template_by_id, create_template, update_template, delete_template,
     seed_templates_for_tenant,
@@ -100,6 +100,7 @@ def extract_subdomain(host: str) -> str | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    migrate_automations()
     _seed_defaults()
     yield
 
