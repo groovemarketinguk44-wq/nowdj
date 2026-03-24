@@ -412,9 +412,9 @@ document.getElementById('past-toggle').addEventListener('click', () => {
 
 async function showDashboard() {
   const user = getUser();
-  document.getElementById('dashboard').style.display = '';
-  document.getElementById('btn-logout').style.display = '';
-  document.getElementById('staff-label').style.display = '';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('btn-logout').style.display = 'block';
+  document.getElementById('staff-label').style.display = 'block';
   document.getElementById('staff-label').textContent = user.name;
 
   const firstName = (user.name || '').split(' ')[0] || user.name || 'there';

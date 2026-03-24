@@ -297,8 +297,8 @@ document.getElementById('btn-logout-header').addEventListener('click', logout);
 /* ── Dashboard ── */
 async function showDashboard() {
   const user = getUser();
-  document.getElementById('dashboard').style.display = '';
-  document.getElementById('btn-logout-header').style.display = '';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('btn-logout-header').style.display = 'block';
   document.getElementById('welcome-name').textContent = 'Welcome, ' + user.name;
   document.getElementById('welcome-email').textContent = user.email;
   document.getElementById('acc-name').value  = user.name  || '';
