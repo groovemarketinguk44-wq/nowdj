@@ -556,6 +556,39 @@ async def patch_status(
                 "total_price": q.get("total_price", 0),
                 "status":      bk_status,
             }, tenant["id"])
+    # Fire automations for status-based triggers
+    _status_trigger_map = {
+        "booked":      "status_booked",
+        "new":         "status_new",
+        "quoted":      "status_quoted",
+        "followed_up": "status_followed_up",
+        "attended":    "status_attended",
+        "paid":        "status_paid",
+    }
+    auto_trigger = _status_trigger_map.get(payload.status)
+    if auto_trigger:
+        try:
+            automations = get_active_automations_for_trigger(auto_trigger, tenant["id"])
+            vars_map = {
+                "name":       q.get("name") or "",
+                "email":      q.get("email") or "",
+                "phone":      q.get("phone") or "",
+                "event_date": q.get("event_date") or "",
+                "event_type": q.get("event_type") or "",
+                "location":   q.get("location") or "",
+                "total":      f"£{q.get('total_price', 0):,.2f}",
+                "message":    q.get("message") or "",
+                "quote_id":   str(quote_id),
+            }
+            for auto in automations:
+                subj = _render_template_vars(auto.get("subject") or "", vars_map)
+                body = _render_template_vars(auto.get("body") or "", vars_map)
+                to_email = q.get("email") if auto["send_to"] == "submitter" else auto.get("send_to_email") or ""
+                to_name  = q.get("name") or to_email
+                if to_email:
+                    await em.send_email(to_email, to_name, subj, body, tenant["id"])
+        except Exception:
+            pass
     return {"success": True, "quote_id": quote_id, "status": payload.status}
 
 
@@ -1247,6 +1280,24 @@ async def admin_create_booking(
 ):
     tenant = _get_tenant_or_404(request)
     bid = create_booking(payload, tenant["id"])
+    try:
+        automations = get_active_automations_for_trigger("booking_created", tenant["id"])
+        vars_map = {
+            "name":       payload.get("title") or "",
+            "event_date": payload.get("event_date") or "",
+            "event_type": payload.get("event_type") or "",
+            "location":   payload.get("location") or "",
+            "total":      f"£{payload.get('total_price', 0):,.2f}",
+            "email": "", "phone": "", "message": "", "quote_id": "",
+        }
+        for auto in automations:
+            subj = _render_template_vars(auto.get("subject") or "", vars_map)
+            body = _render_template_vars(auto.get("body") or "", vars_map)
+            to_email = auto.get("send_to_email") or "" if auto["send_to"] != "submitter" else ""
+            if to_email:
+                await em.send_email(to_email, to_email, subj, body, tenant["id"])
+    except Exception:
+        pass
     return {"success": True, "id": bid}
 
 

@@ -241,5 +241,10 @@
 </div>
 
 <script src="/static/builder.js"></script>
+<script>
+document.addEventListener('click', (e) => {
+  if (e.target.type === 'date') { try { e.target.showPicker(); } catch (_) {} }
+});
+</script>
 </body>
 </html>

@@ -348,7 +348,14 @@
               <div class="modal-field">
                 <label class="field-label">Trigger</label>
                 <select id="automation-trigger">
-                  <option value="form_submission">New form submission</option>
+                  <option value="form_submission">New enquiry / form submission</option>
+                  <option value="status_booked">Enquiry marked as Booked</option>
+                  <option value="booking_created">New booking created (from calendar)</option>
+                  <option value="status_new">Enquiry status → New</option>
+                  <option value="status_quoted">Enquiry status → Quoted</option>
+                  <option value="status_followed_up">Enquiry status → Followed Up</option>
+                  <option value="status_attended">Enquiry status → Attended</option>
+                  <option value="status_paid">Enquiry status → Paid</option>
                 </select>
               </div>
               <div class="modal-field">
@@ -1325,6 +1332,13 @@
      SCRIPTS
      ====================================================================== -->
 <script>
+/* ── Date picker — click anywhere on date input opens the picker ── */
+document.addEventListener('click', (e) => {
+  if (e.target.type === 'date') {
+    try { e.target.showPicker(); } catch (_) {}
+  }
+});
+
 /* ── Helpers ── */
 const fmt    = (n) => '£' + Number(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const fmtK   = (n) => n >= 1000 ? '£' + (n / 1000).toFixed(1) + 'k' : fmt(n);
@@ -2744,9 +2758,12 @@ function renderTemplatesGrid() {
     card.querySelector('[data-edit]').addEventListener('click', () => openTemplateEditor(t));
     card.querySelector('[data-delete]').addEventListener('click', async () => {
       if (!confirm(`Delete template "${t.name}"?`)) return;
-      await fetch(`/api/email/templates/${t.id}`, { method: 'DELETE' });
-      showToast('Template deleted.', 'success');
-      loadEmailTemplates();
+      try {
+        const r = await fetch(`/api/email/templates/${t.id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error();
+        showToast('Template deleted.', 'success');
+        loadEmailTemplates();
+      } catch { showToast('Failed to delete template.', 'error'); }
     });
     grid.appendChild(card);
   });
@@ -2860,7 +2877,16 @@ function renderAutomations() {
       </div>`;
     return;
   }
-  const triggerLabels = { form_submission: 'New form submission' };
+  const triggerLabels = {
+    form_submission:    'New enquiry',
+    status_booked:      'Marked as Booked',
+    booking_created:    'Booking created',
+    status_new:         'Status → New',
+    status_quoted:      'Status → Quoted',
+    status_followed_up: 'Status → Followed Up',
+    status_attended:    'Status → Attended',
+    status_paid:        'Status → Paid',
+  };
   const sendToLabels  = { custom: 'Specific email', submitter: 'The submitter' };
   list.innerHTML = '';
   automationsData.forEach(a => {
@@ -2976,11 +3002,14 @@ document.getElementById('save-automation-btn').addEventListener('click', async (
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Server error');
+    }
     showToast('Automation saved!', 'success');
     closeAutomationModal();
     loadAutomations();
-  } catch { showToast('Failed to save automation.', 'error'); }
+  } catch (e) { showToast('Failed to save: ' + (e.message || 'unknown error'), 'error'); }
   finally { btn.disabled = false; }
 });
 
