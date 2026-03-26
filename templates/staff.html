@@ -62,14 +62,16 @@
     .welcome-text h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem; }
     .welcome-text p { color: var(--text-secondary); font-size: 0.875rem; }
 
-    /* ── Stats row ── */
-    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; }
+    /* ── Stats rows ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 0.75rem; }
     .stat-card {
       background: var(--bg-card); border: 1px solid var(--border-hover);
       border-radius: var(--radius-lg); padding: 1.1rem 1.2rem;
       text-align: center;
     }
     .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-value--orange { color: #f59e0b; }
+    .stat-value--green  { color: var(--success); }
     .stat-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-top: 0.35rem; }
 
     /* ── Section title ── */
@@ -107,11 +109,14 @@
     .status-badge {
       font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem;
       border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .status-confirmed { background: rgba(16,185,129,0.15); color: var(--success); }
     .status-completed { background: var(--accent-dim); color: var(--accent); }
     .status-cancelled { background: rgba(239,68,68,0.12); color: var(--danger); }
     .status-pending   { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .status-paid      { background: rgba(16,185,129,0.15); color: var(--success); }
+    .status-attended  { background: rgba(245,158,11,0.15); color: #f59e0b; }
     .job-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; color: var(--text-muted); font-size: 0.82rem; }
     .job-meta span { display: flex; align-items: center; gap: 0.3rem; }
     .job-pay-col {
@@ -190,7 +195,7 @@
     }
     .past-toggle:hover { border-color: var(--accent); color: var(--text-primary); }
 
-    /* ── Second stats row (Previous Jobs / Pay) ── */
+    /* ── Second stats row ── */
     .stats-row-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; }
 
     /* ── Profile toggle button ── */
@@ -232,7 +237,7 @@
 
     @media (max-width: 480px) {
       /* Header — prevent squash on small screens */
-      .logo-text { font-size: 0.82rem; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .logo-text { font-size: 0.82rem; }
       .staff-label { display: none !important; }
       #btn-logout { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
       .stats-row { grid-template-columns: repeat(3, 1fr); }
@@ -269,12 +274,12 @@
     <!-- Stats row 1 -->
     <div class="stats-row" id="stats-row" style="display:none">
       <div class="stat-card">
-        <div class="stat-value" id="stat-upcoming">—</div>
-        <div class="stat-label">Upcoming Jobs</div>
+        <div class="stat-value" id="stat-prev-jobs">—</div>
+        <div class="stat-label">Previous Jobs</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="stat-pay">—</div>
-        <div class="stat-label">Upcoming Pay</div>
+        <div class="stat-value" id="stat-upcoming">—</div>
+        <div class="stat-label">Upcoming Jobs</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="stat-total">—</div>
@@ -285,12 +290,12 @@
     <!-- Stats row 2 -->
     <div class="stats-row-2" id="stats-row-2" style="display:none">
       <div class="stat-card">
-        <div class="stat-value" id="stat-prev-jobs">—</div>
-        <div class="stat-label">Previous Jobs</div>
+        <div class="stat-value stat-value--orange" id="stat-pay">—</div>
+        <div class="stat-label">Upcoming Pay</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="stat-prev-pay">—</div>
-        <div class="stat-label">Previous Pay</div>
+        <div class="stat-value stat-value--green" id="stat-prev-pay">—</div>
+        <div class="stat-label">Total Paid Out</div>
       </div>
     </div>
 
@@ -427,6 +432,8 @@ function jobCard(b, idx) {
     completed: 'status-completed',
     cancelled: 'status-cancelled',
     pending:   'status-pending',
+    paid:      'status-paid',
+    attended:  'status-attended',
   }[b.status] || 'status-pending';
 
   const eventTypeIcon = b.event_type ? '🎉' : '';
