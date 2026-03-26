@@ -584,7 +584,8 @@ async function showDashboard() {
 
   if (past.length) {
     document.getElementById('past-section').style.display = '';
-    document.getElementById('past-list').innerHTML = past.map((b, i) => jobCard(b, 'p' + i)).join('');
+    const pastSorted = past.slice().sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+    document.getElementById('past-list').innerHTML = pastSorted.map((b, i) => jobCard(b, 'p' + i)).join('');
   }
 }
 
