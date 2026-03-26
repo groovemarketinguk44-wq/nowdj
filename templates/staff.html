@@ -190,6 +190,24 @@
     }
     .past-toggle:hover { border-color: var(--accent); color: var(--text-primary); }
 
+    /* ── Second stats row (Previous Jobs / Pay) ── */
+    .stats-row-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.75rem; }
+
+    /* ── Profile toggle button ── */
+    .profile-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; background: none; border: 1px solid var(--border-hover);
+      border-radius: var(--radius-lg); padding: 0.9rem 1.1rem;
+      color: var(--text-secondary); font-family: inherit; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; text-align: left;
+      transition: border-color var(--transition), color var(--transition);
+      margin-bottom: 0;
+    }
+    .profile-toggle:hover { border-color: var(--accent); color: var(--text-primary); }
+    .profile-toggle-arrow { font-size: 0.75rem; color: var(--text-muted); transition: transform 0.2s; }
+    .profile-toggle.open .profile-toggle-arrow { transform: rotate(180deg); }
+    #profile-card { margin-top: 0.75rem; }
+
     /* ── Mobile ── */
     @media (max-width: 768px) {
       .page { padding: 1.25rem 1rem; }
@@ -197,6 +215,7 @@
       .welcome-banner { padding: 1.25rem 1.2rem; }
       .welcome-text h1 { font-size: 1.25rem; }
       .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+      .stats-row-2 { gap: 0.5rem; }
       .stat-card { padding: 0.85rem 0.5rem; }
       .stat-value { font-size: 1.3rem; }
       .stat-label { font-size: 0.65rem; }
@@ -212,6 +231,10 @@
     }
 
     @media (max-width: 480px) {
+      /* Header — prevent squash on small screens */
+      .logo-text { font-size: 0.82rem; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .staff-label { display: none !important; }
+      #btn-logout { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
       .stats-row { grid-template-columns: repeat(3, 1fr); }
       .job-pay-col { min-width: auto; }
     }
@@ -243,7 +266,7 @@
       </div>
     </div>
 
-    <!-- Stats -->
+    <!-- Stats row 1 -->
     <div class="stats-row" id="stats-row" style="display:none">
       <div class="stat-card">
         <div class="stat-value" id="stat-upcoming">—</div>
@@ -256,6 +279,18 @@
       <div class="stat-card">
         <div class="stat-value" id="stat-total">—</div>
         <div class="stat-label">Total Jobs</div>
+      </div>
+    </div>
+
+    <!-- Stats row 2 -->
+    <div class="stats-row-2" id="stats-row-2" style="display:none">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-prev-jobs">—</div>
+        <div class="stat-label">Previous Jobs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-prev-pay">—</div>
+        <div class="stat-label">Previous Pay</div>
       </div>
     </div>
 
@@ -282,8 +317,11 @@
     <!-- Profile -->
     <hr class="divider" style="margin-top:2rem" />
     <div id="profile-section" style="display:none">
-      <div class="section-title" style="margin-bottom:0.75rem">Account Settings</div>
-      <div class="profile-card" style="max-width:440px">
+      <button class="profile-toggle" id="profile-toggle" onclick="toggleProfile()">
+        Account Settings
+        <span class="profile-toggle-arrow">▼</span>
+      </button>
+      <div class="profile-card" id="profile-card" style="display:none;max-width:440px">
         <div class="form-group"><label>Full Name</label><input type="text" id="prof-name" /></div>
         <div class="form-group"><label>Email</label><input type="email" id="prof-email" /></div>
         <div class="form-group">
@@ -448,6 +486,14 @@ function toggleDetails(cardId) {
   btn.textContent = open ? '▲ Hide details' : '▼ View details';
 }
 
+function toggleProfile() {
+  const card  = document.getElementById('profile-card');
+  const btn   = document.getElementById('profile-toggle');
+  const open  = card.style.display === 'none';
+  card.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+}
+
 document.getElementById('btn-logout').addEventListener('click', () => {
   clearSession();
   const path = window.location.pathname.replace(/\/staff-portal$/, '/login');
@@ -472,7 +518,7 @@ async function showDashboard() {
   const firstName = (user.name || '').split(' ')[0] || user.name || 'there';
   document.getElementById('welcome-name').textContent = 'Hey, ' + firstName + ' 👋';
 
-  document.getElementById('profile-section').style.display = '';
+  document.getElementById('profile-section').style.display = 'block';
   document.getElementById('prof-name').value  = user.name  || '';
   document.getElementById('prof-email').value = user.email || '';
 
@@ -494,11 +540,22 @@ async function showDashboard() {
   const past     = bookings.filter(b =>  isPast(b.event_date) || b.status === 'cancelled');
 
   // Stats — always show once loaded
-  const upcomingPay = upcoming.reduce((sum, b) => sum + (parseFloat(b.staff_pay) || 0), 0);
+  // Upcoming Pay = all bookings not yet paid and not cancelled (owed money)
+  const upcomingPay = bookings
+    .filter(b => b.status !== 'paid' && b.status !== 'cancelled')
+    .reduce((sum, b) => sum + (parseFloat(b.staff_pay) || 0), 0);
+  // Previous = paid bookings
+  const paidBookings = bookings.filter(b => b.status === 'paid');
+  const previousPay  = paidBookings.reduce((sum, b) => sum + (parseFloat(b.staff_pay) || 0), 0);
+
   document.getElementById('stat-upcoming').textContent = upcoming.length;
   document.getElementById('stat-pay').textContent = '£' + upcomingPay.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   document.getElementById('stat-total').textContent = bookings.length;
   document.getElementById('stats-row').style.display = '';
+
+  document.getElementById('stat-prev-jobs').textContent = paidBookings.length;
+  document.getElementById('stat-prev-pay').textContent = '£' + previousPay.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  document.getElementById('stats-row-2').style.display = '';
 
   if (!bookings.length) {
     document.getElementById('empty-state').style.display = '';
