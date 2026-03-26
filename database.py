@@ -467,7 +467,20 @@ def get_all_quotes(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM quotes WHERE tenant_id = %s ORDER BY created_at DESC", (tenant_id,))
+            cur.execute("""
+                SELECT * FROM quotes WHERE tenant_id = %s
+                ORDER BY
+                  CASE status
+                    WHEN 'new'       THEN 1
+                    WHEN 'contacted' THEN 2
+                    WHEN 'booked'    THEN 3
+                    WHEN 'attended'  THEN 4
+                    WHEN 'paid'      THEN 5
+                    ELSE 6
+                  END ASC,
+                  NULLIF(event_date, '') ASC NULLS LAST,
+                  created_at ASC
+            """, (tenant_id,))
             return [_parse_quote(row) for row in cur.fetchall()]
     finally:
         conn.close()
