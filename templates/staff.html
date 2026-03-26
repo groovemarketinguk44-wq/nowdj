@@ -150,6 +150,24 @@
     }
     .btn-expand:hover { color: var(--accent); }
 
+    /* ── Accept / Decline ── */
+    .job-respond-row {
+      border-top: 1px solid var(--border-hover);
+      padding: 0.75rem 1.25rem; display: flex; gap: 0.6rem; align-items: center;
+    }
+    .btn-accept, .btn-decline {
+      border: none; border-radius: var(--radius-sm); padding: 0.5rem 1.1rem;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit;
+      transition: opacity var(--transition); touch-action: manipulation;
+    }
+    .btn-accept  { background: rgba(16,185,129,0.15); color: var(--success); }
+    .btn-decline { background: rgba(239,68,68,0.1); color: var(--danger); }
+    .btn-accept:hover  { opacity: 0.75; }
+    .btn-decline:hover { opacity: 0.75; }
+    .btn-accept:disabled, .btn-decline:disabled { opacity: 0.4; cursor: not-allowed; }
+    .job-responded-accepted { font-size: 0.82rem; font-weight: 700; color: var(--success); }
+    .job-responded-declined { font-size: 0.82rem; font-weight: 700; color: var(--danger); }
+
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
     .empty-state strong { color: var(--text-secondary); display: block; margin-bottom: 0.3rem; font-size: 1rem; }
     .empty-state p { font-size: 0.875rem; }
@@ -327,6 +345,40 @@ function fmtPay(val) {
 
 let _expandedCards = new Set();
 
+function respondRow(b, cardId) {
+  const resp = b.staff_response;
+  if (resp === 'accepted') return `<div class="job-respond-row"><span class="job-responded-accepted">✓ You accepted this job</span></div>`;
+  if (resp === 'declined') return `<div class="job-respond-row"><span class="job-responded-declined">✗ You declined this job</span></div>`;
+  if (b.status === 'cancelled' || b.status === 'completed') return '';
+  // Pending response — show buttons
+  return `<div class="job-respond-row">
+    <button class="btn-accept"  onclick="respondToJob(${b.id},'accepted','${cardId}')">✓ Accept Job</button>
+    <button class="btn-decline" onclick="respondToJob(${b.id},'declined','${cardId}')">✗ Decline</button>
+  </div>`;
+}
+
+async function respondToJob(bookingId, response, cardId) {
+  const row = document.querySelector(`#${cardId} .job-respond-row`);
+  const btns = row ? row.querySelectorAll('button') : [];
+  btns.forEach(b => { b.disabled = true; });
+  try {
+    const r = await fetch(`/api/staff/bookings/${bookingId}/respond`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ response }),
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || 'Failed');
+    if (row) {
+      row.innerHTML = response === 'accepted'
+        ? '<span class="job-responded-accepted">✓ You accepted this job</span>'
+        : '<span class="job-responded-declined">✗ You declined this job</span>';
+    }
+  } catch(e) {
+    btns.forEach(b => { b.disabled = false; });
+    alert('Could not save response: ' + e.message);
+  }
+}
+
 function jobCard(b, idx) {
   const dt = fmtDate(b.event_date);
   const pay = fmtPay(b.staff_pay);
@@ -341,7 +393,6 @@ function jobCard(b, idx) {
 
   const eventTypeIcon = b.event_type ? '🎉' : '';
 
-  // Build detail rows
   const details = [];
   if (b.event_type)     details.push({ label: 'Event Type', val: b.event_type });
   if (b.location)       details.push({ label: 'Venue / Location', val: b.location });
@@ -378,6 +429,7 @@ function jobCard(b, idx) {
         </div>
         ${pay ? `<div class="job-pay-col"><div class="job-pay-label">Your Pay</div><div class="job-pay-amount">${esc(pay)}</div></div>` : ''}
       </div>
+      ${respondRow(b, cardId)}
       ${hasDetails || b.notes ? `
         <div class="job-details" id="${cardId}-details">
           <div class="job-details-grid">${detailsHtml}</div>

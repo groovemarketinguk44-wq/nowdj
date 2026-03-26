@@ -31,6 +31,7 @@ from database import (
     get_all_staff, get_staff_by_email, get_staff_by_id, create_staff_member,
     delete_staff_member, update_staff_member_info,
     get_all_bookings, get_booking_by_id, get_booking_by_quote_id, get_bookings_for_user, get_bookings_for_staff,
+    update_staff_response,
     create_booking, update_booking, delete_booking, sync_booking_date_fields,
     create_document, get_document, list_documents, update_document, delete_document,
     next_doc_number,
@@ -1246,6 +1247,52 @@ async def staff_bookings(
 ):
     tenant = _get_tenant_or_404(request)
     return get_bookings_for_staff(member["uid"], tenant["id"])
+
+
+@app.patch("/api/staff/bookings/{booking_id}/respond")
+async def staff_respond_to_booking(
+    booking_id: int,
+    payload: dict,
+    request: Request,
+    member: Annotated[dict, Depends(require_staff)],
+):
+    response = payload.get("response", "")
+    if response not in ("accepted", "declined"):
+        raise HTTPException(status_code=400, detail="response must be 'accepted' or 'declined'")
+
+    tenant = _get_tenant_or_404(request)
+    booking = update_staff_response(booking_id, member["uid"], tenant["id"], response)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Fire job_accepted / job_declined automation
+    trigger = "job_accepted" if response == "accepted" else "job_declined"
+    try:
+        automations = get_active_automations_for_trigger(trigger, tenant["id"])
+        vars_map = _build_vars_map(
+            name=member.get("name") or "",
+            email=member.get("email") or "",
+            phone="",
+            event_date=booking.get("event_date") or "",
+            event_type=booking.get("event_type") or "",
+            location=booking.get("location") or "",
+            total=f"£{booking.get('total_price', 0):,.2f}",
+            message=booking.get("notes") or "",
+            quote_id="",
+        )
+        vars_map["staff_name"] = member.get("name") or ""
+        vars_map["job_title"]  = booking.get("title") or booking.get("event_type") or ""
+        vars_map["staff_response"] = response
+        for auto in automations:
+            subj = _render_template_vars(auto.get("subject") or "", vars_map)
+            body = _render_template_vars(auto.get("body") or "", vars_map)
+            to_email = auto.get("send_to_email") or "" if auto["send_to"] != "submitter" else ""
+            if to_email:
+                await em.send_email(to_email, to_email, subj, body, tenant["id"])
+    except Exception:
+        pass
+
+    return {"success": True, "staff_response": response}
 
 
 # ---------------------------------------------------------------------------

@@ -211,6 +211,8 @@ def init_db() -> None:
                 cur.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS discount_value REAL DEFAULT 0")
                 # Migration: add staff_pay column to bookings
                 cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS staff_pay REAL DEFAULT NULL")
+                # Migration: add staff_response column to bookings
+                cur.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS staff_response TEXT DEFAULT NULL")
     finally:
         conn.close()
 
@@ -1011,6 +1013,26 @@ def get_bookings_for_staff(staff_id: int, tenant_id: int) -> list[dict]:
                 ORDER BY b.event_date ASC
             """, (staff_id, tenant_id))
             return [_parse_booking(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def update_staff_response(booking_id: int, staff_id: int, tenant_id: int, response: str) -> dict | None:
+    """Set staff_response on a booking; returns the full booking row or None if not found."""
+    conn = _conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE bookings SET staff_response = %s
+                       WHERE id = %s AND staff_id = %s AND tenant_id = %s
+                       RETURNING *""",
+                    (response, booking_id, staff_id, tenant_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return _parse_booking(row)
     finally:
         conn.close()
 
