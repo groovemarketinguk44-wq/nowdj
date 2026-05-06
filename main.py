@@ -1496,15 +1496,24 @@ async def bookings_ics(request: Request, cal_token: str = ""):
     if not cal_token:
         raise HTTPException(status_code=401, detail="Missing cal_token")
 
-    # Find the tenant whose token matches
+    # Find the tenant whose token matches.
+    # Middleware may not resolve a tenant when accessed via root domain (no slug prefix),
+    # so fall back to scanning all tenants by cal_token (safe — token is an unguessable UUID).
     tenant = getattr(request.state, "tenant", None)
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    tid = tenant["id"]
-
-    stored = get_setting("cal_token", tenant_id=tid)
-    if not stored or stored != cal_token:
-        raise HTTPException(status_code=403, detail="Invalid calendar token")
+    if tenant:
+        stored = get_setting("cal_token", tenant_id=tenant["id"])
+        if not stored or stored != cal_token:
+            raise HTTPException(status_code=403, detail="Invalid calendar token")
+        tid = tenant["id"]
+    else:
+        tid = None
+        for t in get_all_tenants():
+            stored = get_setting("cal_token", tenant_id=t["id"])
+            if stored and stored == cal_token:
+                tid = t["id"]
+                break
+        if tid is None:
+            raise HTTPException(status_code=403, detail="Invalid calendar token")
 
     # Apply doc-sync in memory so the feed always has the latest dates
     # even if the DB hasn't been updated yet via the admin bookings endpoint
