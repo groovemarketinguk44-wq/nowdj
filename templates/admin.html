@@ -77,6 +77,12 @@
           Quotes &amp; Invoices
         </button>
 
+        <button class="nav-item" data-section="contracts">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="12" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Hire Contracts
+          <span class="nav-item-badge" id="sidebar-contracts-count" style="display:none">0</span>
+        </button>
+
         <button class="nav-item" data-section="bookings">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Bookings
@@ -501,6 +507,36 @@
           </table>
         </div>
       </div><!-- /section-documents -->
+
+      <!-- ================================================================
+           HIRE CONTRACTS
+           ================================================================ -->
+      <div class="admin-section" id="section-contracts">
+        <div class="section-page-header">
+          <div>
+            <h1>Hire <span class="gradient-text">Contracts</span></h1>
+            <p>Create equipment hire agreements and send to customers for digital signing.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" id="btn-contract-templates">Manage Templates</button>
+            <button class="btn-primary" id="btn-new-contract">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Contract
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="admin-table" id="contracts-table">
+            <thead><tr>
+              <th>Customer</th><th>Email</th><th>Hire Dates</th><th>Rent</th><th>Status</th><th>Created</th><th></th>
+            </tr></thead>
+            <tbody id="contracts-tbody">
+              <tr class="loading-row"><td colspan="7"><span class="spinner"></span> Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /section-contracts -->
 
       <!-- ================================================================
            BOOKINGS
@@ -4983,6 +5019,341 @@ document.getElementById('btn-save-admin-account').addEventListener('click', asyn
     showToast('Account updated!', 'success');
   } catch { showToast('Failed to save.', 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Save Changes'; }
+});
+
+
+// ── Hire Contracts ────────────────────────────────────────────────────────
+let contractTemplates = [];
+let hireContracts = [];
+
+// Generic mini-modal helper (contracts-specific)
+const _cm = {
+  el: null,
+  open(title, body, btns) {
+    if (!this.el) {
+      this.el = document.createElement('div');
+      this.el.id = 'contracts-modal-overlay';
+      this.el.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px';
+      document.body.appendChild(this.el);
+    }
+    const btnHtml = btns.map((b,i) => `<button class="${b.secondary?'btn-secondary':'btn-primary'}" id="_cmb${i}">${b.label}</button>`).join('');
+    this.el.innerHTML = `
+      <div style="background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:12px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border,#2d2d44);flex-shrink:0">
+          <h3 style="font-size:17px;font-weight:700;margin:0">${title}</h3>
+          <button onclick="document.getElementById('contracts-modal-overlay').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="padding:24px;overflow-y:auto;flex:1">${body}</div>
+        <div style="padding:16px 24px;border-top:1px solid var(--border,#2d2d44);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0">${btnHtml}</div>
+      </div>`;
+    this.el.style.display = 'flex';
+    btns.forEach((b,i) => document.getElementById(`_cmb${i}`)?.addEventListener('click', b.action));
+  },
+  close() { if (this.el) this.el.style.display = 'none'; },
+};
+
+function cEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cFmt(s) { if (!s) return '—'; try { return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); } catch { return s; } }
+
+async function loadContracts() {
+  try {
+    const [tr, cr] = await Promise.all([
+      fetch('/api/contracts/templates'),
+      fetch('/api/contracts'),
+    ]);
+    contractTemplates = tr.ok ? await tr.json() : [];
+    hireContracts = cr.ok ? await cr.json() : [];
+  } catch { contractTemplates = []; hireContracts = []; }
+  renderContractsTable();
+}
+
+function renderContractsTable() {
+  const tbody = document.getElementById('contracts-tbody');
+  if (!tbody) return;
+  if (!hireContracts.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">No contracts yet. Click "+ New Contract" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = hireContracts.map(c => {
+    const statusHtml = c.status === 'signed'
+      ? '<span style="background:#166534;color:#bbf7d0;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Signed ✓</span>'
+      : '<span style="background:#713f12;color:#fef08a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Awaiting Signature</span>';
+    const hireRange = (c.hire_start && c.hire_end) ? `${cEsc(c.hire_start)} – ${cEsc(c.hire_end)}` : cEsc(c.hire_start || '—');
+    return `<tr>
+      <td><strong>${cEsc(c.customer_name)}</strong></td>
+      <td style="color:var(--text-muted)">${cEsc(c.customer_email)}</td>
+      <td style="font-size:12px">${hireRange}</td>
+      <td>${cEsc(c.rent_amount || '—')}</td>
+      <td>${statusHtml}</td>
+      <td style="color:var(--text-muted);font-size:12px">${cFmt(c.created_at)}</td>
+      <td style="text-align:right">
+        <button class="btn-ghost btn-sm" onclick="viewContract(${c.id})">View</button>
+        <button class="btn-ghost btn-sm" style="color:#f87171" onclick="delContract(${c.id},'${cEsc(c.customer_name)}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('btn-new-contract')?.addEventListener('click', openNewContractModal);
+document.getElementById('btn-contract-templates')?.addEventListener('click', openTemplatesModal);
+
+// ── New Contract modal ────────────────────────────────────────────────────
+function openNewContractModal() {
+  const today = new Date().toISOString().split('T')[0];
+  const tplOptions = contractTemplates.map(t => `<option value="${t.id}">${cEsc(t.name)}</option>`).join('');
+  _cm.open('New Hire Contract', `
+    <style>
+      #contracts-modal-overlay .cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      #contracts-modal-overlay label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px}
+      #contracts-modal-overlay input,#contracts-modal-overlay select,#contracts-modal-overlay textarea{width:100%;border:1px solid var(--border,#2d2d44);border-radius:7px;padding:9px 12px;font-size:13px;background:var(--bg-input,#0d0d1a);color:var(--text-primary,#e2e8f0);font-family:inherit;outline:none;box-sizing:border-box}
+      #contracts-modal-overlay .cm-field{margin-bottom:12px}
+      @media(max-width:500px){#contracts-modal-overlay .cm-grid{grid-template-columns:1fr}}
+    </style>
+    <div class="cm-grid">
+      <div class="cm-field"><label>Template *</label>
+        <select id="nc-template">${tplOptions||'<option value="">No templates found</option>'}</select></div>
+      <div class="cm-field"><label>Customer Name *</label>
+        <input id="nc-name" type="text" placeholder="Jane Smith"></div>
+      <div class="cm-field"><label>Customer Email *</label>
+        <input id="nc-email" type="email" placeholder="jane@example.com"></div>
+      <div class="cm-field"><label>Customer Phone</label>
+        <input id="nc-phone" type="text" placeholder="+44 ..."></div>
+    </div>
+    <div class="cm-field"><label>Customer Address</label>
+      <textarea id="nc-address" rows="2" placeholder="Street, Town, County, Postcode"></textarea></div>
+    <div class="cm-grid">
+      <div class="cm-field"><label>Agreement Date</label>
+        <input id="nc-agreedate" type="text" value="${today}"></div>
+      <div class="cm-field"><label>Equipment Value</label>
+        <input id="nc-eqvalue" type="text" placeholder="£1,250"></div>
+    </div>
+    <div class="cm-field"><label>Equipment Description</label>
+      <textarea id="nc-eqdesc" rows="2" placeholder="Mackie Thump 15A Active Speaker (Pair), KAM Lighting Bar…"></textarea></div>
+    <div class="cm-grid">
+      <div class="cm-field"><label>Hire Start</label>
+        <input id="nc-hirestart" type="text" placeholder="12th July 2025"></div>
+      <div class="cm-field"><label>Hire End</label>
+        <input id="nc-hireend" type="text" placeholder="13th July 2025"></div>
+      <div class="cm-field"><label>Hire Fee (incl. VAT)</label>
+        <input id="nc-rent" type="text" placeholder="£150.00"></div>
+      <div class="cm-field"><label>Deposit</label>
+        <input id="nc-deposit" type="text" placeholder="£200.00"></div>
+    </div>
+    <div class="cm-field"><label>Delivery Address</label>
+      <textarea id="nc-delivaddr" rows="2" placeholder="Where equipment is delivered"></textarea></div>
+    <div class="cm-field"><label>Return / Pickup Address</label>
+      <textarea id="nc-pickupaddr" rows="2" placeholder="Where equipment is returned"></textarea></div>
+    <div id="nc-link-box" style="display:none;margin-top:14px;padding:14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:8px">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a5b4fc;display:block;margin-bottom:8px">Signing Link — copy and send to your customer</label>
+      <div style="display:flex;gap:8px">
+        <input id="nc-link" type="text" readonly style="flex:1;font-size:12px;font-family:monospace">
+        <button class="btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('nc-link').value).then(()=>showToast('Copied!','success'))">Copy</button>
+      </div>
+    </div>
+    <div id="nc-err" style="color:#f87171;font-size:13px;margin-top:8px;display:none"></div>
+  `, [
+    { label: 'Cancel', secondary: true, action: () => _cm.close() },
+    { label: 'Create Contract & Get Link', action: createContract },
+  ]);
+}
+
+async function createContract() {
+  const tplId = parseInt(document.getElementById('nc-template').value) || 0;
+  const name = document.getElementById('nc-name').value.trim();
+  const email = document.getElementById('nc-email').value.trim();
+  const errEl = document.getElementById('nc-err');
+  const showErr = m => { errEl.textContent = m; errEl.style.display = ''; };
+
+  if (!tplId) return showErr('Please select a template.');
+  if (!name)  return showErr('Customer name is required.');
+  if (!email) return showErr('Customer email is required.');
+  errEl.style.display = 'none';
+
+  const payload = {
+    template_id: tplId,
+    customer_name: name,
+    customer_email: email,
+    customer_phone: document.getElementById('nc-phone').value.trim(),
+    customer_address: document.getElementById('nc-address').value.trim(),
+    agreement_date: document.getElementById('nc-agreedate').value.trim(),
+    equipment_desc: document.getElementById('nc-eqdesc').value.trim(),
+    equipment_value: document.getElementById('nc-eqvalue').value.trim(),
+    hire_start: document.getElementById('nc-hirestart').value.trim(),
+    hire_end: document.getElementById('nc-hireend').value.trim(),
+    rent_amount: document.getElementById('nc-rent').value.trim(),
+    deposit_amount: document.getElementById('nc-deposit').value.trim(),
+    delivery_address: document.getElementById('nc-delivaddr').value.trim(),
+    pickup_address: document.getElementById('nc-pickupaddr').value.trim(),
+  };
+
+  try {
+    const r = await fetch('/api/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) { const d = await r.json(); showErr(d.detail || 'Failed to create contract.'); return; }
+    const data = await r.json();
+    const signingUrl = `${location.origin}/sign?token=${data.token}`;
+    document.getElementById('nc-link').value = signingUrl;
+    document.getElementById('nc-link-box').style.display = '';
+    const footerBtns = document.querySelectorAll('#contracts-modal-overlay [id^="_cmb"]');
+    footerBtns.forEach(b => b.style.display = 'none');
+    const footer = document.querySelector('#contracts-modal-overlay [style*="border-top"]');
+    if (footer) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'btn-secondary';
+      closeBtn.textContent = 'Close';
+      closeBtn.onclick = () => _cm.close();
+      footer.appendChild(closeBtn);
+    }
+    loadContracts();
+    showToast('Contract created!', 'success');
+  } catch { showErr('Network error. Please try again.'); }
+}
+
+// ── View contract modal ───────────────────────────────────────────────────
+async function viewContract(id) {
+  try {
+    const r = await fetch(`/api/contracts/${id}`);
+    if (!r.ok) { showToast('Failed to load contract', 'error'); return; }
+    const c = await r.json();
+    const signingUrl = `${location.origin}/sign?token=${c.token}`;
+    const statusBadge = c.status === 'signed'
+      ? '<span style="background:#166534;color:#bbf7d0;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px">Signed ✓</span>'
+      : '<span style="background:#713f12;color:#fef08a;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px">Awaiting Signature</span>';
+
+    const signedBlock = c.status === 'signed' ? `
+      <div style="border:1px solid #4ade80;border-radius:8px;padding:16px;background:rgba(74,222,128,.08);margin-bottom:16px">
+        <p style="font-size:13px;color:#4ade80;font-weight:700;margin-bottom:6px">✅ Signed by ${cEsc(c.signer_name)}</p>
+        <p style="font-size:12px;color:#86efac">Signed at: ${cFmt(c.signed_at)}</p>
+        ${c.signature_image ? `<img src="${c.signature_image}" style="max-width:240px;border:1px solid #4ade80;border-radius:6px;margin-top:10px;background:#fff;display:block">` : ''}
+      </div>` : `
+      <div style="margin-bottom:16px;padding:14px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a5b4fc;display:block;margin-bottom:8px">Signing Link</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" value="${cEsc(signingUrl)}" readonly style="flex:1;font-size:11px;font-family:monospace;border:1px solid var(--border,#2d2d44);border-radius:6px;padding:8px 10px;background:var(--bg-input,#0d0d1a);color:var(--text-primary,#e2e8f0)" onclick="this.select()">
+          <button class="btn-secondary" onclick="navigator.clipboard.writeText('${signingUrl.replace(/'/g,"\\'")}').then(()=>showToast('Copied!','success'))">Copy</button>
+        </div>
+      </div>`;
+
+    _cm.open(`Contract — ${cEsc(c.customer_name)}`, `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        ${statusBadge}
+        <span style="font-size:12px;color:var(--text-muted)">Created ${cFmt(c.created_at)}</span>
+      </div>
+      ${signedBlock}
+      <div style="border:1px solid var(--border,#2d2d44);border-radius:8px;overflow:hidden">
+        <div style="background:var(--bg-card-2,#13131f);padding:8px 14px;border-bottom:1px solid var(--border,#2d2d44);font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Contract Preview</div>
+        <div style="padding:20px 24px;max-height:380px;overflow-y:auto;font-size:12.5px;line-height:1.7;color:var(--text-primary,#e2e8f0)">${c.html_content}</div>
+      </div>
+    `, [{ label: 'Close', secondary: true, action: () => _cm.close() }]);
+  } catch { showToast('Network error', 'error'); }
+}
+
+async function delContract(id, name) {
+  if (!confirm(`Delete contract for "${name}"? This cannot be undone.`)) return;
+  try {
+    const r = await fetch(`/api/contracts/${id}`, { method: 'DELETE' });
+    if (r.ok) { showToast('Contract deleted', 'success'); loadContracts(); }
+    else showToast('Failed to delete', 'error');
+  } catch { showToast('Network error', 'error'); }
+}
+
+// ── Templates modal ───────────────────────────────────────────────────────
+function openTemplatesModal() {
+  const rows = contractTemplates.map(t => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--border,#2d2d44);border-radius:8px;margin-bottom:8px">
+      <span style="font-weight:600;color:var(--text-primary,#e2e8f0)">${cEsc(t.name)}</span>
+      <button class="btn-secondary btn-sm" onclick="editContractTemplate(${t.id})">Edit</button>
+    </div>`).join('') || '<p style="color:var(--text-muted);text-align:center;padding:1rem">No templates yet.</p>';
+
+  _cm.open('Contract Templates', `
+    <style>#contracts-modal-overlay label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px}
+    #contracts-modal-overlay input,#contracts-modal-overlay textarea{width:100%;border:1px solid var(--border,#2d2d44);border-radius:7px;padding:9px 12px;font-size:13px;background:var(--bg-input,#0d0d1a);color:var(--text-primary,#e2e8f0);font-family:inherit;outline:none;box-sizing:border-box}
+    #contracts-modal-overlay .cm-field{margin-bottom:12px}</style>
+    ${rows}
+    <button class="btn-primary" style="width:100%;margin-top:12px" onclick="newContractTemplate()">+ New Template</button>
+  `, [{ label: 'Close', secondary: true, action: () => _cm.close() }]);
+}
+
+async function editContractTemplate(id) {
+  const t = contractTemplates.find(x => x.id === id);
+  if (!t) return;
+  _cm.open('Edit Template', `
+    <style>#contracts-modal-overlay label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px}
+    #contracts-modal-overlay input,#contracts-modal-overlay textarea{width:100%;border:1px solid var(--border,#2d2d44);border-radius:7px;padding:9px 12px;font-size:13px;background:var(--bg-input,#0d0d1a);color:var(--text-primary,#e2e8f0);font-family:inherit;outline:none;box-sizing:border-box}
+    #contracts-modal-overlay .cm-field{margin-bottom:12px}</style>
+    <div class="cm-field"><label>Template Name</label>
+      <input id="et-name" type="text" value="${cEsc(t.name)}"></div>
+    <div class="cm-field"><label>HTML Content</label>
+      <textarea id="et-html" rows="14" style="font-family:monospace;font-size:12px">${cEsc(t.html_content)}</textarea></div>
+    <div id="et-err" style="color:#f87171;font-size:13px;display:none"></div>
+  `, [
+    { label: 'Delete', secondary: true, action: () => delContractTemplate(id, t.name) },
+    { label: 'Back', secondary: true, action: openTemplatesModal },
+    { label: 'Save', action: () => saveContractTemplate(id) },
+  ]);
+}
+
+async function saveContractTemplate(id) {
+  const name = document.getElementById('et-name').value.trim();
+  const html = document.getElementById('et-html').value;
+  if (!name) { const e=document.getElementById('et-err'); e.textContent='Name required'; e.style.display=''; return; }
+  try {
+    const r = await fetch(`/api/contracts/templates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, html_content: html }),
+    });
+    if (r.ok) { showToast('Template saved', 'success'); await loadContracts(); openTemplatesModal(); }
+    else showToast('Save failed', 'error');
+  } catch { showToast('Network error', 'error'); }
+}
+
+async function newContractTemplate() {
+  _cm.open('New Template', `
+    <style>#contracts-modal-overlay label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px}
+    #contracts-modal-overlay input,#contracts-modal-overlay textarea{width:100%;border:1px solid var(--border,#2d2d44);border-radius:7px;padding:9px 12px;font-size:13px;background:var(--bg-input,#0d0d1a);color:var(--text-primary,#e2e8f0);font-family:inherit;outline:none;box-sizing:border-box}
+    #contracts-modal-overlay .cm-field{margin-bottom:12px}</style>
+    <div class="cm-field"><label>Template Name</label>
+      <input id="nt-name" type="text" placeholder="e.g. Standard Hire Agreement"></div>
+    <div class="cm-field"><label>HTML Content</label>
+      <textarea id="nt-html" rows="14" style="font-family:monospace;font-size:12px" placeholder="&lt;div class=&quot;ct-section&quot;&gt;...&lt;/div&gt;"></textarea></div>
+    <div id="nt-err" style="color:#f87171;font-size:13px;display:none"></div>
+  `, [
+    { label: 'Back', secondary: true, action: openTemplatesModal },
+    { label: 'Create', action: async () => {
+      const name = document.getElementById('nt-name').value.trim();
+      const html = document.getElementById('nt-html').value;
+      if (!name) { const e=document.getElementById('nt-err'); e.textContent='Name required'; e.style.display=''; return; }
+      try {
+        const r = await fetch('/api/contracts/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, html_content: html }),
+        });
+        if (r.ok) { showToast('Template created', 'success'); await loadContracts(); openTemplatesModal(); }
+        else showToast('Failed to create', 'error');
+      } catch { showToast('Network error', 'error'); }
+    }},
+  ]);
+}
+
+async function delContractTemplate(id, name) {
+  if (!confirm(`Delete template "${name}"?`)) return;
+  try {
+    const r = await fetch(`/api/contracts/templates/${id}`, { method: 'DELETE' });
+    if (r.ok) { showToast('Template deleted', 'success'); await loadContracts(); openTemplatesModal(); }
+    else showToast('Failed to delete', 'error');
+  } catch { showToast('Network error', 'error'); }
+}
+
+// hook contracts into section navigation
+document.querySelectorAll('[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.section === 'contracts') loadContracts();
+  });
 });
 </script>
 </body>

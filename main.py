@@ -1,7 +1,7 @@
 import base64
 import re
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -35,6 +35,11 @@ from database import (
     create_booking, update_booking, delete_booking, sync_booking_date_fields,
     create_document, get_document, list_documents, update_document, delete_document,
     next_doc_number,
+    seed_contract_template_for_tenant,
+    list_contract_templates, get_contract_template, create_contract_template,
+    update_contract_template, delete_contract_template,
+    list_hire_contracts, get_hire_contract, get_hire_contract_by_token,
+    create_hire_contract, sign_hire_contract, delete_hire_contract,
     get_setting, set_setting,
     create_tenant, get_tenant_by_slug, get_tenant_by_id, get_tenant_by_email,
     get_all_tenants, update_tenant, delete_tenant,
@@ -1739,6 +1744,7 @@ async def super_create_tenant(
 
     tid = create_tenant(name, slug, email, hash_password(password), plan)
     seed_templates_for_tenant(tid)
+    seed_contract_template_for_tenant(tid)
     return {"success": True, "id": tid, "slug": slug}
 
 
@@ -2067,3 +2073,171 @@ async def docs_print(
 
     ctx = _build_doc_render_context(doc, tenant["id"])
     return templates.TemplateResponse("doc_print.html", {"request": request, "doc": doc, **ctx})
+
+
+# ── Hire Contracts ────────────────────────────────────────────────────────────
+
+@app.get("/sign", response_class=HTMLResponse)
+async def sign_page(request: Request):
+    return templates.TemplateResponse("sign.html", {"request": request})
+
+
+@app.get("/api/contracts/templates")
+async def api_list_contract_templates(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    seed_contract_template_for_tenant(tenant["id"])
+    return list_contract_templates(tenant["id"])
+
+
+@app.get("/api/contracts/templates/{template_id}")
+async def api_get_contract_template(
+    request: Request,
+    template_id: int,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    t = get_contract_template(template_id, tenant["id"])
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return t
+
+
+class ContractTemplateBody(BaseModel):
+    name: str
+    html_content: str
+
+
+@app.post("/api/contracts/templates")
+async def api_create_contract_template(
+    request: Request,
+    body: ContractTemplateBody,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = create_contract_template(tenant["id"], body.name, body.html_content)
+    return {"id": tid}
+
+
+@app.put("/api/contracts/templates/{template_id}")
+async def api_update_contract_template(
+    request: Request,
+    template_id: int,
+    body: ContractTemplateBody,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    update_contract_template(template_id, tenant["id"], body.name, body.html_content)
+    return {"success": True}
+
+
+@app.delete("/api/contracts/templates/{template_id}")
+async def api_delete_contract_template(
+    request: Request,
+    template_id: int,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    delete_contract_template(template_id, tenant["id"])
+    return {"success": True}
+
+
+@app.get("/api/contracts")
+async def api_list_contracts(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    return list_hire_contracts(tenant["id"])
+
+
+@app.get("/api/contracts/{contract_id}")
+async def api_get_contract(
+    request: Request,
+    contract_id: int,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    c = get_hire_contract(contract_id, tenant["id"])
+    if not c:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return c
+
+
+class HireContractBody(BaseModel):
+    template_id: int
+    customer_name: str
+    customer_email: str
+    customer_phone: Optional[str] = ""
+    customer_address: Optional[str] = ""
+    agreement_date: Optional[str] = ""
+    equipment_desc: Optional[str] = ""
+    equipment_value: Optional[str] = ""
+    hire_start: Optional[str] = ""
+    hire_end: Optional[str] = ""
+    rent_amount: Optional[str] = ""
+    deposit_amount: Optional[str] = ""
+    delivery_address: Optional[str] = ""
+    pickup_address: Optional[str] = ""
+
+
+@app.post("/api/contracts")
+async def api_create_contract(
+    request: Request,
+    body: HireContractBody,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    try:
+        cid, token = create_hire_contract(tenant["id"], body.template_id, body.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"id": cid, "token": token}
+
+
+@app.delete("/api/contracts/{contract_id}")
+async def api_delete_contract(
+    request: Request,
+    contract_id: int,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    delete_hire_contract(contract_id, tenant["id"])
+    return {"success": True}
+
+
+# Public signing endpoints (no auth)
+
+@app.get("/api/sign/{token}")
+async def api_get_sign(token: str):
+    c = get_hire_contract_by_token(token)
+    if not c:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return {
+        "customer_name": c["customer_name"],
+        "html_content": c["html_content"],
+        "status": c["status"],
+        "signed_at": c["signed_at"],
+        "signer_name": c["signer_name"],
+    }
+
+
+class SignBody(BaseModel):
+    signer_name: str
+    signature_image: str
+
+
+@app.post("/api/sign/{token}")
+async def api_post_sign(token: str, body: SignBody, request: Request):
+    c = get_hire_contract_by_token(token)
+    if not c:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    if c["status"] == "signed":
+        raise HTTPException(status_code=400, detail="Already signed")
+    if not body.signer_name.strip():
+        raise HTTPException(status_code=400, detail="Signer name is required")
+    ip = request.client.host if request.client else ""
+    sign_hire_contract(token, body.signer_name.strip(), body.signature_image, ip)
+    return {"success": True}

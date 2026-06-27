@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.DS_Store
+nowdj.db
+catalog_override.json
+*.sql

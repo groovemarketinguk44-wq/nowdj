@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipment Hire Agreement — Sign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; background: #f0f2f5; font-family: 'Inter', sans-serif; font-size: 14px; color: #1a202c; }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── Top bar ──────────────────────── */
+    .topbar {
+      background: #0f0f14; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-brand { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -.03em; }
+    .topbar-sub { font-size: 11px; color: rgba(255,255,255,.4); font-weight: 500; }
+
+    /* ── Page ─────────────────────────── */
+    .page { max-width: 820px; margin: 0 auto; padding: 32px 16px 80px; }
+
+    /* ── States ──────────────────────── */
+    .state-card {
+      background: #fff; border-radius: 12px; padding: 60px 32px;
+      text-align: center; box-shadow: 0 2px 20px rgba(0,0,0,.08);
+      margin-top: 32px;
+    }
+    .state-icon { font-size: 44px; margin-bottom: 16px; }
+    .state-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .state-card p { color: #64748b; line-height: 1.6; }
+
+    /* ── Contract document ───────────── */
+    .contract-doc {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 4px 32px rgba(0,0,0,.12);
+      margin: 32px 0;
+      overflow: hidden;
+    }
+    .contract-inner { padding: 48px 52px; }
+    @media (max-width: 600px) { .contract-inner { padding: 24px 20px; } }
+
+    /* Contract content styles */
+    .contract-inner .ct-main-title {
+      font-size: 18px; font-weight: 800; color: #0f0f14;
+      text-align: center; margin-bottom: 8px; line-height: 1.35;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .contract-inner .ct-intro {
+      color: #4a5568; font-size: 13px; margin-bottom: 20px; line-height: 1.6;
+    }
+    .contract-inner .ct-recital {
+      font-size: 12px; color: #64748b; line-height: 1.7;
+      border-left: 3px solid #e2e8f0; padding-left: 14px; margin: 16px 0 20px;
+    }
+    .contract-inner .ct-parties {
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 18px 20px; margin: 16px 0; font-size: 13px; line-height: 1.7;
+      background: #f8fafc;
+    }
+    .contract-inner .ct-parties p { margin-bottom: 10px; }
+    .contract-inner .ct-parties p:last-child { margin-bottom: 0; }
+
+    .contract-inner .ct-details-grid {
+      border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 20px 0;
+    }
+    .contract-inner .ct-detail-row {
+      display: flex; border-bottom: 1px solid #e2e8f0; font-size: 13px;
+    }
+    .contract-inner .ct-detail-row:last-child { border-bottom: none; }
+    .contract-inner .ct-detail-lbl {
+      width: 160px; flex-shrink: 0; padding: 10px 14px;
+      font-weight: 600; color: #64748b; background: #f8fafc;
+      border-right: 1px solid #e2e8f0; font-size: 12px;
+    }
+    .contract-inner .ct-detail-val { flex: 1; padding: 10px 14px; color: #1a202c; line-height: 1.5; }
+
+    .contract-inner .ct-section { margin-bottom: 18px; }
+    .contract-inner .ct-section h3 {
+      font-size: 13px; font-weight: 700; color: #0f0f14;
+      border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .contract-inner .ct-section p { font-size: 13px; color: #2d3748; line-height: 1.7; margin-bottom: 8px; }
+    .contract-inner .ct-section p:last-child { margin-bottom: 0; }
+
+    .contract-inner .ct-notice {
+      background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+      padding: 14px 16px; margin: 20px 0; font-size: 12px; color: #78350f; line-height: 1.6;
+    }
+    .contract-inner .ct-witness {
+      border-top: 2px solid #e2e8f0; margin-top: 24px; padding-top: 20px; font-size: 13px; color: #4a5568;
+    }
+    .contract-inner .ct-sig-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;
+    }
+    .contract-inner .ct-sig-block {
+      border-top: 1px solid #94a3b8; padding-top: 8px;
+    }
+    .contract-inner .ct-sig-name { font-size: 12px; color: #64748b; font-weight: 600; }
+
+    .contract-doc-footer {
+      background: #0f0f14; padding: 14px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .contract-doc-footer span { font-size: 11px; color: rgba(255,255,255,.35); }
+    .contract-doc-footer strong { font-size: 11px; color: #a78bfa; font-weight: 700; }
+
+    /* ── Signing section ─────────────── */
+    .sign-section {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 4px 32px rgba(0,0,0,.1); padding: 36px 40px; margin-bottom: 32px;
+    }
+    @media (max-width: 600px) { .sign-section { padding: 24px 20px; } }
+    .sign-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .sign-section .sub { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-bottom: 6px; }
+    .field input {
+      width: 100%; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 11px 14px; font-size: 14px; color: #1a202c; font-family: inherit;
+      outline: none; transition: border .15s; background: #f8fafc;
+    }
+    .field input:focus { border-color: #6366f1; background: #fff; }
+
+    /* Signature pad */
+    .sig-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: #94a3b8; margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sig-wrap { margin-bottom: 20px; }
+    .sig-canvas-wrap {
+      border: 2px dashed #cbd5e1; border-radius: 8px;
+      background: #f8fafc; cursor: crosshair; position: relative; overflow: hidden;
+    }
+    .sig-canvas-wrap.has-sig { border-color: #6366f1; border-style: solid; }
+    canvas#sigCanvas { display: block; width: 100%; height: 160px; touch-action: none; }
+    .sig-hint {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; pointer-events: none; transition: opacity .2s;
+    }
+    .sig-hint p { font-size: 13px; color: #cbd5e1; font-style: italic; }
+    .clear-sig {
+      background: none; border: 1px solid #e2e8f0; color: #94a3b8;
+      border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600;
+    }
+    .clear-sig:hover { border-color: #94a3b8; color: #64748b; }
+
+    /* Agree checkbox */
+    .agree-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 14px; background: #f8fafc; border-radius: 8px;
+      margin-bottom: 20px; cursor: pointer; border: 1px solid #e2e8f0;
+    }
+    .agree-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #6366f1; flex-shrink: 0; margin-top: 1px; }
+    .agree-row p { font-size: 12px; color: #4a5568; line-height: 1.6; }
+    .agree-row strong { color: #1a202c; }
+
+    /* Sign button */
+    .sign-btn {
+      width: 100%; background: #0f0f14; color: #fff;
+      border: none; border-radius: 10px; padding: 16px;
+      font-size: 15px; font-weight: 700; letter-spacing: .01em;
+      transition: opacity .2s;
+    }
+    .sign-btn:hover { opacity: .85; }
+    .sign-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Error */
+    .err-msg {
+      background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626;
+      border-radius: 8px; padding: 11px 14px; font-size: 13px; font-weight: 600;
+      margin-bottom: 16px; display: none;
+    }
+
+    /* Already signed */
+    .signed-banner {
+      background: #f0fdf4; border: 2px solid #4ade80; border-radius: 10px;
+      padding: 24px; text-align: center; margin: 32px 0;
+    }
+    .signed-banner h3 { color: #166534; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .signed-banner p { font-size: 13px; color: #4a5568; line-height: 1.6; }
+
+    @media (max-width: 500px) {
+      .contract-inner .ct-sig-row { grid-template-columns: 1fr; }
+      .contract-inner .ct-detail-row { flex-direction: column; }
+      .contract-inner .ct-detail-lbl { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-brand">Equipment Hire Agreement</div>
+    <div class="topbar-sub">Secure Digital Signing</div>
+  </div>
+</div>
+
+<div class="page" id="page">
+  <div class="state-card">
+    <div class="state-icon">⏳</div>
+    <h2>Loading agreement…</h2>
+    <p>Please wait a moment.</p>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const token = params.get('token');
+let hasSig = false;
+
+if (!token) {
+  showError('No agreement token in URL. Please check the link you were sent.');
+} else {
+  load();
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/sign/' + token);
+    if (!r.ok) { showError('Agreement not found. Please check the link or contact us.'); return; }
+    const data = await r.json();
+    render(data);
+  } catch { showError('Failed to load. Please try again or contact us.'); }
+}
+
+function render(data) {
+  const page = document.getElementById('page');
+
+  if (data.status === 'signed') {
+    page.innerHTML = `
+      <div class="signed-banner">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <h3>Agreement Already Signed</h3>
+        <p>This agreement was signed by <strong>${esc(data.signer_name)}</strong>.</p>
+        <p style="margin-top:6px">Thank you — no further action is needed.</p>
+      </div>
+      <div class="contract-doc">
+        <div class="contract-inner">${data.html_content}</div>
+        <div class="contract-doc-footer">
+          <span>Digitally signed</span>
+          <strong>✓ SIGNED</strong>
+        </div>
+      </div>`;
+    return;
+  }
+
+  page.innerHTML = `
+    <div style="text-align:center;margin:32px 0 24px">
+      <p style="font-size:13px;color:#64748b;margin-bottom:4px">Please read carefully, then sign at the bottom.</p>
+      <h2 style="font-size:20px;font-weight:700;color:#0f0f14">Equipment Hire Agreement — ${esc(data.customer_name)}</h2>
+    </div>
+
+    <div class="contract-doc">
+      <div class="contract-inner">${data.html_content}</div>
+      <div class="contract-doc-footer">
+        <span>Ben Henderson DJ Hire</span>
+        <strong>AWAITING SIGNATURE</strong>
+      </div>
+    </div>
+
+    <div class="sign-section" id="signSection">
+      <h2>Sign This Agreement</h2>
+      <p class="sub">By signing below you confirm you have read and agree to the terms above.</p>
+
+      <div class="err-msg" id="errMsg"></div>
+
+      <div class="field">
+        <label>Your Full Name *</label>
+        <input type="text" id="signerName" placeholder="Type your full legal name" autocomplete="name">
+      </div>
+
+      <div class="sig-wrap">
+        <div class="sig-label">
+          <span>Draw Your Signature *</span>
+          <button class="clear-sig" type="button" onclick="clearSig()">Clear</button>
+        </div>
+        <div class="sig-canvas-wrap" id="canvasWrap">
+          <canvas id="sigCanvas"></canvas>
+          <div class="sig-hint" id="sigHint"><p>Draw your signature here with mouse or finger</p></div>
+        </div>
+      </div>
+
+      <label class="agree-row" for="agreeCheck">
+        <input type="checkbox" id="agreeCheck">
+        <p>I, <strong id="namePreview">—</strong>, confirm I have read this agreement and agree to be bound by its terms.</p>
+      </label>
+
+      <button class="sign-btn" id="signBtn" onclick="submit()">Sign Agreement</button>
+    </div>`;
+
+  initPad();
+  document.getElementById('signerName').addEventListener('input', function() {
+    document.getElementById('namePreview').textContent = this.value.trim() || '—';
+  });
+}
+
+function initPad() {
+  const canvas = document.getElementById('sigCanvas');
+  const wrap = document.getElementById('canvasWrap');
+  const hint = document.getElementById('sigHint');
+  const ctx = canvas.getContext('2d');
+  let drawing = false, lx = 0, ly = 0;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = wrap.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 160 * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1a202c';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function pos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function start(e) {
+    e.preventDefault(); drawing = true;
+    const p = pos(e); lx = p.x; ly = p.y;
+    ctx.beginPath(); ctx.moveTo(lx, ly);
+  }
+  function move(e) {
+    if (!drawing) return; e.preventDefault();
+    const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lx = p.x; ly = p.y;
+    if (!hasSig) {
+      hasSig = true;
+      hint.style.opacity = '0';
+      wrap.classList.add('has-sig');
+    }
+  }
+  function end() { drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('mouseleave', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+}
+
+function clearSig() {
+  const canvas = document.getElementById('sigCanvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  hasSig = false;
+  document.getElementById('sigHint').style.opacity = '1';
+  document.getElementById('canvasWrap').classList.remove('has-sig');
+}
+
+async function submit() {
+  const name = document.getElementById('signerName').value.trim();
+  const agreed = document.getElementById('agreeCheck').checked;
+  document.getElementById('errMsg').style.display = 'none';
+
+  if (!name) { showErr('Please enter your full name.'); return; }
+  if (!hasSig) { showErr('Please draw your signature above.'); return; }
+  if (!agreed) { showErr('Please tick the agreement checkbox.'); return; }
+
+  const sigImg = document.getElementById('sigCanvas').toDataURL('image/png');
+  const btn = document.getElementById('signBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    const r = await fetch('/api/sign/' + token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signer_name: name, signature_image: sigImg }),
+    });
+    if (!r.ok) { const d = await r.json(); showErr(d.detail || 'Submission failed.'); btn.disabled = false; btn.textContent = 'Sign Agreement'; return; }
+    success(name);
+  } catch { showErr('Network error. Please try again.'); btn.disabled = false; btn.textContent = 'Sign Agreement'; }
+}
+
+function success(name) {
+  document.getElementById('signSection').outerHTML = `
+    <div class="signed-banner">
+      <div style="font-size:40px;margin-bottom:12px">✅</div>
+      <h3>Agreement Signed</h3>
+      <p>Thank you, <strong>${esc(name)}</strong> — your agreement has been recorded.</p>
+      <p style="margin-top:8px">You can now close this page. We'll be in touch!</p>
+    </div>`;
+}
+
+function showErr(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = msg; el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showError(msg) {
+  document.getElementById('page').innerHTML = `<div class="state-card" style="margin-top:32px"><div class="state-icon">⚠️</div><h2>Unable to Load</h2><p>${esc(msg)}</p></div>`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
