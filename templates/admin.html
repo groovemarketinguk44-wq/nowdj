@@ -1495,7 +1495,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   document.getElementById('login-error').classList.remove('visible');
 });
 
-const VALID_SECTIONS = ['catalog','enquiries','email','documents','bookings','staff','clients','account','branding'];
+const VALID_SECTIONS = ['catalog','enquiries','email','documents','contracts','bookings','staff','clients','account','branding'];
 
 // Check on load
 if (checkLogin()) {
@@ -1574,6 +1574,7 @@ function switchSection(id) {
   document.querySelector(`.mbn-item[data-section="${id}"]`)?.classList.add('active');
   if (id === 'email')     { checkEmailStatus(); loadEmailTemplates(); loadSignatures(); }
   if (id === 'documents') { loadDocSettings(); loadDocs(); loadSignatures(); }
+  if (id === 'contracts') loadContracts();
   if (id === 'bookings')  loadAdminBookings();
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
@@ -5349,12 +5350,6 @@ async function delContractTemplate(id, name) {
   } catch { showToast('Network error', 'error'); }
 }
 
-// hook contracts into section navigation
-document.querySelectorAll('[data-section]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (btn.dataset.section === 'contracts') loadContracts();
-  });
-});
 </script>
 </body>
 </html>
