@@ -1,5 +1,7 @@
 import base64
 import re
+import sys
+import traceback
 from contextlib import asynccontextmanager
 from typing import Annotated, Optional
 
@@ -52,11 +54,13 @@ from auth import (
     hash_password, verify_password, create_token, decode_token,
     require_customer, require_staff, require_tenant_admin, require_super_admin,
 )
+import asyncio
 import datetime
 import json
 import os
 import uuid
 import email_manager as em
+import email_import
 
 
 DEFAULT_PW = "     "  # 5 spaces
@@ -523,6 +527,13 @@ async def list_quotes(
     _admin: Annotated[dict, Depends(require_tenant_admin)],
 ):
     tenant = _get_tenant_or_404(request)
+    # Best-effort: pull in any new website-form enquiries from Outlook. Fired as a
+    # background task (throttled internally) so it never slows the list response;
+    # freshly-imported enquiries appear on the next refresh.
+    try:
+        asyncio.create_task(email_import.maybe_run(tenant["id"]))
+    except Exception:
+        pass
     return get_all_quotes(tenant["id"])
 
 
@@ -707,6 +718,48 @@ async def email_auth_disconnect(
 
 
 # ---------------------------------------------------------------------------
+# Auto-import website enquiries from Outlook
+# ---------------------------------------------------------------------------
+
+@app.get("/api/email/auto-import")
+async def get_auto_import(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    tid = tenant["id"]
+    return {
+        "enabled":   email_import.is_enabled(tid),
+        "connected": em.is_connected(tid),
+        "subject":   email_import._match_subject(tid),
+        "sender":    email_import._match_sender(tid),
+    }
+
+
+@app.post("/api/email/auto-import")
+async def set_auto_import(
+    payload: dict,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    email_import.set_enabled(tenant["id"], bool(payload.get("enabled")))
+    return {"success": True, "enabled": email_import.is_enabled(tenant["id"])}
+
+
+@app.post("/api/email/import-now")
+async def import_now(
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    if not em.is_connected(tenant["id"]):
+        raise HTTPException(status_code=400, detail="Connect Outlook first.")
+    result = await email_import.run_import(tenant["id"])
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Email — mailbox operations  (tenant admin)
 # ---------------------------------------------------------------------------
 
@@ -804,6 +857,7 @@ async def email_send(
         raise HTTPException(status_code=400, detail="to_email and subject are required")
 
     attachments = None
+    attachment_error = None
     if doc_id:
         doc = get_document(int(doc_id), tenant["id"])
         if doc:
@@ -817,8 +871,11 @@ async def email_send(
                     "contentBytes": base64.b64encode(pdf_bytes).decode(),
                 }]
             except Exception as pdf_err:
-                # Don't block sending if PDF generation fails
-                pass
+                # Don't block sending the email if PDF generation fails, but
+                # log it and tell the caller so the failure isn't silent.
+                print(f"[email_send] PDF attachment generation failed for doc_id={doc_id}: {pdf_err}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+                attachment_error = str(pdf_err)
 
     try:
         ok = await em.send_email(to_email, to_name, subject, body, tenant["id"], attachments)
@@ -839,7 +896,7 @@ async def email_send(
         except Exception:
             pass  # never block the send response
 
-    return {"success": ok, "status_updated": status_updated}
+    return {"success": ok, "status_updated": status_updated, "attachment_error": attachment_error}
 
 
 @app.post("/api/email/reply/{msg_id:path}")
@@ -1357,19 +1414,23 @@ async def admin_list_bookings(
 ):
     tenant = _get_tenant_or_404(request)
     tid = tenant["id"]
-    # Backfill: create booking records for any booked/attended/paid enquiries that don't have one yet
+    # Backfill: create booking records for any booked/attended/paid enquiries that don't have one yet.
+    # Each quote is handled independently — one bad record must not blank out the whole list.
     _bk_map = {"booked": "confirmed", "attended": "attended", "paid": "paid"}
     for q in get_all_quotes(tid):
-        if q.get("status") in _bk_map and not get_booking_by_quote_id(q["id"], tid):
-            create_booking({
-                "quote_id":    q["id"],
-                "title":       q.get("name", ""),
-                "event_date":  q.get("event_date", ""),
-                "event_type":  q.get("event_type", ""),
-                "location":    q.get("location", ""),
-                "total_price": q.get("total_price", 0),
-                "status":      _bk_map[q["status"]],
-            }, tid)
+        try:
+            if q.get("status") in _bk_map and not get_booking_by_quote_id(q["id"], tid):
+                create_booking({
+                    "quote_id":    q["id"],
+                    "title":       q.get("name", ""),
+                    "event_date":  q.get("event_date", ""),
+                    "event_type":  q.get("event_type", ""),
+                    "location":    q.get("location", ""),
+                    "total_price": q.get("total_price", 0),
+                    "status":      _bk_map[q["status"]],
+                }, tid)
+        except Exception:
+            pass
 
     # Sync: for every booking linked to an enquiry, apply the most recent
     # linked document's date/location/type so everything stays in agreement.
@@ -1385,22 +1446,25 @@ async def admin_list_bookings(
             doc_by_quote[qid] = d
 
     for bk in get_all_bookings(tid):
-        qid = bk.get("quote_id")
-        if not qid:
-            continue
-        doc = doc_by_quote.get(qid)
-        if not doc or not doc.get("event_date"):
-            continue
-        if (doc["event_date"] != bk.get("event_date") or
-                doc.get("location", "") != bk.get("location", "") or
-                doc.get("event_type", "") != bk.get("event_type", "")):
-            sync_booking_date_fields(
-                bk["id"],
-                doc["event_date"],
-                doc.get("event_type") or bk.get("event_type", ""),
-                doc.get("location")   or bk.get("location", ""),
-                tid,
-            )
+        try:
+            qid = bk.get("quote_id")
+            if not qid:
+                continue
+            doc = doc_by_quote.get(qid)
+            if not doc or not doc.get("event_date"):
+                continue
+            if (doc["event_date"] != bk.get("event_date") or
+                    doc.get("location", "") != bk.get("location", "") or
+                    doc.get("event_type", "") != bk.get("event_type", "")):
+                sync_booking_date_fields(
+                    bk["id"],
+                    doc["event_date"],
+                    doc.get("event_type") or bk.get("event_type", ""),
+                    doc.get("location")   or bk.get("location", ""),
+                    tid,
+                )
+        except Exception:
+            pass
 
     return get_all_bookings(tid)
 

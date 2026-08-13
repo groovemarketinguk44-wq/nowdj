@@ -463,19 +463,10 @@ def _parse_quote(row) -> dict:
 def get_all_quotes(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
+        # Most recently received enquiry first, working down.
         cur = conn.execute("""
             SELECT * FROM quotes WHERE tenant_id = ?
-            ORDER BY
-              CASE status
-                WHEN 'new'       THEN 1
-                WHEN 'contacted' THEN 2
-                WHEN 'booked'    THEN 3
-                WHEN 'attended'  THEN 4
-                WHEN 'paid'      THEN 5
-                ELSE 6
-              END ASC,
-              NULLIF(event_date, '') ASC NULLS LAST,
-              created_at ASC
+            ORDER BY created_at DESC, id DESC
         """, (tenant_id,))
         return [_parse_quote(row) for row in cur.fetchall()]
     finally:
@@ -915,16 +906,31 @@ def _parse_booking(row) -> dict:
     return dict(row)
 
 
+_BOOKING_ORDER_SQL = """
+    ORDER BY
+      CASE
+        WHEN event_date IS NULL OR event_date = '' THEN 2
+        WHEN event_date >= date('now')             THEN 0
+        ELSE 1
+      END ASC,
+      CASE WHEN event_date >= date('now') THEN event_date END ASC,
+      CASE WHEN event_date <  date('now') AND event_date <> '' THEN event_date END DESC,
+      created_at DESC
+"""
+
+
 def get_all_bookings(tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
-        cur = conn.execute("""
+        # Soonest upcoming booking first (what's next), then past bookings
+        # most-recent-first working backwards, undated bookings last.
+        cur = conn.execute(f"""
             SELECT b.*, s.name AS staff_name, u.name AS customer_name, u.email AS customer_email
             FROM bookings b
             LEFT JOIN staff_members s ON b.staff_id = s.id
             LEFT JOIN users u ON b.user_id = u.id
             WHERE b.tenant_id = ?
-            ORDER BY b.event_date ASC, b.created_at DESC
+            {_BOOKING_ORDER_SQL}
         """, (tenant_id,))
         return [_parse_booking(row) for row in cur.fetchall()]
     finally:
@@ -950,12 +956,12 @@ def get_booking_by_id(bid: int, tenant_id: int) -> dict | None:
 def get_bookings_for_user(user_id: int, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
-        cur = conn.execute("""
+        cur = conn.execute(f"""
             SELECT b.*, s.name AS staff_name
             FROM bookings b
             LEFT JOIN staff_members s ON b.staff_id = s.id
             WHERE b.user_id = ? AND b.tenant_id = ?
-            ORDER BY b.event_date ASC
+            {_BOOKING_ORDER_SQL}
         """, (user_id, tenant_id))
         return [_parse_booking(row) for row in cur.fetchall()]
     finally:
@@ -965,12 +971,12 @@ def get_bookings_for_user(user_id: int, tenant_id: int) -> list[dict]:
 def get_bookings_for_staff(staff_id: int, tenant_id: int) -> list[dict]:
     conn = _conn()
     try:
-        cur = conn.execute("""
+        cur = conn.execute(f"""
             SELECT b.*, u.name AS customer_name, u.email AS customer_email
             FROM bookings b
             LEFT JOIN users u ON b.user_id = u.id
             WHERE b.staff_id = ? AND b.tenant_id = ?
-            ORDER BY b.event_date ASC
+            {_BOOKING_ORDER_SQL}
         """, (staff_id, tenant_id))
         return [_parse_booking(row) for row in cur.fetchall()]
     finally:

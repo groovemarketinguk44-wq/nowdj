@@ -6,7 +6,7 @@
   <title>{{ branding.company_name }} — Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
   {{ branding_style | safe }}
   <style>
@@ -330,6 +330,31 @@
 
         <!-- Automations pane -->
         <div class="email-pane" id="etab-automations">
+
+          <!-- Auto-import website enquiries -->
+          <div class="templates-toolbar" style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;background:var(--bg-alt)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:220px">
+                <h3 style="margin:0 0 0.25rem">Auto-import website enquiries</h3>
+                <p style="margin:0">When a website contact-form email arrives in your connected Outlook inbox, it's automatically added as a new enquiry. Matches emails with subject <code>Contact got a new submission</code> sent from <code id="auto-import-sender">ben@groovemarketing.co.uk</code>.</p>
+                <p id="auto-import-status" style="margin:0.5rem 0 0;font-size:0.8rem;color:var(--text-muted)"></p>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.6rem">
+                <div style="display:inline-flex;align-items:center;gap:0.6rem">
+                  <span id="auto-import-label" style="font-size:0.85rem;font-weight:600;color:var(--text-muted)">Off</span>
+                  <label class="toggle-switch" title="Turn website enquiry auto-import on or off">
+                    <input type="checkbox" id="auto-import-toggle" />
+                    <span class="toggle-track"></span>
+                  </label>
+                </div>
+                <button class="btn-secondary btn-sm" id="btn-import-now">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+                  Check now
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="templates-toolbar">
             <h3>Email Automations</h3>
             <p>Automatically send emails when something happens — like a new form submission. Pick a trigger, choose a template, and set who receives it.</p>
@@ -1521,6 +1546,7 @@ function initDashboard() {
   loadCatalog();
   loadQuotes();
   loadDocs();
+  loadAdminBookings();
   checkEmailStatus();
   // Pre-fill account email from JWT
   try {
@@ -1996,16 +2022,19 @@ function updateStats(quotes) {
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   document.getElementById('stat-total').textContent  = quotes.length;
   document.getElementById('stat-week').textContent   = quotes.filter(q => new Date(q.created_at) > week).length;
-  const pipeline = quotes.filter(q => q.status==='new'||q.status==='contacted').reduce((s,q)=>s+(q.total_price||0),0);
+  const pipeline = quotes.filter(q => q.status==='new'||q.status==='contacted').reduce((s,q)=>s+getEnquiryEffectiveTotal(q),0);
   document.getElementById('stat-value').textContent  = fmtK(pipeline);
-  const confirmed = quotes.filter(q => q.status==='booked').reduce((s,q)=>s+(q.total_price||0),0);
+  // Confirmed/attended/paid financials reflect the linked booking's total
+  // (which can be edited after booking — deposits, discounts, etc.) so they
+  // stay in agreement with what's shown in the Bookings tab.
+  const confirmed = quotes.filter(q => q.status==='booked').reduce((s,q)=>s+getEnquiryEffectiveTotal(q),0);
   document.getElementById('stat-confirmed-value').textContent = fmtK(confirmed);
   document.getElementById('stat-booked').textContent = quotes.filter(q=>q.status==='booked').length;
   // Past Events Due = attended quotes (event happened, payment outstanding)
-  const attended = quotes.filter(q => q.status==='attended').reduce((s,q)=>s+(q.total_price||0),0);
+  const attended = quotes.filter(q => q.status==='attended').reduce((s,q)=>s+getEnquiryEffectiveTotal(q),0);
   document.getElementById('stat-attended-value').textContent = fmtK(attended);
   // Past Events Paid = quotes marked as paid
-  const paidTotal = quotes.filter(q => q.status === 'paid').reduce((s, q) => s + (q.total_price || 0), 0);
+  const paidTotal = quotes.filter(q => q.status === 'paid').reduce((s, q) => s + getEnquiryEffectiveTotal(q), 0);
   document.getElementById('stat-paid-value').textContent = fmtK(paidTotal);
   // This month + % change
   const thisMonth = quotes.filter(q => new Date(q.created_at) >= monthStart).length;
@@ -2341,11 +2370,68 @@ function switchEmailTab(tab) {
   if (tab === 'sent'       && emailStatus.authenticated && sentMessages.length === 0) loadSent();
   if (tab === 'templates')    loadEmailTemplates();
   if (tab === 'signatures')   loadSignatures();
-  if (tab === 'automations')  loadAutomations();
+  if (tab === 'automations') { loadAutomations(); loadAutoImport(); }
 }
 
 document.querySelectorAll('.email-tab').forEach(tab => {
   tab.addEventListener('click', () => switchEmailTab(tab.dataset.etab));
+});
+
+/* ── Auto-import website enquiries ── */
+async function loadAutoImport() {
+  const toggle = document.getElementById('auto-import-toggle');
+  const status = document.getElementById('auto-import-status');
+  const label  = document.getElementById('auto-import-label');
+  if (!toggle) return;
+  try {
+    const r = await fetch('/api/email/auto-import');
+    const d = await r.json();
+    toggle.checked = !!d.enabled;
+    if (label) {
+      label.textContent = d.enabled ? 'On' : 'Off';
+      label.style.color = d.enabled ? 'var(--success, #22c55e)' : 'var(--text-muted)';
+    }
+    const senderEl = document.getElementById('auto-import-sender');
+    if (senderEl && d.sender) senderEl.textContent = d.sender;
+    if (!d.connected) {
+      status.innerHTML = '⚠️ Connect your Outlook account (Inbox tab) for this to work.';
+      status.style.color = 'var(--danger)';
+    } else if (d.enabled) {
+      status.textContent = 'Active — new website enquiries are added automatically when you open the app.';
+      status.style.color = 'var(--success, #22c55e)';
+    } else {
+      status.textContent = 'Off — turn on to auto-add website enquiries, or use “Check now”.';
+      status.style.color = 'var(--text-muted)';
+    }
+  } catch {}
+}
+
+document.getElementById('auto-import-toggle')?.addEventListener('change', async (e) => {
+  try {
+    await fetch('/api/email/auto-import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: e.target.checked }),
+    });
+    showToast(e.target.checked ? 'Auto-import enabled.' : 'Auto-import disabled.', 'success');
+    loadAutoImport();
+  } catch { showToast('Failed to update setting.', 'error'); }
+});
+
+document.getElementById('btn-import-now')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-import-now');
+  btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Checking…';
+  try {
+    const r = await fetch('/api/email/import-now', { method: 'POST' });
+    if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.detail || 'failed'); }
+    const d = await r.json();
+    if (d.imported > 0) {
+      showToast(`Imported ${d.imported} new ${d.imported === 1 ? 'enquiry' : 'enquiries'}.`, 'success');
+      loadQuotes();
+    } else {
+      showToast('No new website enquiries found.', 'info');
+    }
+  } catch (err) { showToast(err.message === 'Connect Outlook first.' ? 'Connect Outlook first.' : 'Import failed.', 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = orig; }
 });
 
 /* ── Status check ── */
@@ -2773,7 +2859,11 @@ document.getElementById('btn-send-compose').addEventListener('click', async () =
     }
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || 'Send failed');
-    showToast('Email sent!', 'success');
+    if (data.attachment_error) {
+      showToast(`Email sent, but the PDF attachment failed: ${data.attachment_error}`, 'error');
+    } else {
+      showToast('Email sent!', 'success');
+    }
     // Auto-advance new → contacted in local state so the UI updates instantly
     if (_composeQuoteId && data.status_updated) {
       const q = allQuotes.find(e => e.id == _composeQuoteId);
@@ -3252,7 +3342,16 @@ function getLinkedDoc(q) {
   return linked.reduce((a, b) => (a.updated_at || a.created_at) >= (b.updated_at || b.created_at) ? a : b);
 }
 
+// Once an enquiry is booked, the booking record (editable in the Bookings
+// tab — deposits, discounts, adjustments) is the source of truth for its
+// value, not the original quote total.
+function getLinkedBooking(q) {
+  return adminBookings.find(b => b.quote_id == q.id) || null;
+}
+
 function getEnquiryEffectiveTotal(q) {
+  const booking = getLinkedBooking(q);
+  if (booking) return booking.total_price || 0;
   const doc = getLinkedDoc(q);
   if (doc) {
     try {
@@ -4248,6 +4347,13 @@ async function loadAdminBookings() {
   badge.style.display = upcoming ? '' : 'none';
   const mbnBookingBadge = document.getElementById('mbn-booking-badge');
   if (mbnBookingBadge) { mbnBookingBadge.textContent = upcoming; mbnBookingBadge.style.display = upcoming ? '' : 'none'; }
+
+  // Booking totals feed into the enquiry financial stats (see getEnquiryEffectiveTotal) —
+  // refresh those now that adminBookings is up to date, whichever load finished last.
+  if (Array.isArray(allQuotes) && allQuotes.length) {
+    updateStats(allQuotes);
+    renderQuotes();
+  }
 }
 
 function renderUpcomingBookings() {

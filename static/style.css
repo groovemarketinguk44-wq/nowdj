@@ -4,20 +4,21 @@
    ======================================================================== */
 
 :root {
-  --bg-base:       #07090f;
-  --bg-surface:    #0d1117;
-  --bg-card:       #111827;
-  --bg-card-hover: #161f30;
-  --bg-input:      #0d1117;
-  --bg-hover:      #161f30;
-  --bg-alt:        #0d1117;
-  --text:          #f8f8f8;
+  /* Recoloured to match hertfordshiredjrental.co.uk (dark vinyl / smoked glass) */
+  --bg-base:       #080808;
+  --bg-surface:    #0c0c0e;
+  --bg-card:       #131316;
+  --bg-card-hover: #17171b;
+  --bg-input:      #111113;
+  --bg-hover:      #17171b;
+  --bg-alt:        #0c0c0e;
+  --text:          #f2efe9;
 
-  --accent:        #fa854f;
+  --accent:        #f98950;
   --accent-light:  #ffb38a;
   --accent-dark:   #e0683a;
-  --accent-dim:    rgba(250, 133, 79, 0.14);
-  --accent-glow:   rgba(250, 133, 79, 0.28);
+  --accent-dim:    rgba(249, 137, 80, 0.14);
+  --accent-glow:   rgba(249, 137, 80, 0.28);
 
   --white:         #ffffff;
   --white-dim:     rgba(255, 255, 255, 0.07);
@@ -28,21 +29,21 @@
   --warning:       #f59e0b;
   --danger:        #ef4444;
 
-  --text-primary:  #f8f8f8;
-  --text-secondary:#94a3b8;
-  --text-muted:    #475569;
+  --text-primary:  #f2efe9;
+  --text-secondary:#b9b5af;
+  --text-muted:    #6e6b67;
 
-  --border:        rgba(255, 255, 255, 0.06);
-  --border-active: rgba(250, 133, 79, 0.55);
-  --border-hover:  rgba(255, 255, 255, 0.12);
+  --border:        rgba(255, 255, 255, 0.08);
+  --border-active: rgba(249, 137, 80, 0.55);
+  --border-hover:  rgba(255, 255, 255, 0.16);
 
-  --radius-sm:     8px;
-  --radius:        12px;
-  --radius-lg:     16px;
-  --radius-xl:     20px;
+  --radius-sm:     10px;
+  --radius:        14px;
+  --radius-lg:     18px;
+  --radius-xl:     24px;
 
   --shadow-card:   0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow:   0 0 32px rgba(250, 133, 79, 0.18);
+  --shadow-glow:   0 0 32px rgba(249, 137, 80, 0.18);
 
   --transition:      0.18s ease;
   --transition-slow: 0.32s ease;
@@ -52,7 +53,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-base);
   color: var(--text-primary);
   line-height: 1.6;
