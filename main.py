@@ -49,6 +49,7 @@ from database import (
     find_staff_globally, find_user_globally,
     get_tenant_by_custom_domain,
 )
+import website_images
 from models import QuoteRequest, StatusUpdate
 from auth import (
     hash_password, verify_password, create_token, decode_token,
@@ -145,6 +146,8 @@ def _seed_defaults():
 app = FastAPI(title="NowDJ", version="2.0.0", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+website_images.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(website_images.UPLOADS_DIR)), name="uploads")
 templates = Jinja2Templates(directory="templates")
 
 
@@ -367,6 +370,55 @@ async def api_save_branding(
 ):
     tenant = _get_tenant_or_404(request)
     save_branding_config(config, tenant["id"])
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Website images (marketing site photo slots)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/website-images/registry")
+async def api_website_images_registry():
+    return website_images.SLOT_REGISTRY
+
+
+@app.get("/api/website-images")
+async def api_website_images_get(request: Request):
+    tenant = _get_tenant_or_404(request)
+    return website_images.get_image_urls(tenant["id"])
+
+
+class WebsiteImageUpload(BaseModel):
+    slot_id: str
+    data_url: str
+
+
+@app.post("/api/website-images/upload")
+async def api_website_images_upload(
+    payload: WebsiteImageUpload,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    try:
+        url = website_images.save_image(tenant["id"], payload.slot_id, payload.data_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"success": True, "url": url}
+
+
+class WebsiteImageDelete(BaseModel):
+    slot_id: str
+
+
+@app.post("/api/website-images/delete")
+async def api_website_images_delete(
+    payload: WebsiteImageDelete,
+    request: Request,
+    _admin: Annotated[dict, Depends(require_tenant_admin)],
+):
+    tenant = _get_tenant_or_404(request)
+    website_images.delete_image(tenant["id"], payload.slot_id)
     return {"success": True}
 
 

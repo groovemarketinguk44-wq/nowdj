@@ -116,6 +116,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
           Branding
         </button>
+        <button class="nav-item" data-section="website-images">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Website Images
+        </button>
         <button class="nav-item" id="nav-site-config">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit Builder Page
@@ -764,6 +768,24 @@
         </div>
       </div><!-- /section-branding -->
 
+      <!-- ================================================================
+           WEBSITE IMAGES SECTION
+           ================================================================ -->
+      <div class="admin-section" id="section-website-images">
+        <div class="section-page-header">
+          <div>
+            <h1>Website <span class="gradient-text">Images</span></h1>
+            <p>Every photo slot on hertfordshiredjrental.co.uk, grouped by page. Upload once and it goes live on the site.</p>
+          </div>
+        </div>
+
+        <div id="website-images-list">
+          <div style="text-align:center;padding:3rem;color:var(--text-muted)">
+            <span class="spinner"></span> Loading…
+          </div>
+        </div>
+      </div><!-- /section-website-images -->
+
     </main>
   </div>
 
@@ -807,6 +829,7 @@
       <button class="mobile-more-item" data-section="clients"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Clients</button>
       <button class="mobile-more-item" data-section="account"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Account</button>
       <button class="mobile-more-item" data-section="branding"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>Branding</button>
+      <button class="mobile-more-item" data-section="website-images"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Website Images</button>
       <button class="mobile-more-item" id="btn-logout-mobile" style="color:var(--danger);margin-top:0.5rem;border-top:1px solid var(--border);border-radius:0;padding-top:1rem"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log Out</button>
     </div>
   </div>
@@ -1527,7 +1550,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   document.getElementById('login-error').classList.remove('visible');
 });
 
-const VALID_SECTIONS = ['catalog','enquiries','email','documents','contracts','bookings','staff','clients','account','branding'];
+const VALID_SECTIONS = ['catalog','enquiries','email','documents','contracts','bookings','staff','clients','account','branding','website-images'];
 
 // Check on load
 if (checkLogin()) {
@@ -1612,6 +1635,7 @@ function switchSection(id) {
   if (id === 'staff')    loadAdminStaff();
   if (id === 'clients')  loadAdminClients();
   if (id === 'branding') loadBranding();
+  if (id === 'website-images') loadWebsiteImages();
 }
 
 /* ======================================================================
@@ -5444,6 +5468,121 @@ async function delContractTemplate(id, name) {
     const r = await fetch(`/api/contracts/templates/${id}`, { method: 'DELETE' });
     if (r.ok) { showToast('Template deleted', 'success'); await loadContracts(); openTemplatesModal(); }
     else showToast('Failed to delete', 'error');
+  } catch { showToast('Network error', 'error'); }
+}
+
+/* ======================================================================
+   WEBSITE IMAGES
+   ====================================================================== */
+let _wiRegistry = [];
+let _wiCurrent = {};
+
+async function loadWebsiteImages() {
+  const container = document.getElementById('website-images-list');
+  try {
+    const [regRes, imgRes] = await Promise.all([
+      fetch('/api/website-images/registry'),
+      fetch('/api/website-images'),
+    ]);
+    _wiRegistry = await regRes.json();
+    _wiCurrent = await imgRes.json();
+    _renderWebsiteImages();
+  } catch {
+    container.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted)">Failed to load. Try again.</div>';
+  }
+}
+
+function _renderWebsiteImages() {
+  const container = document.getElementById('website-images-list');
+  const bySection = {};
+  _wiRegistry.forEach((slot) => {
+    (bySection[slot.section] = bySection[slot.section] || []).push(slot);
+  });
+
+  container.innerHTML = Object.entries(bySection).map(([section, slots]) => `
+    <div class="content-card" style="margin-bottom:1.25rem">
+      <h3 style="margin-bottom:1rem;font-size:1rem;font-weight:700">${section}</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+        ${slots.map((slot) => _wiSlotCardHtml(slot)).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  _wiRegistry.forEach((slot) => {
+    const input = document.getElementById(`wi-file-${_wiDomId(slot.id)}`);
+    input?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (file) _wiUpload(slot.id, file);
+    });
+    document.getElementById(`wi-remove-${_wiDomId(slot.id)}`)?.addEventListener('click', () => _wiRemove(slot.id));
+  });
+}
+
+function _wiDomId(slotId) {
+  return slotId.replace(/[^a-zA-Z0-9]/g, '-');
+}
+
+function _wiSlotCardHtml(slot) {
+  const domId = _wiDomId(slot.id);
+  const url = _wiCurrent[slot.id];
+  return `
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-surface)">
+      <div id="wi-preview-${domId}" onclick="document.getElementById('wi-file-${domId}').click()" style="cursor:pointer;aspect-ratio:4/3;background:var(--bg-input) center/cover no-repeat${url ? `;background-image:url('${url}')` : ''};display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+        ${url ? '' : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:22px;height:22px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}
+      </div>
+      <div style="padding:0.7rem 0.8rem">
+        <div style="font-size:0.82rem;font-weight:600">${slot.label}</div>
+        <div style="font-size:0.74rem;color:var(--text-muted);margin-top:0.15rem">${slot.description}</div>
+        <div style="display:flex;gap:0.6rem;margin-top:0.55rem">
+          <button type="button" onclick="document.getElementById('wi-file-${domId}').click()" style="font-size:0.75rem;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-weight:600">${url ? 'Replace' : 'Upload'}</button>
+          <button type="button" id="wi-remove-${domId}" style="display:${url ? '' : 'none'};font-size:0.75rem;color:var(--danger);background:none;border:none;cursor:pointer;padding:0">Remove</button>
+        </div>
+      </div>
+      <input type="file" id="wi-file-${domId}" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" />
+    </div>
+  `;
+}
+
+function _wiUpload(slotId, file) {
+  if (file.size > 8 * 1024 * 1024) { showToast('Image is larger than 8MB', 'error'); return; }
+  const domId = _wiDomId(slotId);
+  const preview = document.getElementById(`wi-preview-${domId}`);
+  const prevContent = preview.innerHTML;
+  preview.innerHTML = '<span class="spinner"></span>';
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try {
+      const res = await fetch('/api/website-images/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot_id: slotId, data_url: ev.target.result }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.detail || 'Upload failed', 'error'); preview.innerHTML = prevContent; return; }
+      _wiCurrent[slotId] = data.url;
+      _renderWebsiteImages();
+      showToast('Image updated', 'success');
+    } catch {
+      showToast('Network error', 'error');
+      preview.innerHTML = prevContent;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function _wiRemove(slotId) {
+  if (!confirm('Remove this image? The site will fall back to a placeholder.')) return;
+  try {
+    const res = await fetch('/api/website-images/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot_id: slotId }),
+    });
+    if (!res.ok) { showToast('Failed to remove', 'error'); return; }
+    delete _wiCurrent[slotId];
+    _renderWebsiteImages();
+    showToast('Image removed', 'success');
   } catch { showToast('Network error', 'error'); }
 }
 
